@@ -1,4 +1,5 @@
 #include "kael/shape.h"
+#include "kael/error.h"
 
 namespace kael{
     
@@ -15,4 +16,13 @@ namespace kael{
         return s; 
 
     }
+
+    void validate_shape(const Shape& shape){
+
+        for (std::size_t i = 0; i < shape.size(); i++){
+            KAEL_CHECK(shape[i] >= 0, "negative dimension: " << shape[i] << " at position " << i << " in shape: " << kael::to_string(shape));
+        }
+
+    }
+
 }

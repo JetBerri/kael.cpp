@@ -2,7 +2,7 @@ add_test([=[ShapeString.NormalCase]=]  /Users/diqueran/Documents/Proyectos/kael.
 set_tests_properties([=[ShapeString.NormalCase]=]
   PROPERTIES
     
-    DEF_SOURCE_LINE [==[/Users/diqueran/Documents/Proyectos/kael.cpp/tests/test_shape.cpp:4]==]
+    DEF_SOURCE_LINE [==[/Users/diqueran/Documents/Proyectos/kael.cpp/tests/test_shape.cpp:5]==]
     WORKING_DIRECTORY [==[/Users/diqueran/Documents/Proyectos/kael.cpp/build/tests]==]
     SKIP_REGULAR_EXPRESSION [==[\[  SKIPPED \]]==]
     
@@ -11,7 +11,7 @@ add_test([=[ShapeString.EmptyCase]=]  /Users/diqueran/Documents/Proyectos/kael.c
 set_tests_properties([=[ShapeString.EmptyCase]=]
   PROPERTIES
     
-    DEF_SOURCE_LINE [==[/Users/diqueran/Documents/Proyectos/kael.cpp/tests/test_shape.cpp:12]==]
+    DEF_SOURCE_LINE [==[/Users/diqueran/Documents/Proyectos/kael.cpp/tests/test_shape.cpp:10]==]
     WORKING_DIRECTORY [==[/Users/diqueran/Documents/Proyectos/kael.cpp/build/tests]==]
     SKIP_REGULAR_EXPRESSION [==[\[  SKIPPED \]]==]
     
@@ -20,7 +20,7 @@ add_test([=[ShapeString.OneDimension]=]  /Users/diqueran/Documents/Proyectos/kae
 set_tests_properties([=[ShapeString.OneDimension]=]
   PROPERTIES
     
-    DEF_SOURCE_LINE [==[/Users/diqueran/Documents/Proyectos/kael.cpp/tests/test_shape.cpp:20]==]
+    DEF_SOURCE_LINE [==[/Users/diqueran/Documents/Proyectos/kael.cpp/tests/test_shape.cpp:15]==]
     WORKING_DIRECTORY [==[/Users/diqueran/Documents/Proyectos/kael.cpp/build/tests]==]
     SKIP_REGULAR_EXPRESSION [==[\[  SKIPPED \]]==]
     
@@ -29,7 +29,7 @@ add_test([=[ShapeString.ZeroDimension]=]  /Users/diqueran/Documents/Proyectos/ka
 set_tests_properties([=[ShapeString.ZeroDimension]=]
   PROPERTIES
     
-    DEF_SOURCE_LINE [==[/Users/diqueran/Documents/Proyectos/kael.cpp/tests/test_shape.cpp:28]==]
+    DEF_SOURCE_LINE [==[/Users/diqueran/Documents/Proyectos/kael.cpp/tests/test_shape.cpp:20]==]
     WORKING_DIRECTORY [==[/Users/diqueran/Documents/Proyectos/kael.cpp/build/tests]==]
     SKIP_REGULAR_EXPRESSION [==[\[  SKIPPED \]]==]
     
@@ -38,9 +38,36 @@ add_test([=[ShapeString.BigDimension]=]  /Users/diqueran/Documents/Proyectos/kae
 set_tests_properties([=[ShapeString.BigDimension]=]
   PROPERTIES
     
-    DEF_SOURCE_LINE [==[/Users/diqueran/Documents/Proyectos/kael.cpp/tests/test_shape.cpp:36]==]
+    DEF_SOURCE_LINE [==[/Users/diqueran/Documents/Proyectos/kael.cpp/tests/test_shape.cpp:25]==]
     WORKING_DIRECTORY [==[/Users/diqueran/Documents/Proyectos/kael.cpp/build/tests]==]
     SKIP_REGULAR_EXPRESSION [==[\[  SKIPPED \]]==]
     
 )
-set(kael_tests_TESTS [==[ShapeString.NormalCase]==] [==[ShapeString.EmptyCase]==] [==[ShapeString.OneDimension]==] [==[ShapeString.ZeroDimension]==] [==[ShapeString.BigDimension]==])
+add_test([=[ValidateShape.NoError]=]  /Users/diqueran/Documents/Proyectos/kael.cpp/build/tests/kael_tests [==[--gtest_filter=ValidateShape.NoError]==] --gtest_also_run_disabled_tests)
+set_tests_properties([=[ValidateShape.NoError]=]
+  PROPERTIES
+    
+    DEF_SOURCE_LINE [==[/Users/diqueran/Documents/Proyectos/kael.cpp/tests/test_shape.cpp:30]==]
+    WORKING_DIRECTORY [==[/Users/diqueran/Documents/Proyectos/kael.cpp/build/tests]==]
+    SKIP_REGULAR_EXPRESSION [==[\[  SKIPPED \]]==]
+    
+)
+add_test([=[ValidateShape.ThrowError]=]  /Users/diqueran/Documents/Proyectos/kael.cpp/build/tests/kael_tests [==[--gtest_filter=ValidateShape.ThrowError]==] --gtest_also_run_disabled_tests)
+set_tests_properties([=[ValidateShape.ThrowError]=]
+  PROPERTIES
+    
+    DEF_SOURCE_LINE [==[/Users/diqueran/Documents/Proyectos/kael.cpp/tests/test_shape.cpp:41]==]
+    WORKING_DIRECTORY [==[/Users/diqueran/Documents/Proyectos/kael.cpp/build/tests]==]
+    SKIP_REGULAR_EXPRESSION [==[\[  SKIPPED \]]==]
+    
+)
+add_test([=[ValidateShape.ErrorMessageContainsShape]=]  /Users/diqueran/Documents/Proyectos/kael.cpp/build/tests/kael_tests [==[--gtest_filter=ValidateShape.ErrorMessageContainsShape]==] --gtest_also_run_disabled_tests)
+set_tests_properties([=[ValidateShape.ErrorMessageContainsShape]=]
+  PROPERTIES
+    
+    DEF_SOURCE_LINE [==[/Users/diqueran/Documents/Proyectos/kael.cpp/tests/test_shape.cpp:52]==]
+    WORKING_DIRECTORY [==[/Users/diqueran/Documents/Proyectos/kael.cpp/build/tests]==]
+    SKIP_REGULAR_EXPRESSION [==[\[  SKIPPED \]]==]
+    
+)
+set(kael_tests_TESTS [==[ShapeString.NormalCase]==] [==[ShapeString.EmptyCase]==] [==[ShapeString.OneDimension]==] [==[ShapeString.ZeroDimension]==] [==[ShapeString.BigDimension]==] [==[ValidateShape.NoError]==] [==[ValidateShape.ThrowError]==] [==[ValidateShape.ErrorMessageContainsShape]==])

@@ -1,5 +1,5 @@
 {
-  "tests": 5,
+  "tests": 8,
   "name": "AllTests",
   "testsuites": [
     {
@@ -9,27 +9,48 @@
         {
           "name": "NormalCase",
           "file": "\/Users\/diqueran\/Documents\/Proyectos\/kael.cpp\/tests\/test_shape.cpp",
-          "line": 4
+          "line": 5
         },
         {
           "name": "EmptyCase",
           "file": "\/Users\/diqueran\/Documents\/Proyectos\/kael.cpp\/tests\/test_shape.cpp",
-          "line": 12
+          "line": 10
         },
         {
           "name": "OneDimension",
           "file": "\/Users\/diqueran\/Documents\/Proyectos\/kael.cpp\/tests\/test_shape.cpp",
-          "line": 20
+          "line": 15
         },
         {
           "name": "ZeroDimension",
           "file": "\/Users\/diqueran\/Documents\/Proyectos\/kael.cpp\/tests\/test_shape.cpp",
-          "line": 28
+          "line": 20
         },
         {
           "name": "BigDimension",
           "file": "\/Users\/diqueran\/Documents\/Proyectos\/kael.cpp\/tests\/test_shape.cpp",
-          "line": 36
+          "line": 25
+        }
+      ]
+    },
+    {
+      "name": "ValidateShape",
+      "tests": 3,
+      "testsuite": [
+        {
+          "name": "NoError",
+          "file": "\/Users\/diqueran\/Documents\/Proyectos\/kael.cpp\/tests\/test_shape.cpp",
+          "line": 30
+        },
+        {
+          "name": "ThrowError",
+          "file": "\/Users\/diqueran\/Documents\/Proyectos\/kael.cpp\/tests\/test_shape.cpp",
+          "line": 41
+        },
+        {
+          "name": "ErrorMessageContainsShape",
+          "file": "\/Users\/diqueran\/Documents\/Proyectos\/kael.cpp\/tests\/test_shape.cpp",
+          "line": 52
         }
       ]
     }

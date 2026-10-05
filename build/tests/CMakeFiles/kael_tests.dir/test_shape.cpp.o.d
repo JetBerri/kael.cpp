@@ -1042,4 +1042,5 @@ tests/CMakeFiles/kael_tests.dir/test_shape.cpp.o: \
   /Users/diqueran/Documents/Proyectos/kael.cpp/build/_deps/googletest-src/googletest/include/gtest/gtest-typed-test.h \
   /Users/diqueran/Documents/Proyectos/kael.cpp/build/_deps/googletest-src/googletest/include/gtest/gtest_pred_impl.h \
   /Users/diqueran/Documents/Proyectos/kael.cpp/build/_deps/googletest-src/googletest/include/gtest/gtest_prod.h \
-  /Users/diqueran/Documents/Proyectos/kael.cpp/include/kael/shape.h
+  /Users/diqueran/Documents/Proyectos/kael.cpp/include/kael/shape.h \
+  /Users/diqueran/Documents/Proyectos/kael.cpp/include/kael/error.h

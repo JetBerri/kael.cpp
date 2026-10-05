@@ -1,6 +1,9 @@
-ShapeString.NormalCase 2 0.002237
-ShapeString.EmptyCase 1 0.00379667
-ShapeString.OneDimension 1 0.00372321
-ShapeString.ZeroDimension 1 0.00359054
-ShapeString.BigDimension 1 0.00378246
+ShapeString.NormalCase 3 0.00148142
+ShapeString.EmptyCase 2 0.002049
+ShapeString.OneDimension 2 0.00193927
+ShapeString.ZeroDimension 2 0.00192188
+ShapeString.BigDimension 2 0.00191962
+ValidateShape.NoError 1 0.00369508
+ValidateShape.ThrowError 1 0.00380004
+ValidateShape.ErrorMessageContainsShape 1 0.00360675
 ---
