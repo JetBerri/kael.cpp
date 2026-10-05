@@ -1,1 +1,0 @@
-/usr/bin/c++  -arch arm64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/kael_tests.dir/test_shape.cpp.o -o kael_tests  ../libkael.a ../lib/libgtest_main.a ../lib/libgtest.a
