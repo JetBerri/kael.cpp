@@ -1,0 +1,6 @@
+ShapeString.NormalCase 2 0.002237
+ShapeString.EmptyCase 1 0.00379667
+ShapeString.OneDimension 1 0.00372321
+ShapeString.ZeroDimension 1 0.00359054
+ShapeString.BigDimension 1 0.00378246
+---

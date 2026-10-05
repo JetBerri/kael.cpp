@@ -1,0 +1,138 @@
+Start testing: Oct 05 08:46 CEST
+----------------------------------------------------------
+1/5 Testing: ShapeString.NormalCase
+1/5 Test: ShapeString.NormalCase
+Command: "/Users/diqueran/Documents/Proyectos/kael.cpp/build/tests/kael_tests" "--gtest_filter=ShapeString.NormalCase" "--gtest_also_run_disabled_tests"
+Directory: /Users/diqueran/Documents/Proyectos/kael.cpp/build/tests
+"ShapeString.NormalCase" start time: Oct 05 08:46 CEST
+Output:
+----------------------------------------------------------
+Running main() from /Users/diqueran/Documents/Proyectos/kael.cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = ShapeString.NormalCase
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from ShapeString
+[ RUN      ] ShapeString.NormalCase
+[       OK ] ShapeString.NormalCase (0 ms)
+[----------] 1 test from ShapeString (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"ShapeString.NormalCase" end time: Oct 05 08:46 CEST
+"ShapeString.NormalCase" time elapsed: 00:00:00
+----------------------------------------------------------
+
+2/5 Testing: ShapeString.EmptyCase
+2/5 Test: ShapeString.EmptyCase
+Command: "/Users/diqueran/Documents/Proyectos/kael.cpp/build/tests/kael_tests" "--gtest_filter=ShapeString.EmptyCase" "--gtest_also_run_disabled_tests"
+Directory: /Users/diqueran/Documents/Proyectos/kael.cpp/build/tests
+"ShapeString.EmptyCase" start time: Oct 05 08:46 CEST
+Output:
+----------------------------------------------------------
+Running main() from /Users/diqueran/Documents/Proyectos/kael.cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = ShapeString.EmptyCase
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from ShapeString
+[ RUN      ] ShapeString.EmptyCase
+[       OK ] ShapeString.EmptyCase (0 ms)
+[----------] 1 test from ShapeString (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"ShapeString.EmptyCase" end time: Oct 05 08:46 CEST
+"ShapeString.EmptyCase" time elapsed: 00:00:00
+----------------------------------------------------------
+
+3/5 Testing: ShapeString.OneDimension
+3/5 Test: ShapeString.OneDimension
+Command: "/Users/diqueran/Documents/Proyectos/kael.cpp/build/tests/kael_tests" "--gtest_filter=ShapeString.OneDimension" "--gtest_also_run_disabled_tests"
+Directory: /Users/diqueran/Documents/Proyectos/kael.cpp/build/tests
+"ShapeString.OneDimension" start time: Oct 05 08:46 CEST
+Output:
+----------------------------------------------------------
+Running main() from /Users/diqueran/Documents/Proyectos/kael.cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = ShapeString.OneDimension
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from ShapeString
+[ RUN      ] ShapeString.OneDimension
+[       OK ] ShapeString.OneDimension (0 ms)
+[----------] 1 test from ShapeString (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"ShapeString.OneDimension" end time: Oct 05 08:46 CEST
+"ShapeString.OneDimension" time elapsed: 00:00:00
+----------------------------------------------------------
+
+4/5 Testing: ShapeString.ZeroDimension
+4/5 Test: ShapeString.ZeroDimension
+Command: "/Users/diqueran/Documents/Proyectos/kael.cpp/build/tests/kael_tests" "--gtest_filter=ShapeString.ZeroDimension" "--gtest_also_run_disabled_tests"
+Directory: /Users/diqueran/Documents/Proyectos/kael.cpp/build/tests
+"ShapeString.ZeroDimension" start time: Oct 05 08:46 CEST
+Output:
+----------------------------------------------------------
+Running main() from /Users/diqueran/Documents/Proyectos/kael.cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = ShapeString.ZeroDimension
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from ShapeString
+[ RUN      ] ShapeString.ZeroDimension
+[       OK ] ShapeString.ZeroDimension (0 ms)
+[----------] 1 test from ShapeString (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"ShapeString.ZeroDimension" end time: Oct 05 08:46 CEST
+"ShapeString.ZeroDimension" time elapsed: 00:00:00
+----------------------------------------------------------
+
+5/5 Testing: ShapeString.BigDimension
+5/5 Test: ShapeString.BigDimension
+Command: "/Users/diqueran/Documents/Proyectos/kael.cpp/build/tests/kael_tests" "--gtest_filter=ShapeString.BigDimension" "--gtest_also_run_disabled_tests"
+Directory: /Users/diqueran/Documents/Proyectos/kael.cpp/build/tests
+"ShapeString.BigDimension" start time: Oct 05 08:46 CEST
+Output:
+----------------------------------------------------------
+Running main() from /Users/diqueran/Documents/Proyectos/kael.cpp/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = ShapeString.BigDimension
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from ShapeString
+[ RUN      ] ShapeString.BigDimension
+[       OK ] ShapeString.BigDimension (0 ms)
+[----------] 1 test from ShapeString (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"ShapeString.BigDimension" end time: Oct 05 08:46 CEST
+"ShapeString.BigDimension" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Oct 05 08:46 CEST

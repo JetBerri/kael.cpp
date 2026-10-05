@@ -1,0 +1,5 @@
+if(EXISTS "/Users/diqueran/Documents/Proyectos/kael.cpp/build/tests/kael_tests_e3b0c442_tests.cmake")
+  include("/Users/diqueran/Documents/Proyectos/kael.cpp/build/tests/kael_tests_e3b0c442_tests.cmake")
+else()
+  add_test(kael_tests_NOT_BUILT kael_tests_NOT_BUILT)
+endif()

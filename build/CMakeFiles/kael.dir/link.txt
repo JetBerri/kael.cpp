@@ -1,0 +1,2 @@
+/usr/bin/ar qc libkael.a CMakeFiles/kael.dir/src/shape.cpp.o
+/usr/bin/ranlib libkael.a

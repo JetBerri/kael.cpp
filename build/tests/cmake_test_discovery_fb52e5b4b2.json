@@ -1,0 +1,37 @@
+{
+  "tests": 5,
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "ShapeString",
+      "tests": 5,
+      "testsuite": [
+        {
+          "name": "NormalCase",
+          "file": "\/Users\/diqueran\/Documents\/Proyectos\/kael.cpp\/tests\/test_shape.cpp",
+          "line": 4
+        },
+        {
+          "name": "EmptyCase",
+          "file": "\/Users\/diqueran\/Documents\/Proyectos\/kael.cpp\/tests\/test_shape.cpp",
+          "line": 12
+        },
+        {
+          "name": "OneDimension",
+          "file": "\/Users\/diqueran\/Documents\/Proyectos\/kael.cpp\/tests\/test_shape.cpp",
+          "line": 20
+        },
+        {
+          "name": "ZeroDimension",
+          "file": "\/Users\/diqueran\/Documents\/Proyectos\/kael.cpp\/tests\/test_shape.cpp",
+          "line": 28
+        },
+        {
+          "name": "BigDimension",
+          "file": "\/Users\/diqueran\/Documents\/Proyectos\/kael.cpp\/tests\/test_shape.cpp",
+          "line": 36
+        }
+      ]
+    }
+  ]
+}
