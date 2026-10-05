@@ -1,3 +1,4 @@
+#include <limits>
 #include "kael/shape.h"
 #include "kael/error.h"
 
@@ -22,6 +23,29 @@ namespace kael{
         for (std::size_t i = 0; i < shape.size(); i++){
             KAEL_CHECK(shape[i] >= 0, "negative dimension: " << shape[i] << " at position " << i << " in shape: " << kael::to_string(shape));
         }
+
+    }
+
+    std::int64_t numel(const Shape& shape){
+
+        validate_shape(shape);
+
+        for (std::size_t i = 0; i < shape.size(); i++){
+            if (shape[i] == 0){
+                return 0;
+            }
+        }
+
+        const std::int64_t max = std::numeric_limits<std::int64_t>::max();
+        std::int64_t total = 1;
+
+        for (std::size_t j = 0; j < shape.size(); j++){
+            std::int64_t dim = shape[j];
+            KAEL_CHECK(total <= max / dim, "number of elements overflows int64 for shape " << to_string(shape));
+            total *= dim;
+        }
+
+        return total;
 
     }
 

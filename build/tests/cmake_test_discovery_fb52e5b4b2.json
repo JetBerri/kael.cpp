@@ -1,5 +1,5 @@
 {
-  "tests": 8,
+  "tests": 11,
   "name": "AllTests",
   "testsuites": [
     {
@@ -51,6 +51,33 @@
           "name": "ErrorMessageContainsShape",
           "file": "\/Users\/diqueran\/Documents\/Proyectos\/kael.cpp\/tests\/test_shape.cpp",
           "line": 52
+        }
+      ]
+    },
+    {
+      "name": "ValidateNumel",
+      "tests": 2,
+      "testsuite": [
+        {
+          "name": "RegularCase",
+          "file": "\/Users\/diqueran\/Documents\/Proyectos\/kael.cpp\/tests\/test_shape.cpp",
+          "line": 63
+        },
+        {
+          "name": "NegativeShape",
+          "file": "\/Users\/diqueran\/Documents\/Proyectos\/kael.cpp\/tests\/test_shape.cpp",
+          "line": 74
+        }
+      ]
+    },
+    {
+      "name": "Numel",
+      "tests": 1,
+      "testsuite": [
+        {
+          "name": "Overflow",
+          "file": "\/Users\/diqueran\/Documents\/Proyectos\/kael.cpp\/tests\/test_shape.cpp",
+          "line": 81
         }
       ]
     }

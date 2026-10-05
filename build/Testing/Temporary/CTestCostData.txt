@@ -1,9 +1,12 @@
-ShapeString.NormalCase 3 0.00148142
-ShapeString.EmptyCase 2 0.002049
-ShapeString.OneDimension 2 0.00193927
-ShapeString.ZeroDimension 2 0.00192188
-ShapeString.BigDimension 2 0.00191962
-ValidateShape.NoError 1 0.00369508
-ValidateShape.ThrowError 1 0.00380004
-ValidateShape.ErrorMessageContainsShape 1 0.00360675
+ShapeString.NormalCase 4 0.00117665
+ShapeString.EmptyCase 3 0.00144625
+ShapeString.OneDimension 3 0.00140986
+ShapeString.ZeroDimension 3 0.00136568
+ShapeString.BigDimension 3 0.00131689
+ValidateShape.NoError 2 0.00211708
+ValidateShape.ThrowError 2 0.00187969
+ValidateShape.ErrorMessageContainsShape 2 0.00197248
+ValidateNumel.RegularCase 1 0.00366542
+ValidateNumel.NegativeShape 1 0.0039735
+Numel.Overflow 1 0.00378412
 ---

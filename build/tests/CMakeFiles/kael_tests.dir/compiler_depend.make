@@ -1044,6 +1044,7 @@ tests/CMakeFiles/kael_tests.dir/test_shape.cpp.o: /Users/diqueran/Documents/Proy
   _deps/googletest-src/googletest/include/gtest/internal/gtest-port.h \
   _deps/googletest-src/googletest/include/gtest/internal/gtest-string.h \
   _deps/googletest-src/googletest/include/gtest/internal/gtest-type-util.h \
+  /Users/diqueran/Documents/Proyectos/kael.cpp/include/kael/error.h \
   /Users/diqueran/Documents/Proyectos/kael.cpp/include/kael/shape.h
 
 
@@ -2382,6 +2383,8 @@ _deps/googletest-src/googletest/include/gtest/gtest-param-test.h:
 /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__concepts/convertible_to.h:
 
 /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/swap_ranges.h:
+
+/Users/diqueran/Documents/Proyectos/kael.cpp/include/kael/error.h:
 
 /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/stable_partition.h:
 

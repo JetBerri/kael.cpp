@@ -1045,5 +1045,6 @@ tests/CMakeFiles/kael_tests.dir/test_shape.cpp.o
  /Users/diqueran/Documents/Proyectos/kael.cpp/build/_deps/googletest-src/googletest/include/gtest/internal/gtest-port.h
  /Users/diqueran/Documents/Proyectos/kael.cpp/build/_deps/googletest-src/googletest/include/gtest/internal/gtest-string.h
  /Users/diqueran/Documents/Proyectos/kael.cpp/build/_deps/googletest-src/googletest/include/gtest/internal/gtest-type-util.h
+ /Users/diqueran/Documents/Proyectos/kael.cpp/include/kael/error.h
  /Users/diqueran/Documents/Proyectos/kael.cpp/include/kael/shape.h
 

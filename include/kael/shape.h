@@ -15,4 +15,7 @@ namespace kael{
     // catches shape and throws error if negative dimension
     void validate_shape(const Shape& shape);
 
+    // elements in shape and overflow check
+    std::int64_t numel(const Shape& shape);
+
 }

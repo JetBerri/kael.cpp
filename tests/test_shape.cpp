@@ -59,3 +59,34 @@ TEST(ValidateShape, ErrorMessageContainsShape) {
         EXPECT_NE(msg.find("position 1"), std::string::npos);
     }
 }
+
+TEST(Numel, RegularCase){
+    kael::Shape test_shape_1 = {};
+    kael::Shape test_shape_2 = {5};
+    kael::Shape test_shape_3 = {2, 3, 4};
+    kael::Shape test_shape_4 = {3, 0, 2};
+    EXPECT_EQ(kael::numel(test_shape_1), 1);
+    EXPECT_EQ(kael::numel(test_shape_2), 5);
+    EXPECT_EQ(kael::numel(test_shape_3), 24);
+    EXPECT_EQ(kael::numel(test_shape_4), 0);
+}
+
+TEST(Numel, NegativeShape){
+    kael::Shape test_shape_1 = {-1};
+    kael::Shape test_shape_2 = {1, -2};
+    EXPECT_THROW(kael::numel(test_shape_1), kael::Error);
+    EXPECT_THROW(kael::numel(test_shape_2), kael::Error);
+}
+
+TEST(Numel, Overflow) {
+    // 2^40 * 2^40 = 2^80, does not fit in int64 (max ~ 2^63)
+    EXPECT_THROW(kael::numel({1LL << 40, 1LL << 40}), kael::Error);
+
+    // Boundary: the largest int64 alone fits, but doubling it does not
+    const std::int64_t max = std::numeric_limits<std::int64_t>::max();
+    EXPECT_EQ(kael::numel({max}), max);
+    EXPECT_THROW(kael::numel({max, 2}), kael::Error);
+
+    // 2^31 * 2^31 = 2^62 still fits
+    EXPECT_EQ(kael::numel({1LL << 31, 1LL << 31}), 1LL << 62);
+}
