@@ -49,7 +49,7 @@ TEST(ValidateShape, ThrowError){
     EXPECT_THROW(kael::validate_shape(test_shape_4), kael::Error);
 }
 
-TEST(ValidateShape, ErrorMessageContainsShape) {
+TEST(ValidateShape, ErrorMessageContainsShape){
     try {
         kael::validate_shape({2, -2});
         FAIL() << "expected kael::Error";
@@ -78,7 +78,7 @@ TEST(Numel, NegativeShape){
     EXPECT_THROW(kael::numel(test_shape_2), kael::Error);
 }
 
-TEST(Numel, Overflow) {
+TEST(Numel, Overflow){
     // 2^40 * 2^40 = 2^80, does not fit in int64 (max ~ 2^63)
     EXPECT_THROW(kael::numel({1LL << 40, 1LL << 40}), kael::Error);
 
@@ -89,4 +89,25 @@ TEST(Numel, Overflow) {
 
     // 2^31 * 2^31 = 2^62 still fits
     EXPECT_EQ(kael::numel({1LL << 31, 1LL << 31}), 1LL << 62);
+}
+
+TEST(ContiguousStrides, RegularShapes) {
+    EXPECT_EQ(kael::contiguous_strides({2, 3, 4}), (kael::Strides{12, 4, 1}));
+    EXPECT_EQ(kael::contiguous_strides({5}), (kael::Strides{1}));
+}
+
+TEST(ContiguousStrides, Scalar) {
+    EXPECT_EQ(kael::contiguous_strides({}), kael::Strides{});
+}
+
+TEST(ContiguousStrides, DimensionOfOne) {
+    EXPECT_EQ(kael::contiguous_strides({3, 1, 2}), (kael::Strides{2, 2, 1}));
+}
+
+TEST(ContiguousStrides, DimensionOfZero) {
+    EXPECT_EQ(kael::contiguous_strides({2, 0, 3}), (kael::Strides{3, 3, 1}));
+}
+
+TEST(ContiguousStrides, NegativeShapeThrows) {
+    EXPECT_THROW(kael::contiguous_strides({-1}), kael::Error);
 }

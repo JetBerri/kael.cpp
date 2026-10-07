@@ -18,4 +18,6 @@ namespace kael{
     // elements in shape and overflow check
     std::int64_t numel(const Shape& shape);
 
+    Strides contiguous_strides(const Shape& shape);
+
 }
