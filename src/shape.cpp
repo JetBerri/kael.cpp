@@ -49,4 +49,21 @@ namespace kael{
 
     }
 
+    Strides contiguous_strides(const Shape& shape){
+        
+        validate_shape(shape);
+
+        Strides result(shape.size());
+        std::int64_t acc = 1;
+        
+        for (std::int64_t i = static_cast<std::int64_t>(shape.size()) -1; i >= 0; i--){
+            const auto idx = static_cast<std::size_t>(i);
+            result[idx] = acc;
+            acc *= std::max<std::int64_t>(shape[idx], 1);
+        }
+
+        return result;
+    
+    }
+
 }
