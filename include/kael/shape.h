@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <cstdint>
+#include <span>
 #include <string>
 
 namespace kael{
@@ -19,5 +20,12 @@ namespace kael{
     std::int64_t numel(const Shape& shape);
 
     Strides contiguous_strides(const Shape& shape);
+
+    // position of a multidimensional index in the flat array:
+    // base_offset + sum(index[i] * strides[i])
+    std::int64_t offset_from_index(std::span<const std::int64_t> shape,
+                                   std::span<const std::int64_t> strides,
+                                   std::int64_t base_offset,
+                                   std::span<const std::int64_t> index);
 
 }

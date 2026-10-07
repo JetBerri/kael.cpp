@@ -111,3 +111,84 @@ TEST(ContiguousStrides, DimensionOfZero) {
 TEST(ContiguousStrides, NegativeShapeThrows) {
     EXPECT_THROW(kael::contiguous_strides({-1}), kael::Error);
 }
+TEST(OffsetFromIndex, ContiguousStrides) {
+    kael::Shape shape = {2, 3};
+    kael::Strides strides = kael::contiguous_strides(shape);
+    kael::Shape index_1 = {0, 0};
+    kael::Shape index_2 = {1, 2};
+    kael::Shape index_3 = {1, 0};
+    EXPECT_EQ(kael::offset_from_index(shape, strides, 0, index_1), 0);
+    EXPECT_EQ(kael::offset_from_index(shape, strides, 0, index_2), 5);
+    EXPECT_EQ(kael::offset_from_index(shape, strides, 0, index_3), 3);
+}
+
+TEST(OffsetFromIndex, BaseOffset) {
+    kael::Shape shape = {2, 3};
+    kael::Strides strides = kael::contiguous_strides(shape);
+    kael::Shape index = {1, 2};
+    EXPECT_EQ(kael::offset_from_index(shape, strides, 10, index), 15);
+}
+
+TEST(OffsetFromIndex, NonContiguousStrides) {
+    kael::Shape shape = {3, 2};
+    kael::Strides strides = {1, 3};
+    kael::Shape index = {2, 1};
+    EXPECT_EQ(kael::offset_from_index(shape, strides, 0, index), 5); // 2*1 + 1*3
+}
+
+TEST(OffsetFromIndex, Scalar) {
+    kael::Shape shape = {};
+    kael::Strides strides = {};
+    kael::Shape index = {};
+    EXPECT_EQ(kael::offset_from_index(shape, strides, 0, index), 0);
+    EXPECT_EQ(kael::offset_from_index(shape, strides, 7, index), 7);
+}
+
+TEST(OffsetFromIndex, IndexOutOfRangeThrows) {
+    kael::Shape shape = {2, 3};
+    kael::Strides strides = kael::contiguous_strides(shape);
+    kael::Shape index_1 = {2, 0};
+    kael::Shape index_2 = {0, 3};
+    EXPECT_THROW(kael::offset_from_index(shape, strides, 0, index_1), kael::Error);
+    EXPECT_THROW(kael::offset_from_index(shape, strides, 0, index_2), kael::Error);
+}
+
+TEST(OffsetFromIndex, NegativeIndexThrows) {
+    kael::Shape shape = {2, 3};
+    kael::Strides strides = kael::contiguous_strides(shape);
+    kael::Shape index_1 = {-1, 0};
+    kael::Shape index_2 = {0, -1};
+    EXPECT_THROW(kael::offset_from_index(shape, strides, 0, index_1), kael::Error);
+    EXPECT_THROW(kael::offset_from_index(shape, strides, 0, index_2), kael::Error);
+}
+
+TEST(OffsetFromIndex, WrongIndexDimsThrows) {
+    kael::Shape shape = {2, 3};
+    kael::Strides strides = kael::contiguous_strides(shape);
+    kael::Shape index_1 = {1};
+    kael::Shape index_2 = {1, 1, 1};
+    EXPECT_THROW(kael::offset_from_index(shape, strides, 0, index_1), kael::Error);
+    EXPECT_THROW(kael::offset_from_index(shape, strides, 0, index_2), kael::Error);
+}
+
+TEST(OffsetFromIndex, ShapeStridesSizeMismatchThrows) {
+    kael::Shape shape = {2, 3};
+    kael::Strides strides = {1};
+    kael::Shape index = {0, 0};
+    EXPECT_THROW(kael::offset_from_index(shape, strides, 0, index), kael::Error);
+}
+
+TEST(OffsetFromIndex, ErrorMessageContainsValues) {
+    kael::Shape shape = {2, 3};
+    kael::Strides strides = kael::contiguous_strides(shape);
+    kael::Shape index = {1, 5};
+    try {
+        kael::offset_from_index(shape, strides, 0, index);
+        FAIL() << "expected kael::Error";
+    } catch (const kael::Error& e) {
+        std::string msg = e.what();
+        EXPECT_NE(msg.find("[2, 3]"), std::string::npos);
+        EXPECT_NE(msg.find("index 5"), std::string::npos);
+        EXPECT_NE(msg.find("dimension 1"), std::string::npos);
+    }
+}
