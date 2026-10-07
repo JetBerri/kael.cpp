@@ -63,7 +63,35 @@ namespace kael{
         }
 
         return result;
-    
+
+    }
+
+    namespace {
+
+        // to_string for spans (shape, strides or index) in error messages
+        std::string to_string(std::span<const std::int64_t> values){
+            return kael::to_string(Shape(values.begin(), values.end()));
+        }
+
+    }
+
+    std::int64_t offset_from_index(std::span<const std::int64_t> shape,
+                                   std::span<const std::int64_t> strides,
+                                   std::int64_t base_offset,
+                                   std::span<const std::int64_t> index){
+
+        KAEL_CHECK(shape.size() == strides.size(), "shape and strides have different number of dimensions: shape " << to_string(shape) << " has " << shape.size() << ", strides " << to_string(strides) << " has " << strides.size());
+        KAEL_CHECK(index.size() == shape.size(), "index and shape have different number of dimensions: index " << to_string(index) << " has " << index.size() << ", shape " << to_string(shape) << " has " << shape.size());
+
+        std::int64_t offset = base_offset;
+
+        for (std::size_t i = 0; i < shape.size(); i++){
+            KAEL_CHECK(index[i] >= 0 && index[i] < shape[i], "index " << index[i] << " out of range [0, " << shape[i] << ") at dimension " << i << " in shape " << to_string(shape));
+            offset += index[i] * strides[i];
+        }
+
+        return offset;
+
     }
 
 }
