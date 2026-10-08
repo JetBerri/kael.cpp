@@ -94,4 +94,22 @@ namespace kael{
 
     }
 
+    Shape index_from_linear(std::int64_t linear,
+                            const Shape& shape){
+
+        const std::int64_t n = kael::numel(shape);
+        
+        KAEL_CHECK(linear >= 0 && linear < n, "linear index " << linear << " out of range [0, " << n << ") for shape " << to_string(shape));        
+        Shape result(shape.size());
+        
+        for (std::int64_t i = static_cast<std::int64_t>(shape.size()) -1; i >= 0; i--){
+            const auto idx = static_cast<std::size_t>(i);
+            result[idx] = linear % shape[idx];
+            linear /= shape[idx];
+        }    
+
+        return result;
+
+    }
+
 }
