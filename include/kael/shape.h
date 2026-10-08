@@ -28,7 +28,16 @@ namespace kael{
                                    std::int64_t base_offset,
                                    std::span<const std::int64_t> index);
 
-    Shape index_from_linear(std::int64_t linear, 
+    // multidimensional index of the element at position `linear` in
+    // row-major order, e.g. linear 5 in shape [2, 3] : [1, 2];
+    // inverse of offset_from_index with contiguous strides and base 0;
+    // throws if the shape is invalid or linear is outside [0, numel(shape))
+    Shape index_from_linear(std::int64_t linear,
                             const Shape& shape);
+
+    // shape resulting from broadcasting a and b, aligned from the right
+    // (missing leading dimensions count as 1); throws if a dimension is
+    // negative or if a and b are not broadcastable
+    Shape broadcast_shapes(const Shape& a, const Shape& b);
 
 }

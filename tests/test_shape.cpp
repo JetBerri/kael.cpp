@@ -224,3 +224,47 @@ TEST(IndexFromLinear, OutOfRangeThrows) {
     // negative shape is rejected by numel
     EXPECT_THROW(kael::index_from_linear(0, {-1, 3}), kael::Error);
 }
+
+TEST(BroadcastShapes, ValidCases) {
+    EXPECT_EQ(kael::broadcast_shapes({3}, {2, 3}), (kael::Shape{2, 3}));
+    EXPECT_EQ(kael::broadcast_shapes({2, 1}, {1, 3}), (kael::Shape{2, 3}));
+    EXPECT_EQ(kael::broadcast_shapes({5, 1, 4}, {3, 1}), (kael::Shape{5, 3, 4}));
+    EXPECT_EQ(kael::broadcast_shapes({}, {4}), (kael::Shape{4}));
+    EXPECT_EQ(kael::broadcast_shapes({}, {}), kael::Shape{});
+    EXPECT_EQ(kael::broadcast_shapes({0}, {1}), (kael::Shape{0})); // 0 with 1 gives 0, like NumPy
+}
+
+TEST(BroadcastShapes, Symmetry) {
+    const std::vector<std::pair<kael::Shape, kael::Shape>> pairs = {
+        {{3}, {2, 3}},
+        {{2, 1}, {1, 3}},
+        {{5, 1, 4}, {3, 1}},
+        {{}, {4}},
+        {{}, {}},
+        {{0}, {1}},
+    };
+    for (const auto& [a, b] : pairs) {
+        EXPECT_EQ(kael::broadcast_shapes(a, b), kael::broadcast_shapes(b, a));
+    }
+}
+
+TEST(BroadcastShapes, IncompatibleThrows) {
+    EXPECT_THROW(kael::broadcast_shapes({2, 3}, {3, 2}), kael::Error);
+    EXPECT_THROW(kael::broadcast_shapes({0}, {3}), kael::Error); // 0 only broadcasts with 0 or 1
+}
+
+TEST(BroadcastShapes, NegativeDimensionThrows) {
+    EXPECT_THROW(kael::broadcast_shapes({-1, 3}, {3}), kael::Error);
+    EXPECT_THROW(kael::broadcast_shapes({3}, {2, -1}), kael::Error);
+}
+
+TEST(BroadcastShapes, ErrorMessageContainsShapes) {
+    try {
+        kael::broadcast_shapes({2, 3}, {3, 2});
+        FAIL() << "expected kael::Error";
+    } catch (const kael::Error& e) {
+        std::string msg = e.what();
+        EXPECT_NE(msg.find("[2, 3]"), std::string::npos);
+        EXPECT_NE(msg.find("[3, 2]"), std::string::npos);
+    }
+}
