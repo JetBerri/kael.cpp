@@ -192,3 +192,35 @@ TEST(OffsetFromIndex, ErrorMessageContainsValues) {
         EXPECT_NE(msg.find("dimension 1"), std::string::npos);
     }
 }
+
+TEST(IndexFromLinear, RowMajorOrder) {
+    EXPECT_EQ(kael::index_from_linear(0, {2, 3}), (kael::Shape{0, 0}));
+    EXPECT_EQ(kael::index_from_linear(4, {2, 3}), (kael::Shape{1, 1}));
+    EXPECT_EQ(kael::index_from_linear(5, {2, 3}), (kael::Shape{1, 2}));
+    EXPECT_EQ(kael::index_from_linear(13, {2, 3, 4}), (kael::Shape{1, 0, 1})); // 1*12 + 0*4 + 1
+    EXPECT_EQ(kael::index_from_linear(5, {3, 1, 2}), (kael::Shape{2, 0, 1}));  // dimension of 1
+}
+
+TEST(IndexFromLinear, Scalar) {
+    // a scalar has one element, so only linear 0 is valid and the index is empty
+    EXPECT_EQ(kael::index_from_linear(0, {}), kael::Shape{});
+    EXPECT_THROW(kael::index_from_linear(1, {}), kael::Error);
+}
+
+TEST(IndexFromLinear, RoundTripWithOffsetFromIndex) {
+    kael::Shape shape = {2, 3, 4};
+    kael::Strides strides = kael::contiguous_strides(shape);
+    for (std::int64_t linear = 0; linear < kael::numel(shape); linear++) {
+        kael::Shape index = kael::index_from_linear(linear, shape);
+        EXPECT_EQ(kael::offset_from_index(shape, strides, 0, index), linear);
+    }
+}
+
+TEST(IndexFromLinear, OutOfRangeThrows) {
+    EXPECT_THROW(kael::index_from_linear(-1, {2, 3}), kael::Error);
+    EXPECT_THROW(kael::index_from_linear(6, {2, 3}), kael::Error);
+    // numel is 0, so no linear index is valid (and no modulo by zero is reached)
+    EXPECT_THROW(kael::index_from_linear(0, {2, 0, 3}), kael::Error);
+    // negative shape is rejected by numel
+    EXPECT_THROW(kael::index_from_linear(0, {-1, 3}), kael::Error);
+}

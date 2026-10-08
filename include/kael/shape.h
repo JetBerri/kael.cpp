@@ -28,4 +28,7 @@ namespace kael{
                                    std::int64_t base_offset,
                                    std::span<const std::int64_t> index);
 
+    Shape index_from_linear(std::int64_t linear, 
+                            const Shape& shape);
+
 }
