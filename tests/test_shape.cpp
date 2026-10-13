@@ -349,3 +349,34 @@ TEST(BroadcastStrides, SemanticBroadcastColumns) {
         EXPECT_FLOAT_EQ(data.at(offset), data.at(index[0]));
     }
 }
+
+struct BroadcastCase {
+    kael::Shape a;
+    kael::Shape b;
+    bool valid;
+    kael::Shape expected;
+};
+
+TEST(BroadcastShapes, GeneratedCases) {
+    const BroadcastCase cases[] = {
+        #include "generated/broadcast_cases.inc"
+    };
+
+    std::size_t i = 0;
+
+    for (const auto& c : cases) {
+        SCOPED_TRACE(
+            "Case " + std::to_string(i) +
+            " A=" + kael::to_string(c.a) +
+            " B=" + kael::to_string(c.b)
+        );
+
+        if (c.valid) {
+            EXPECT_EQ(kael::broadcast_shapes(c.a, c.b), c.expected);
+        } else {
+            EXPECT_THROW(kael::broadcast_shapes(c.a, c.b), kael::Error);
+        }
+
+        ++i;
+    }
+}
