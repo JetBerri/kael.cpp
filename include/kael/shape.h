@@ -38,6 +38,11 @@ namespace kael{
     // shape resulting from broadcasting a and b, aligned from the right
     // (missing leading dimensions count as 1); throws if a dimension is
     // negative or if a and b are not broadcastable
-    Shape broadcast_shapes(const Shape& a, const Shape& b);
+    Shape broadcast_shapes(const Shape& a, 
+                           const Shape& b);
+
+    Strides broadcast_strides(const Shape& shape,
+                              const Strides& strides,
+                              const Shape& target);
 
 }
