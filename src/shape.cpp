@@ -22,7 +22,8 @@ namespace kael{
     void validate_shape(const Shape& shape){
 
         for (std::size_t i = 0; i < shape.size(); i++){
-            KAEL_CHECK(shape[i] >= 0, "negative dimension: " << shape[i] << " at position " << i << " in shape: " << kael::to_string(shape));
+            KAEL_CHECK(shape[i] >= 0, "negative dimension: " << shape[i] << " at position " 
+                                                             << i << " in shape: " << kael::to_string(shape));
         }
 
     }
@@ -81,13 +82,22 @@ namespace kael{
                                    std::int64_t base_offset,
                                    std::span<const std::int64_t> index){
 
-        KAEL_CHECK(shape.size() == strides.size(), "shape and strides have different number of dimensions: shape " << to_string(shape) << " has " << shape.size() << ", strides " << to_string(strides) << " has " << strides.size());
-        KAEL_CHECK(index.size() == shape.size(), "index and shape have different number of dimensions: index " << to_string(index) << " has " << index.size() << ", shape " << to_string(shape) << " has " << shape.size());
+        KAEL_CHECK(shape.size() == strides.size(), "shape and strides have different number of dimensions: shape " << to_string(shape) << " has " 
+                                                                                                                   << shape.size() << ", strides " 
+                                                                                                                   << to_string(strides) << " has " 
+                                                                                                                   << strides.size());
+        KAEL_CHECK(index.size() == shape.size(), "index and shape have different number of dimensions: index " << to_string(index) 
+                                                 << " has " << index.size() 
+                                                 << ", shape " << to_string(shape) 
+                                                 << " has " << shape.size());
 
         std::int64_t offset = base_offset;
 
         for (std::size_t i = 0; i < shape.size(); i++){
-            KAEL_CHECK(index[i] >= 0 && index[i] < shape[i], "index " << index[i] << " out of range [0, " << shape[i] << ") at dimension " << i << " in shape " << to_string(shape));
+            KAEL_CHECK(index[i] >= 0 && index[i] < shape[i], "index " << index[i] 
+                                                             << " out of range [0, " << shape[i] 
+                                                             << ") at dimension " << i << " in shape " 
+                                                             << to_string(shape));
             offset += index[i] * strides[i];
         }
 
@@ -102,7 +112,9 @@ namespace kael{
         // the check below throws, so the loop never divides by zero
         const std::int64_t n = kael::numel(shape);
 
-        KAEL_CHECK(linear >= 0 && linear < n, "linear index " << linear << " out of range [0, " << n << ") for shape " << to_string(shape));
+        KAEL_CHECK(linear >= 0 && linear < n, "linear index " << linear 
+                                              << " out of range [0, " << n 
+                                              << ") for shape " << to_string(shape));
         Shape result(shape.size());
 
         // row-major: the last dimension changes fastest, so walk from the right;
@@ -130,8 +142,48 @@ namespace kael{
         for (std::size_t k = 0; k < n; k++){
             const std::int64_t dim_a = k < a.size() ? a[a.size() - 1 - k] : 1;
             const std::int64_t dim_b = k < b.size() ? b[b.size() - 1 - k] : 1;
-            KAEL_CHECK(dim_a == dim_b || dim_a == 1 || dim_b == 1, "shapes " << to_string(a) << " and " << to_string(b) << " are not broadcastable");
+            KAEL_CHECK(dim_a == dim_b || dim_a == 1 || dim_b == 1, "shapes " << to_string(a) 
+                                                                   << " and " << to_string(b) 
+                                                                   << " are not broadcastable");
             result[n - 1 - k] = dim_a == 1 ? dim_b : dim_a;
+        }
+
+        return result;
+
+    }
+
+    Strides broadcast_strides(const Shape& shape,
+                              const Strides& strides,
+                              const Shape& target){
+
+        validate_shape(shape);
+        validate_shape(target);
+
+        KAEL_CHECK(shape.size() == strides.size(), "shape " << to_string(shape) 
+                                                   << " and strides " << to_string(strides) 
+                                                   << " do not match size " << shape.size() 
+                                                   << ":" << strides.size());
+        KAEL_CHECK(shape.size() <= target.size(), "shape size " << to_string(shape)
+                                                   << " is bigger than target shape" << to_string(target)
+                                                   << " " << shape.size() << ":" << target.size());
+        
+        std::size_t offset = target.size() - shape.size();
+        
+        Strides result(target.size(), 0);
+
+        for (std::size_t i = 0; i < shape.size(); i++){
+            std::size_t t = i + offset;
+            
+            if (shape[i] == target[t]){
+                result[t] = strides[i];
+            
+            } else if (shape[i] == 1){
+                continue;
+            
+            } else {
+                KAEL_CHECK(false, "incompatible shapes "
+                    << to_string(shape) << " and " << to_string(target));
+            }
         }
 
         return result;

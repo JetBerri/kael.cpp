@@ -268,3 +268,84 @@ TEST(BroadcastShapes, ErrorMessageContainsShapes) {
         EXPECT_NE(msg.find("[3, 2]"), std::string::npos);
     }
 }
+
+TEST(BroadcastStrides, ValidCases) {
+    EXPECT_EQ(kael::broadcast_strides({3}, {1}, {2, 3}),
+              (kael::Strides{0, 1}));
+
+    EXPECT_EQ(kael::broadcast_strides({2, 1}, {1, 1}, {2, 4}),
+              (kael::Strides{1, 0}));
+
+    EXPECT_EQ(kael::broadcast_strides({}, {}, {2, 2}),
+              (kael::Strides{0, 0}));
+}
+
+TEST(BroadcastStrides, SameShape) {
+    kael::Shape shape = {2, 3};
+    kael::Strides strides = {3, 1};
+
+    EXPECT_EQ(kael::broadcast_strides(shape, strides, shape), strides);
+}
+
+TEST(BroadcastStrides, MoreDimensionsThanTargetThrows) {
+    EXPECT_THROW(kael::broadcast_strides({2, 3}, {3, 1}, {3}),
+                 kael::Error);
+}
+
+TEST(BroadcastStrides, IncompatibleDimensionsThrows) {
+    EXPECT_THROW(kael::broadcast_strides({2}, {1}, {3}),
+                 kael::Error);
+}
+
+TEST(BroadcastStrides, ShapeStridesSizeMismatchThrows) {
+    EXPECT_THROW(kael::broadcast_strides({2, 3}, {1}, {2, 3}),
+                 kael::Error);
+}
+
+TEST(BroadcastStrides, ErrorMessageContainsShapes) {
+    try {
+        kael::broadcast_strides({2}, {1}, {3});
+        FAIL() << "expected kael::Error";
+    } catch (const kael::Error& e) {
+        std::string msg = e.what();
+
+        EXPECT_NE(msg.find("[2]"), std::string::npos);
+        EXPECT_NE(msg.find("[3]"), std::string::npos);
+    }
+}
+
+TEST(BroadcastStrides, SemanticBroadcastRows) {
+    kael::Shape shape = {3};
+    kael::Strides strides = {1};
+    kael::Shape target = {2, 3};
+
+    std::vector<float> data = {0.0f, 1.0f, 2.0f};
+
+    kael::Strides broadcasted = kael::broadcast_strides(shape, strides, target);
+
+    for (std::int64_t linear = 0; linear < kael::numel(target); linear++) {
+        kael::Shape index = kael::index_from_linear(linear, target);
+
+        std::int64_t offset = kael::offset_from_index(target, broadcasted, 0, index);
+
+        EXPECT_FLOAT_EQ(data.at(offset), data.at(index[1]));
+    }
+}
+
+TEST(BroadcastStrides, SemanticBroadcastColumns) {
+    kael::Shape shape = {2, 1};
+    kael::Strides strides = {1, 1};
+    kael::Shape target = {2, 4};
+
+    std::vector<float> data = {0.0f, 1.0f};
+
+    kael::Strides broadcasted = kael::broadcast_strides(shape, strides, target);
+
+    for (std::int64_t linear = 0; linear < kael::numel(target); linear++) {
+        kael::Shape index = kael::index_from_linear(linear, target);
+
+        std::int64_t offset = kael::offset_from_index(target, broadcasted, 0, index);
+
+        EXPECT_FLOAT_EQ(data.at(offset), data.at(index[0]));
+    }
+}
