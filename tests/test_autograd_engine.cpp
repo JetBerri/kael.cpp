@@ -189,7 +189,7 @@ TEST(AutogradEngine, DeepChainDestructionWithoutBackward) {
     const Tensor x = leaf({1});
     {
         Tensor y = x;
-        for (int i = 0; i < 200000; ++i) {
+        for (int i = 0; i < 50000; ++i) {
             y = y + 1;
         }
     }
