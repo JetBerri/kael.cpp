@@ -79,15 +79,12 @@ TEST(Numel, NegativeShape){
 }
 
 TEST(Numel, Overflow){
-    // 2^40 * 2^40 = 2^80, does not fit in int64 (max ~ 2^63)
     EXPECT_THROW(kael::numel({1LL << 40, 1LL << 40}), kael::Error);
 
-    // Boundary: the largest int64 alone fits, but doubling it does not
     const std::int64_t max = std::numeric_limits<std::int64_t>::max();
     EXPECT_EQ(kael::numel({max}), max);
     EXPECT_THROW(kael::numel({max, 2}), kael::Error);
 
-    // 2^31 * 2^31 = 2^62 still fits
     EXPECT_EQ(kael::numel({1LL << 31, 1LL << 31}), 1LL << 62);
 }
 
@@ -133,7 +130,7 @@ TEST(OffsetFromIndex, NonContiguousStrides) {
     kael::Shape shape = {3, 2};
     kael::Strides strides = {1, 3};
     kael::Shape index = {2, 1};
-    EXPECT_EQ(kael::offset_from_index(shape, strides, 0, index), 5); // 2*1 + 1*3
+    EXPECT_EQ(kael::offset_from_index(shape, strides, 0, index), 5);
 }
 
 TEST(OffsetFromIndex, Scalar) {
@@ -197,12 +194,11 @@ TEST(IndexFromLinear, RowMajorOrder) {
     EXPECT_EQ(kael::index_from_linear(0, {2, 3}), (kael::Shape{0, 0}));
     EXPECT_EQ(kael::index_from_linear(4, {2, 3}), (kael::Shape{1, 1}));
     EXPECT_EQ(kael::index_from_linear(5, {2, 3}), (kael::Shape{1, 2}));
-    EXPECT_EQ(kael::index_from_linear(13, {2, 3, 4}), (kael::Shape{1, 0, 1})); // 1*12 + 0*4 + 1
-    EXPECT_EQ(kael::index_from_linear(5, {3, 1, 2}), (kael::Shape{2, 0, 1}));  // dimension of 1
+    EXPECT_EQ(kael::index_from_linear(13, {2, 3, 4}), (kael::Shape{1, 0, 1}));
+    EXPECT_EQ(kael::index_from_linear(5, {3, 1, 2}), (kael::Shape{2, 0, 1}));
 }
 
 TEST(IndexFromLinear, Scalar) {
-    // a scalar has one element, so only linear 0 is valid and the index is empty
     EXPECT_EQ(kael::index_from_linear(0, {}), kael::Shape{});
     EXPECT_THROW(kael::index_from_linear(1, {}), kael::Error);
 }
@@ -219,9 +215,7 @@ TEST(IndexFromLinear, RoundTripWithOffsetFromIndex) {
 TEST(IndexFromLinear, OutOfRangeThrows) {
     EXPECT_THROW(kael::index_from_linear(-1, {2, 3}), kael::Error);
     EXPECT_THROW(kael::index_from_linear(6, {2, 3}), kael::Error);
-    // numel is 0, so no linear index is valid (and no modulo by zero is reached)
     EXPECT_THROW(kael::index_from_linear(0, {2, 0, 3}), kael::Error);
-    // negative shape is rejected by numel
     EXPECT_THROW(kael::index_from_linear(0, {-1, 3}), kael::Error);
 }
 
@@ -231,7 +225,7 @@ TEST(BroadcastShapes, ValidCases) {
     EXPECT_EQ(kael::broadcast_shapes({5, 1, 4}, {3, 1}), (kael::Shape{5, 3, 4}));
     EXPECT_EQ(kael::broadcast_shapes({}, {4}), (kael::Shape{4}));
     EXPECT_EQ(kael::broadcast_shapes({}, {}), kael::Shape{});
-    EXPECT_EQ(kael::broadcast_shapes({0}, {1}), (kael::Shape{0})); // 0 with 1 gives 0, like NumPy
+    EXPECT_EQ(kael::broadcast_shapes({0}, {1}), (kael::Shape{0}));
 }
 
 TEST(BroadcastShapes, Symmetry) {
@@ -250,7 +244,7 @@ TEST(BroadcastShapes, Symmetry) {
 
 TEST(BroadcastShapes, IncompatibleThrows) {
     EXPECT_THROW(kael::broadcast_shapes({2, 3}, {3, 2}), kael::Error);
-    EXPECT_THROW(kael::broadcast_shapes({0}, {3}), kael::Error); // 0 only broadcasts with 0 or 1
+    EXPECT_THROW(kael::broadcast_shapes({0}, {3}), kael::Error);
 }
 
 TEST(BroadcastShapes, NegativeDimensionThrows) {

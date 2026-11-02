@@ -30,39 +30,10 @@ std::int64_t Tensor::nbytes() const {
     return numel() * element_size(dtype());
 }
 
-std::byte* Tensor::data_ptr_raw() {
+std::byte* Tensor::first_element() const {
     std::byte* base = impl_->storage->data();
-    // An empty tensor may have a null storage, or an offset that points at
-    // the very end of it; never do pointer arithmetic on those.
-    if (base == nullptr || numel() == 0) {
-        return base;
-    }
-    return base + offset() * element_size(dtype());
-}
-
-const std::byte* Tensor::data_ptr_raw() const {
-    const std::byte* base = std::as_const(*impl_->storage).data();
-    if (base == nullptr || numel() == 0) {
-        return base;
-    }
-    return base + offset() * element_size(dtype());
-}
-
-Tensor Tensor::clone() const {
-    Tensor out = empty(shape(), dtype());
-    if (is_contiguous()) {
-        // Shortcut: the elements are one run of bytes.
-        if (nbytes() > 0) {
-            std::memcpy(out.data_ptr_raw(), data_ptr_raw(), static_cast<std::size_t>(nbytes()));
-        }
-    } else {
-        detail::copy_strided(out, *this);
-    }
-    return out;
-}
-
-Tensor Tensor::contiguous() const {
-    return is_contiguous() ? *this : clone();
+    // An empty view can have an offset past the end of its storage, or a null storage.
+    return numel() == 0 ? base : base + offset() * element_size(dtype());
 }
 
 void Tensor::check_single_element() const {
@@ -73,7 +44,7 @@ void Tensor::check_single_element() const {
 double Tensor::item() const {
     check_single_element();
     return dispatch(dtype(), [&]<typename T>() {
-        return static_cast<double>(*reinterpret_cast<const T*>(data_ptr_raw()));
+        return static_cast<double>(*reinterpret_cast<const T*>(first_element()));
     });
 }
 
@@ -86,7 +57,6 @@ std::int64_t Tensor::element_offset(std::span<const std::int64_t> index) const {
             wrapped[i] += shape()[i];
         }
     }
-    // Validates the range, so an index that is still negative here throws.
     return offset_from_index(shape(), strides(), offset(), wrapped);
 }
 
@@ -97,6 +67,20 @@ Tensor Tensor::to(DType target) const {
     Tensor out = empty(shape(), target);
     detail::convert_strided(out, *this);
     return out;
+}
+
+Tensor Tensor::clone() const {
+    Tensor out = empty(shape(), dtype());
+    if (!is_contiguous()) {
+        detail::copy_strided(out, *this);
+    } else if (nbytes() > 0) {
+        std::memcpy(out.data_ptr_raw(), data_ptr_raw(), static_cast<std::size_t>(nbytes()));
+    }
+    return out;
+}
+
+Tensor Tensor::contiguous() const {
+    return is_contiguous() ? *this : clone();
 }
 
 } // namespace kael

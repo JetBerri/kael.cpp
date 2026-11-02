@@ -7,15 +7,16 @@
 #include "kael/error.h"
 #include "kael/factory.h"
 #include "kael/tensor.h"
+#include "support/values.h"
 
 using kael::DType;
 using kael::Shape;
 using kael::Strides;
 using kael::Tensor;
+using kael::test::values;
 
 namespace {
 
-// A tensor with the given metadata over the storage of `base`.
 Tensor manual_view(const Tensor& base, Shape shape, Strides strides, std::int64_t offset = 0) {
     auto impl = std::make_shared<kael::TensorImpl>();
     impl->storage = base.impl()->storage;
@@ -27,28 +28,15 @@ Tensor manual_view(const Tensor& base, Shape shape, Strides strides, std::int64_
     return Tensor::from_impl(std::move(impl));
 }
 
-// The values of an int64 tensor in logical order, through its metadata.
-std::vector<std::int64_t> logical_values(const Tensor& t) {
-    std::vector<std::int64_t> out;
-    for (std::int64_t i = 0; i < t.numel(); ++i) {
-        const Shape index = kael::index_from_linear(i, t.shape());
-        out.push_back(t.at<std::int64_t>(index));
-    }
-    return out;
-}
-
 Tensor iota(const Shape& shape) {
     return kael::arange(0, static_cast<double>(kael::numel(shape)), 1, DType::I64);
 }
 
-// 0, 1, 2 ... laid out as `shape`, built without any view function.
 Tensor iota_shaped(const Shape& shape) {
     return manual_view(iota(shape), shape, kael::contiguous_strides(shape));
 }
 
 } // namespace
-
-// ---- is_contiguous ---------------------------------------------------------
 
 TEST(IsContiguous, SizeOneDimensionsDoNotMatter) {
     auto base = kael::zeros({6});
@@ -73,8 +61,6 @@ TEST(IsContiguous, EmptyIsAlways) {
     EXPECT_TRUE(manual_view(base, {0, 3}, {7, 5}).is_contiguous());
 }
 
-// ---- contiguous, clone, to ----------------------------------------------------
-
 TEST(Contiguous, ContiguousReturnsSameImpl) {
     auto t = iota_shaped({2, 3});
     EXPECT_TRUE(t.contiguous().is_same(t));
@@ -98,19 +84,19 @@ TEST(Clone, OfViewDoesNotShareAndIsContiguous) {
     EXPECT_FALSE(c.shares_storage(t));
     EXPECT_TRUE(c.is_contiguous());
     EXPECT_EQ(c.offset(), 0);
-    EXPECT_EQ(logical_values(c), (std::vector<std::int64_t>{1, 3}));
+    EXPECT_EQ(values<std::int64_t>(c), (std::vector<std::int64_t>{1, 3}));
 }
 
 TEST(Clone, OfContiguousViewWithOffset) {
     auto t = iota_shaped({5});
     auto tail = manual_view(t, {2}, {1}, 3);
-    EXPECT_EQ(logical_values(tail.clone()), (std::vector<std::int64_t>{3, 4}));
+    EXPECT_EQ(values<std::int64_t>(tail.clone()), (std::vector<std::int64_t>{3, 4}));
 }
 
 TEST(Clone, OfStride0View) {
     auto t = iota_shaped({3});
     auto expanded = manual_view(t, {2, 3}, {0, 1});
-    EXPECT_EQ(logical_values(expanded.clone()), (std::vector<std::int64_t>{0, 1, 2, 0, 1, 2}));
+    EXPECT_EQ(values<std::int64_t>(expanded.clone()), (std::vector<std::int64_t>{0, 1, 2, 0, 1, 2}));
 }
 
 TEST(To, WorksOnNonContiguous) {
@@ -121,8 +107,6 @@ TEST(To, WorksOnNonContiguous) {
     EXPECT_EQ(f.at<double>({0, 1}), 3.0);
     EXPECT_EQ(f.at<double>({2, 1}), 5.0);
 }
-
-// ---- view --------------------------------------------------------------------
 
 TEST(InferShape, ResolvesMinusOne) {
     EXPECT_EQ(kael::infer_shape({4, -1}, 12), (Shape{4, 3}));
@@ -147,7 +131,7 @@ TEST(View, ChangesShapeAndSharesStorage) {
         EXPECT_EQ(v.shape(), s);
         EXPECT_EQ(v.strides(), kael::contiguous_strides(s));
         EXPECT_TRUE(v.shares_storage(t));
-        EXPECT_EQ(logical_values(v), (std::vector<std::int64_t>{0, 1, 2, 3, 4, 5}));
+        EXPECT_EQ(values<std::int64_t>(v), (std::vector<std::int64_t>{0, 1, 2, 3, 4, 5}));
     }
     EXPECT_EQ(t.view({-1}).shape(), (Shape{6}));
     EXPECT_EQ(t.view({3, -1}).shape(), (Shape{3, 2}));
@@ -164,7 +148,7 @@ TEST(View, KeepsOffset) {
     auto tail = manual_view(base, {4}, {1}, 2);
     auto v = tail.view({2, 2});
     EXPECT_EQ(v.offset(), 2);
-    EXPECT_EQ(logical_values(v), (std::vector<std::int64_t>{2, 3, 4, 5}));
+    EXPECT_EQ(values<std::int64_t>(v), (std::vector<std::int64_t>{2, 3, 4, 5}));
 }
 
 TEST(View, Scalar) {
@@ -180,8 +164,6 @@ TEST(View, Errors) {
     EXPECT_THROW((void)manual_view(t, {3, 2}, {1, 3}).view({6}), kael::Error);
 }
 
-// ---- reshape -------------------------------------------------------------------
-
 TEST(Reshape, ContiguousShares) {
     auto t = iota_shaped({2, 3});
     auto r = t.reshape({3, 2});
@@ -193,5 +175,5 @@ TEST(Reshape, NonContiguousCopiesInLogicalOrder) {
     auto tr = manual_view(t, {3, 2}, {1, 3});
     auto r = tr.reshape({6});
     EXPECT_FALSE(r.shares_storage(t));
-    EXPECT_EQ(logical_values(r), (std::vector<std::int64_t>{0, 3, 1, 4, 2, 5}));
+    EXPECT_EQ(values<std::int64_t>(r), (std::vector<std::int64_t>{0, 3, 1, 4, 2, 5}));
 }

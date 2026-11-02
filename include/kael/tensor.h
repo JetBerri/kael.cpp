@@ -14,22 +14,9 @@
 
 namespace kael {
 
-// A tensor: a lightweight handle around a shared TensorImpl (docs/adr/0002).
-//
-// Copying a Tensor copies the pointer, not the data:
-//
-//   Tensor b = a;          // b and a are the same tensor
-//   Tensor c = a.clone();  // c is an independent copy
-//
-// There is no default constructor: a Tensor always refers to valid data.
-// Create tensors with the factories in kael/factory.h.
 class Tensor {
 public:
-    // Internal entry point for factories, views and operations. Validates
-    // the impl. Not meant for users of the library.
     static Tensor from_impl(std::shared_ptr<TensorImpl> impl);
-
-    // ---- queries ----------------------------------------------------------
 
     [[nodiscard]] const Shape& shape() const noexcept { return impl_->shape; }
     [[nodiscard]] const Strides& strides() const noexcept { return impl_->strides; }
@@ -39,120 +26,67 @@ public:
     [[nodiscard]] std::int64_t numel() const { return impl_->numel(); }
     [[nodiscard]] std::int64_t dim() const { return impl_->dim(); }
     [[nodiscard]] bool is_contiguous() const { return impl_->is_contiguous(); }
-
-    // Size and stride of one dimension; negative dims count from the end.
     [[nodiscard]] std::int64_t size(std::int64_t dim) const;
     [[nodiscard]] std::int64_t stride(std::int64_t dim) const;
-
-    // numel * element_size: bytes of the elements, not of the storage.
     [[nodiscard]] std::int64_t nbytes() const;
-
-    // Internal: the metadata behind the handle.
     [[nodiscard]] const std::shared_ptr<TensorImpl>& impl() const noexcept { return impl_; }
 
-    // ---- raw data access ----------------------------------------------------
-
-    // Pointer to the first element of the tensor (storage start + offset).
-    // Throws if T does not match the dtype. For an empty tensor the pointer
-    // must not be dereferenced (it may be null).
     template <typename T>
     [[nodiscard]] T* data_ptr() {
         check_dtype<T>();
-        return reinterpret_cast<T*>(data_ptr_raw());
+        return reinterpret_cast<T*>(first_element());
     }
 
     template <typename T>
     [[nodiscard]] const T* data_ptr() const {
         check_dtype<T>();
-        return reinterpret_cast<const T*>(data_ptr_raw());
+        return reinterpret_cast<const T*>(first_element());
     }
 
-    // Untyped pointer to the first element, for code that works on bytes.
-    [[nodiscard]] std::byte* data_ptr_raw();
-    [[nodiscard]] const std::byte* data_ptr_raw() const;
+    [[nodiscard]] std::byte* data_ptr_raw() { return first_element(); }
+    [[nodiscard]] const std::byte* data_ptr_raw() const { return first_element(); }
 
-    // ---- element access --------------------------------------------------------
-
-    // The value of a tensor with exactly one element, whatever its number of
-    // dimensions ([], [1] and [1, 1] all work). Throws otherwise, or if T
-    // does not match the dtype.
     template <typename T>
     [[nodiscard]] T item() const {
         check_dtype<T>();
         check_single_element();
-        return *reinterpret_cast<const T*>(data_ptr_raw());
+        return *reinterpret_cast<const T*>(first_element());
     }
 
-    // Same, converted to double from whatever the dtype is.
     [[nodiscard]] double item() const;
 
-    // Reference to one element. Accepts Python-style negative indices (-1 is
-    // the last one in that dimension). Throws if out of range, if the number
-    // of indices does not match dim(), or if T does not match the dtype.
     template <typename T>
     [[nodiscard]] T& at(std::span<const std::int64_t> index) {
-        check_dtype<T>();
-        return *reinterpret_cast<T*>(impl_->storage->data() +
-                                     element_offset(index) * element_size(dtype()));
+        return *element_ptr<T>(index);
     }
 
     template <typename T>
     [[nodiscard]] const T& at(std::span<const std::int64_t> index) const {
-        check_dtype<T>();
-        const Storage& storage = *impl_->storage;
-        return *reinterpret_cast<const T*>(storage.data() +
-                                           element_offset(index) * element_size(dtype()));
+        return *element_ptr<T>(index);
     }
 
     template <typename T>
     [[nodiscard]] T& at(std::initializer_list<std::int64_t> index) {
-        return at<T>(std::span<const std::int64_t>(index.begin(), index.size()));
+        return *element_ptr<T>({index.begin(), index.size()});
     }
 
     template <typename T>
     [[nodiscard]] const T& at(std::initializer_list<std::int64_t> index) const {
-        return at<T>(std::span<const std::int64_t>(index.begin(), index.size()));
+        return *element_ptr<T>({index.begin(), index.size()});
     }
 
-    // ---- conversion ------------------------------------------------------------
-
-    // The same values in another dtype. If the dtype already matches, returns
-    // this very tensor (no copy), as PyTorch does.
-    //   float -> int: truncates towards 0 (NaN and infinity are unspecified).
-    //   anything -> bool: non-zero is true (NaN is true).
-    //   bool -> anything: true is 1.
     [[nodiscard]] Tensor to(DType dtype) const;
-
-    // ---- views ------------------------------------------------------------------
-    //
-    // A view is a new impl over the same storage: nothing is copied, and
-    // writing through a view changes the original. Negative dims count from
-    // the end. See docs/03-views.md.
-
-    // Another shape with the same elements; one size may be -1 (inferred).
-    // Needs a contiguous tensor and always shares memory.
-    [[nodiscard]] Tensor view(const Shape& shape) const;
-
-    // Like view, but works on any tensor. WARNING: it shares memory if the
-    // tensor is contiguous and COPIES if it is not, so never rely on writes
-    // to the result reaching the original (or on them not reaching it).
-    [[nodiscard]] Tensor reshape(const Shape& shape) const;
-
-    // ---- copies and identity --------------------------------------------------
-
-    // A new, contiguous tensor with the same values that shares nothing.
     [[nodiscard]] Tensor clone() const;
-
-    // This very tensor if it is already contiguous; otherwise a contiguous
-    // copy with the same values in logical order.
     [[nodiscard]] Tensor contiguous() const;
 
-    // True if both handles point to the same impl (`b = a`).
+    [[nodiscard]] Tensor view(const Shape& shape) const;
+    // Shares memory with this tensor only if it is contiguous; otherwise it copies.
+    [[nodiscard]] Tensor reshape(const Shape& shape) const;
+
     [[nodiscard]] bool is_same(const Tensor& other) const noexcept {
         return impl_ == other.impl_;
     }
 
-    // True if both tensors read the same storage (e.g. two views).
     [[nodiscard]] bool shares_storage(const Tensor& other) const noexcept {
         return impl_->storage == other.impl_->storage;
     }
@@ -166,17 +100,19 @@ private:
                    "expected dtype " << dtype_of_v<T> << " but tensor has " << dtype());
     }
 
-    void check_single_element() const;
+    template <typename T>
+    [[nodiscard]] T* element_ptr(std::span<const std::int64_t> index) const {
+        check_dtype<T>();
+        return reinterpret_cast<T*>(impl_->storage->data()) + element_offset(index);
+    }
 
-    // Element offset inside the storage of a (possibly negative) index.
+    void check_single_element() const;
+    [[nodiscard]] std::byte* first_element() const;
     [[nodiscard]] std::int64_t element_offset(std::span<const std::int64_t> index) const;
 
     std::shared_ptr<TensorImpl> impl_;
 };
 
-// One line with the values in logical order, the shape and the dtype:
-//   tensor([0.0000, 1.0000], shape=[2], dtype=float32)
-// Tensors over 1000 elements only show the first and last 3 values.
 std::ostream& operator<<(std::ostream& os, const Tensor& t);
 
 } // namespace kael

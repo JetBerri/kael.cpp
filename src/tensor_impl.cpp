@@ -5,22 +5,41 @@
 
 namespace kael {
 
+namespace {
+
+void check_fits_in_storage(const TensorImpl& impl) {
+    std::int64_t last_element = impl.offset;
+    for (std::size_t i = 0; i < impl.shape.size(); ++i) {
+        const std::int64_t extent =
+            detail::checked_mul(impl.shape[i] - 1, impl.strides[i], "tensor extent");
+        last_element = detail::checked_add(last_element, extent, "tensor extent");
+    }
+    const std::int64_t bytes_needed =
+        detail::checked_mul(last_element + 1, element_size(impl.dtype), "tensor extent in bytes");
+
+    KAEL_CHECK(bytes_needed <= impl.storage->nbytes(),
+               "tensor with shape " << to_string(impl.shape) << ", strides "
+                                    << to_string(impl.strides) << ", offset " << impl.offset
+                                    << " and dtype " << impl.dtype << " needs " << bytes_needed
+                                    << " bytes but storage has " << impl.storage->nbytes());
+}
+
+} // namespace
+
 bool TensorImpl::is_contiguous() const {
     if (numel() == 0) {
-        return true; // no elements: nothing can be out of place
+        return true;
     }
-    // From the innermost dimension outwards, each stride must equal the
-    // number of elements of everything to its right. Size-1 dimensions are
-    // skipped: you never step along them, so their stride does not matter.
-    std::int64_t expected = 1;
+    std::int64_t expected_stride = 1;
     for (std::size_t i = shape.size(); i-- > 0;) {
+        // The stride of a size-1 dimension is never used to step, so any value is fine.
         if (shape[i] == 1) {
             continue;
         }
-        if (strides[i] != expected) {
+        if (strides[i] != expected_stride) {
             return false;
         }
-        expected *= shape[i];
+        expected_stride *= shape[i];
     }
     return true;
 }
@@ -33,33 +52,15 @@ void TensorImpl::validate() const {
                         << " have different number of dimensions");
     for (std::size_t i = 0; i < strides.size(); ++i) {
         KAEL_CHECK(strides[i] >= 0, "negative stride " << strides[i] << " at dimension " << i
-                                                       << " in strides " << to_string(strides)
-                                                       << " (kael does not support them)");
+                                                       << " in strides " << to_string(strides));
     }
     KAEL_CHECK(offset >= 0, "negative storage offset " << offset);
-    KAEL_CHECK(device == storage->device(), "tensor device " << device
-                                                             << " does not match storage device "
-                                                             << storage->device());
-
-    if (numel() == 0) {
-        return; // nothing is ever read: no bound to check
+    KAEL_CHECK(device == storage->device(),
+               "tensor device " << device << " does not match storage device "
+                                << storage->device());
+    if (numel() > 0) {
+        check_fits_in_storage(*this);
     }
-
-    // Largest element offset reachable: offset + sum((shape[i] - 1) * strides[i]).
-    std::int64_t max_offset = offset;
-    for (std::size_t i = 0; i < shape.size(); ++i) {
-        max_offset = detail::checked_add(
-            max_offset, detail::checked_mul(shape[i] - 1, strides[i], "tensor extent"),
-            "tensor extent");
-    }
-    const std::int64_t needed =
-        detail::checked_mul(max_offset + 1, element_size(dtype), "tensor extent in bytes");
-
-    KAEL_CHECK(needed <= storage->nbytes(),
-               "tensor with shape " << to_string(shape) << ", strides " << to_string(strides)
-                                    << ", offset " << offset << " and dtype " << dtype
-                                    << " needs " << needed << " bytes but storage has "
-                                    << storage->nbytes());
 }
 
 } // namespace kael

@@ -8,7 +8,6 @@
 
 namespace {
 
-// An impl over a fresh storage of `nbytes` bytes.
 kael::TensorImpl make_impl(std::int64_t nbytes, kael::Shape shape, kael::Strides strides,
                            std::int64_t offset = 0, kael::DType dtype = kael::DType::F32) {
     kael::TensorImpl impl;
@@ -45,10 +44,7 @@ TEST(TensorImpl, ScalarImpl) {
 }
 
 TEST(TensorImplValidate, ExactlyAtTheLimit) {
-    // [2, 3] float32 contiguous: max offset 5, needs (5 + 1) * 4 = 24 bytes.
     EXPECT_NO_THROW(make_impl(24, {2, 3}, {3, 1}).validate());
-    // Slice starting at element 4 of 10 floats, shape [3], stride [2]:
-    // max offset 8, needs 36 bytes; 40 available.
     EXPECT_NO_THROW(make_impl(40, {3}, {2}, 4).validate());
     EXPECT_NO_THROW(make_impl(36, {3}, {2}, 4).validate());
 }
@@ -91,7 +87,6 @@ TEST(TensorImplValidate, EmptyTensorNeedsNoBytes) {
 }
 
 TEST(TensorImplValidate, DtypeSizeMatters) {
-    // 6 float64 elements need 48 bytes.
     EXPECT_THROW(make_impl(24, {2, 3}, {3, 1}, 0, kael::DType::F64).validate(), kael::Error);
     EXPECT_NO_THROW(make_impl(48, {2, 3}, {3, 1}, 0, kael::DType::F64).validate());
 }

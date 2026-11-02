@@ -7,18 +7,10 @@
 
 #include "kael/error.h"
 #include "kael/random.h"
+#include "support/values.h"
 
 using kael::DType;
-
-namespace {
-
-template <typename T>
-std::vector<T> values(const kael::Tensor& t) {
-    const T* p = t.data_ptr<T>();
-    return std::vector<T>(p, p + t.numel());
-}
-
-} // namespace
+using kael::test::values;
 
 TEST(Random, SameSeedSameValues) {
     kael::manual_seed(123);

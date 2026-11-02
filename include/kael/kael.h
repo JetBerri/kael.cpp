@@ -1,7 +1,5 @@
 #pragma once
 
-// Umbrella header: everything public in kael.
-
 #include "kael/dtype.h"
 #include "kael/error.h"
 #include "kael/factory.h"

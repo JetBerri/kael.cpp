@@ -5,17 +5,13 @@
 
 #include "kael/error.h"
 #include "kael/factory.h"
+#include "support/values.h"
 
 using kael::DType;
 using kael::Shape;
+using kael::test::values;
 
 namespace {
-
-template <typename T>
-std::vector<T> values(const kael::Tensor& t) {
-    const T* p = t.data_ptr<T>();
-    return std::vector<T>(p, p + t.numel());
-}
 
 void expect_fresh_contiguous(const kael::Tensor& t) {
     EXPECT_TRUE(t.is_contiguous());

@@ -1,16 +1,11 @@
-#include <algorithm>
 #include <utility>
 
-#include "internal/checked_math.h"
 #include "kael/tensor.h"
 
 namespace kael {
 
 namespace {
 
-// Every view ends here: a new impl over the same storage. Tensor::from_impl
-// validates it, so a view with wrong metadata throws instead of reading
-// someone else's memory.
 Tensor make_view(const Tensor& base, Shape shape, Strides strides, std::int64_t offset) {
     auto impl = std::make_shared<TensorImpl>();
     impl->storage = base.impl()->storage;

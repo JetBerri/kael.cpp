@@ -13,8 +13,6 @@
 
 namespace {
 
-// Builds a tensor by hand (there are no factories yet): a storage of
-// `storage_elems` elements and contiguous strides unless given.
 kael::Tensor make_tensor(kael::Shape shape, kael::DType dtype = kael::DType::F32,
                          std::int64_t storage_elems = -1, std::int64_t offset = 0,
                          kael::Strides strides = {}) {
@@ -89,7 +87,6 @@ TEST(Tensor, DataPtrWrongTypeMessage) {
 }
 
 TEST(Tensor, DataPtrRespectsOffset) {
-    // Storage of 10 doubles, tensor of 3 starting at element 4.
     kael::Tensor t = make_tensor({3}, kael::DType::F64, 10, 4);
     auto* storage = reinterpret_cast<double*>(t.impl()->storage->data());
     for (int i = 0; i < 10; ++i) {
@@ -148,8 +145,6 @@ TEST(Tensor, EmptyTensor) {
     EXPECT_EQ(c.shape(), (kael::Shape{0, 3}));
 }
 
-// ---- item ------------------------------------------------------------------
-
 TEST(TensorItem, AnyShapeWithOneElement) {
     EXPECT_EQ(kael::scalar(2.5).item<float>(), 2.5f);
     EXPECT_EQ(kael::full({1}, 3.0, kael::DType::F64).item<double>(), 3.0);
@@ -171,8 +166,6 @@ TEST(TensorItem, UntypedConvertsToDouble) {
     EXPECT_EQ(kael::scalar(7, kael::DType::I64).item(), 7.0);
     EXPECT_EQ(kael::scalar(1, kael::DType::Bool).item(), 1.0);
 }
-
-// ---- at ----------------------------------------------------------------------
 
 TEST(TensorAt, ReadsAndWrites) {
     auto t = kael::arange(0, 6, 1, kael::DType::I64);
@@ -223,8 +216,6 @@ TEST(TensorAt, Scalar) {
     EXPECT_EQ(s.at<std::int64_t>({}), 9);
 }
 
-// ---- printing --------------------------------------------------------------
-
 namespace {
 std::string print(const kael::Tensor& t) {
     std::ostringstream os;
@@ -267,8 +258,6 @@ TEST(TensorPrint, LeavesStreamFlagsUntouched) {
     os << kael::scalar(1.0) << " " << 2.5;
     EXPECT_EQ(os.str(), "tensor([1.0000], shape=[], dtype=float32) 2.5");
 }
-
-// ---- to ----------------------------------------------------------------------
 
 TEST(TensorTo, SameDtypeReturnsSameImpl) {
     auto t = kael::zeros({2});
