@@ -518,6 +518,9 @@ TEST_F(Cuda, TrainingMatchesCpuStepByStep) {
 }
 
 TEST_F(Cuda, DeviceBlocksAreCached) {
+    if (!kael::caching_allocator_enabled()) {
+        GTEST_SKIP() << "built without the caching allocator";
+    }
     kael::empty_cache();
     {
         const Tensor warm = kael::zeros({1000}).cuda();
