@@ -82,6 +82,7 @@ add_library(kael
     src/ops/nn.cpp
     src/ops/sequence.cpp
     src/io/safetensors.cpp
+    src/text/bpe.cpp
     src/autograd/grad_mode.cpp
     src/autograd/tensor_autograd.cpp
     src/autograd/node.cpp

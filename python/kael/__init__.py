@@ -42,6 +42,7 @@ from ._C import (
     index_select,
     is_grad_enabled,
     le,
+    BpeTokenizer,
     load_safetensors,
     log,
     log1p,

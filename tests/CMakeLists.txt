@@ -38,12 +38,13 @@ add_executable(kael_tests
     test_cuda_absent.cpp
     test_sequence_ops.cpp
     test_safetensors.cpp
+    test_bpe.cpp
     test_transformer.cpp
     test_debug.cpp
     support/npy.cpp
 )
 
-target_link_libraries(kael_tests PRIVATE kael::kael GTest::gtest_main)
+target_link_libraries(kael_tests PRIVATE kael::kael GTest::gtest_main nlohmann_json::nlohmann_json)
 target_include_directories(kael_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(kael_tests PRIVATE
     KAEL_GOLDEN_DIR="${CMAKE_CURRENT_SOURCE_DIR}/golden"

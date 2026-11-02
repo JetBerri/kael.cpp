@@ -6,6 +6,7 @@
 
 #include "kael/io/safetensors.h"
 #include "kael/nn/transformer.h"
+#include "kael/text/bpe.h"
 
 #include "bind.h"
 
@@ -27,6 +28,27 @@ void bind_models(nb::module_& m) {
         nb::arg("path"), nb::arg("mmap") = false,
         "Read every tensor of a safetensors file, validating its layout. With mmap the tensors "
         "share the pages of the file, and the file must not be truncated while they are alive.");
+    nb::class_<text::BpeTokenizer>(m, "BpeTokenizer")
+        .def(
+            "__init__",
+            [](text::BpeTokenizer* self, const std::string& vocabulary, const std::string& merges) {
+                new (self) text::BpeTokenizer(vocabulary, merges);
+            },
+            nb::arg("vocabulary"), nb::arg("merges"))
+        .def(
+            "encode",
+            [](const text::BpeTokenizer& tokenizer, const std::string& input) {
+                return tokenizer.encode(input);
+            },
+            nb::arg("text"))
+        .def(
+            "decode",
+            [](const text::BpeTokenizer& tokenizer, const std::vector<std::int64_t>& ids) {
+                const std::string decoded = tokenizer.decode(ids);
+                return nb::bytes(decoded.data(), decoded.size());
+            },
+            nb::arg("ids"))
+        .def_prop_ro("vocabulary_size", &text::BpeTokenizer::vocabulary_size);
     m.def("read_safetensors_metadata",
           [](const std::string& path) { return io::read_safetensors(path).metadata; });
 
