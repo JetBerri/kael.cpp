@@ -6,9 +6,23 @@
 namespace kael {
 
 bool TensorImpl::is_contiguous() const {
-    // First version: exact comparison with the row-major strides.
-    // Refined in phase 4 to ignore size-1 dimensions.
-    return strides == contiguous_strides(shape);
+    if (numel() == 0) {
+        return true; // no elements: nothing can be out of place
+    }
+    // From the innermost dimension outwards, each stride must equal the
+    // number of elements of everything to its right. Size-1 dimensions are
+    // skipped: you never step along them, so their stride does not matter.
+    std::int64_t expected = 1;
+    for (std::size_t i = shape.size(); i-- > 0;) {
+        if (shape[i] == 1) {
+            continue;
+        }
+        if (strides[i] != expected) {
+            return false;
+        }
+        expected *= shape[i];
+    }
+    return true;
 }
 
 void TensorImpl::validate() const {

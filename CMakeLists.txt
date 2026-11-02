@@ -29,6 +29,7 @@ add_library(kael
     src/factory.cpp
     src/random.cpp
     src/print.cpp
+    src/copy.cpp
 )
 
 add_library(kael::kael ALIAS kael)

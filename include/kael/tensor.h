@@ -128,6 +128,10 @@ public:
     // A new, contiguous tensor with the same values that shares nothing.
     [[nodiscard]] Tensor clone() const;
 
+    // This very tensor if it is already contiguous; otherwise a contiguous
+    // copy with the same values in logical order.
+    [[nodiscard]] Tensor contiguous() const;
+
     // True if both handles point to the same impl (`b = a`).
     [[nodiscard]] bool is_same(const Tensor& other) const noexcept {
         return impl_ == other.impl_;

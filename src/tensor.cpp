@@ -4,6 +4,7 @@
 #include <utility>
 #include <vector>
 
+#include "internal/copy.h"
 #include "kael/factory.h"
 
 namespace kael {
@@ -48,21 +49,20 @@ const std::byte* Tensor::data_ptr_raw() const {
 }
 
 Tensor Tensor::clone() const {
-    // First version: contiguous tensors only. Generalized in phase 4.
-    KAEL_CHECK(is_contiguous(), "clone of a non-contiguous tensor is not implemented yet");
-
-    auto impl = std::make_shared<TensorImpl>();
-    impl->storage = std::make_shared<Storage>(nbytes(), device());
-    impl->shape = shape();
-    impl->strides = contiguous_strides(shape());
-    impl->offset = 0;
-    impl->dtype = dtype();
-    impl->device = device();
-
-    if (nbytes() > 0) {
-        std::memcpy(impl->storage->data(), data_ptr_raw(), static_cast<std::size_t>(nbytes()));
+    Tensor out = empty(shape(), dtype());
+    if (is_contiguous()) {
+        // Shortcut: the elements are one run of bytes.
+        if (nbytes() > 0) {
+            std::memcpy(out.data_ptr_raw(), data_ptr_raw(), static_cast<std::size_t>(nbytes()));
+        }
+    } else {
+        detail::copy_strided(out, *this);
     }
-    return Tensor(std::move(impl));
+    return out;
+}
+
+Tensor Tensor::contiguous() const {
+    return is_contiguous() ? *this : clone();
 }
 
 void Tensor::check_single_element() const {
@@ -94,20 +94,8 @@ Tensor Tensor::to(DType target) const {
     if (target == dtype()) {
         return *this;
     }
-    // First version: contiguous tensors only. Generalized in phase 4.
-    KAEL_CHECK(is_contiguous(), "to(dtype) of a non-contiguous tensor is not implemented yet");
-
     Tensor out = empty(shape(), target);
-    const std::int64_t n = numel();
-    dispatch(dtype(), [&]<typename From>() {
-        const From* src = reinterpret_cast<const From*>(data_ptr_raw());
-        dispatch(target, [&]<typename To>() {
-            To* dst = out.data_ptr<To>();
-            for (std::int64_t i = 0; i < n; ++i) {
-                dst[i] = convert_value<To>(src[i]);
-            }
-        });
-    });
+    detail::convert_strided(out, *this);
     return out;
 }
 

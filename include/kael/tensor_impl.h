@@ -29,6 +29,7 @@ struct TensorImpl {
     [[nodiscard]] std::int64_t dim() const { return static_cast<std::int64_t>(shape.size()); }
 
     // True if the elements are laid out in row-major order without gaps.
+    // Strides of size-1 dimensions are ignored: you never step along them.
     [[nodiscard]] bool is_contiguous() const;
 
     // Checks that the metadata is consistent and that every element it can
