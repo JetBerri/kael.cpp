@@ -134,6 +134,9 @@ TEST(Gpt, ParameterCountFormula) {
 }
 
 TEST(Gpt, Gpt2SmallHasTheKnownParameterCount) {
+    if (!kael::caching_allocator_enabled()) {
+        GTEST_SKIP() << "drawing 250 million samples is too slow under sanitizers";
+    }
     GPT model(GptConfig::gpt2_small());
     EXPECT_EQ(model.num_parameters(), 124439808);
 }
