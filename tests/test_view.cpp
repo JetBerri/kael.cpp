@@ -287,3 +287,39 @@ TEST(Unsqueeze, SqueezeRecoversOriginal) {
         EXPECT_EQ(round_trip.strides(), t.strides());
     }
 }
+
+TEST(Expand, AddsDimensionWithStrideZero) {
+    auto t = iota_shaped({3});
+    auto e = t.expand({2, 3});
+    EXPECT_EQ(e.shape(), (Shape{2, 3}));
+    EXPECT_EQ(e.strides(), (Strides{0, 1}));
+    EXPECT_TRUE(e.shares_storage(t));
+    EXPECT_EQ(values<std::int64_t>(e), (std::vector<std::int64_t>{0, 1, 2, 0, 1, 2}));
+}
+
+TEST(Expand, SizeOneDimension) {
+    auto t = iota_shaped({2, 1});
+    auto e = t.expand({2, 4});
+    EXPECT_EQ(e.strides(), (Strides{1, 0}));
+    EXPECT_EQ(values<std::int64_t>(e), (std::vector<std::int64_t>{0, 0, 0, 0, 1, 1, 1, 1}));
+}
+
+TEST(Expand, MinusOneKeepsDimension) {
+    auto t = iota_shaped({2, 1});
+    EXPECT_EQ(t.expand({-1, 4}).shape(), (Shape{2, 4}));
+    EXPECT_EQ(t.expand({3, -1, -1}).shape(), (Shape{3, 2, 1}));
+}
+
+TEST(Expand, Errors) {
+    auto t = iota_shaped({2, 3});
+    EXPECT_THROW((void)t.expand({3, 3}), kael::Error);
+    EXPECT_THROW((void)t.expand({3}), kael::Error);
+    EXPECT_THROW((void)t.expand({-1, 2, 3}), kael::Error);
+}
+
+TEST(Expand, HasInternalOverlap) {
+    auto t = iota_shaped({3});
+    EXPECT_FALSE(t.has_internal_overlap());
+    EXPECT_TRUE(t.expand({2, 3}).has_internal_overlap());
+    EXPECT_FALSE(t.expand({1, 3}).has_internal_overlap());
+}

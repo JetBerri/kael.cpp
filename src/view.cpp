@@ -31,6 +31,24 @@ void insert_at(Container& container, std::size_t position, std::int64_t value) {
     container.insert(container.begin() + static_cast<std::ptrdiff_t>(position), value);
 }
 
+Shape resolve_expand_shape(const Shape& current, const Shape& requested) {
+    KAEL_CHECK(requested.size() >= current.size(), "cannot expand shape "
+                                                       << to_string(current) << " to "
+                                                       << to_string(requested)
+                                                       << ": too few dimensions");
+    const std::size_t new_dims = requested.size() - current.size();
+    Shape resolved = requested;
+    for (std::size_t i = 0; i < requested.size(); ++i) {
+        if (requested[i] != -1) {
+            continue;
+        }
+        KAEL_CHECK(i >= new_dims, "expand cannot use -1 for new dimension " << i << " in shape "
+                                                                            << to_string(requested));
+        resolved[i] = current[i - new_dims];
+    }
+    return resolved;
+}
+
 } // namespace
 
 Tensor Tensor::view(const Shape& requested) const {
@@ -119,6 +137,21 @@ Tensor Tensor::unsqueeze(std::int64_t dim) const {
     insert_at(new_shape, position, 1);
     insert_at(new_strides, position, new_stride);
     return make_view(*this, std::move(new_shape), std::move(new_strides), offset());
+}
+
+Tensor Tensor::expand(const Shape& requested) const {
+    Shape target = resolve_expand_shape(shape(), requested);
+    Strides target_strides = broadcast_strides(shape(), strides(), target);
+    return make_view(*this, std::move(target), std::move(target_strides), offset());
+}
+
+bool Tensor::has_internal_overlap() const {
+    for (std::size_t i = 0; i < shape().size(); ++i) {
+        if (shape()[i] > 1 && strides()[i] == 0) {
+            return true;
+        }
+    }
+    return false;
 }
 
 } // namespace kael

@@ -90,6 +90,9 @@ public:
     [[nodiscard]] Tensor squeeze() const;
     [[nodiscard]] Tensor squeeze(std::int64_t dim) const;
     [[nodiscard]] Tensor unsqueeze(std::int64_t dim) const;
+    // The result reads several logical positions from one element: do not write to it.
+    [[nodiscard]] Tensor expand(const Shape& shape) const;
+    [[nodiscard]] bool has_internal_overlap() const;
 
     [[nodiscard]] bool is_same(const Tensor& other) const noexcept {
         return impl_ == other.impl_;
