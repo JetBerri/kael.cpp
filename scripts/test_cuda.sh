@@ -1,26 +1,151 @@
 #!/bin/bash
-set -euo pipefail
+set -uo pipefail
 
 architecture="${1:-native}"
 build="${2:-build-cuda}"
+report="${3:-cuda-report}"
+minimum_cmake="3.24"
 
-cmake -S . -B "$build" -DCMAKE_BUILD_TYPE=Release -DKAEL_ENABLE_CUDA=ON \
-    -DCMAKE_CUDA_ARCHITECTURES="$architecture" -DKAEL_BUILD_EXAMPLES=ON -DKAEL_BUILD_BENCHMARKS=ON
-cmake --build "$build" --parallel
+mkdir -p "$report"
+summary="$report/summary.txt"
+: >"$summary"
+failures=0
 
-nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
-ctest --test-dir "$build" --output-on-failure
+step() {
+    local name="$1"
+    shift
+    local log="$report/$name.log"
+    local started=$SECONDS
+    echo "==> $name"
+    if "$@" >"$log" 2>&1; then
+        printf 'PASS  %-24s %5ss\n' "$name" "$((SECONDS - started))" | tee -a "$summary"
+        return 0
+    fi
+    printf 'FAIL  %-24s %5ss  see %s\n' "$name" "$((SECONDS - started))" "$log" | tee -a "$summary"
+    tail -n 25 "$log"
+    failures=$((failures + 1))
+    return 1
+}
 
-CUDA_LAUNCH_BLOCKING=1 "$build/tests/kael_tests" --gtest_filter='Cuda*:Shapes/CudaMatmul*'
-if command -v compute-sanitizer >/dev/null; then
+skip() {
+    printf 'SKIP  %-24s        %s\n' "$1" "$2" | tee -a "$summary"
+}
+
+finish() {
+    echo
+    echo "--- summary ---"
+    cat "$summary"
+    if [[ "$failures" -gt 0 ]]; then
+        echo "$failures step(s) failed; logs are in $report/"
+        exit 1
+    fi
+    echo "all steps passed; logs are in $report/"
+    exit 0
+}
+
+show_environment() {
+    uname -a
+    cmake --version | head -n 1
+    nvcc --version | head -n 2
+    "${CXX:-c++}" --version | head -n 1
+    nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
+    git rev-parse HEAD 2>/dev/null || true
+}
+
+check_cmake() {
+    local found
+    found="$(cmake --version | head -n 1 | awk '{print $3}')"
+    [[ "$(printf '%s\n%s\n' "$minimum_cmake" "$found" | sort -V | head -n 1)" == "$minimum_cmake" ]] || {
+        echo "CMake $minimum_cmake or newer is required, found $found"
+        return 1
+    }
+}
+
+check_gpu() {
+    command -v nvcc || {
+        echo "nvcc is not on PATH: install the CUDA Toolkit"
+        return 1
+    }
+    nvidia-smi --query-gpu=name --format=csv,noheader
+}
+
+# Without a device the tests skip themselves, and a skipped run must not look like a passed one.
+run_device_tests() {
+    local output
+    output="$(CUDA_LAUNCH_BLOCKING=1 "$build/tests/kael_tests" \
+        --gtest_filter='Cuda*:*CudaMatmul*' 2>&1)"
+    local status=$?
+    echo "$output"
+    [[ "$status" -eq 0 ]] || return "$status"
+    if echo "$output" | grep -q 'no CUDA device'; then
+        echo "device tests were skipped: no CUDA device visible to this process"
+        return 1
+    fi
+    echo "$output" | grep -q '\[  PASSED  \]'
+}
+
+run_sanitizer() {
     compute-sanitizer --error-exitcode 1 "$build/tests/kael_tests" \
         --gtest_filter='Cuda.BackwardMatchesCpuAndStaysOnTheDevice:Cuda.IndexingMatchesCpu'
-fi
+}
 
-"$build/benchmarks/kael_bench" --benchmark_filter='BM_Device'
+build_python() {
+    local environment="$build/python-venv"
+    python3 -m venv "$environment" &&
+        "$environment/bin/pip" install --quiet --upgrade pip &&
+        "$environment/bin/pip" install --quiet \
+            --config-settings=cmake.define.KAEL_ENABLE_CUDA=ON \
+            --config-settings=cmake.define.CMAKE_CUDA_ARCHITECTURES="$architecture" . &&
+        "$environment/bin/pip" install --quiet pytest hypothesis numpy tiktoken
+}
+
+python_tool() {
+    "$build/python-venv/bin/python" "$@"
+}
+
+step environment show_environment
+step cmake-version check_cmake
+step gpu check_gpu
+
+step configure cmake -S . -B "$build" -DCMAKE_BUILD_TYPE=Release -DKAEL_ENABLE_CUDA=ON \
+    -DCMAKE_CUDA_ARCHITECTURES="$architecture" -DKAEL_BUILD_EXAMPLES=ON \
+    -DKAEL_BUILD_BENCHMARKS=ON || finish
+step build cmake --build "$build" --parallel || finish
+
+step ctest ctest --test-dir "$build" --output-on-failure
+step device-tests run_device_tests
+if command -v compute-sanitizer >/dev/null; then
+    step compute-sanitizer run_sanitizer
+else
+    skip compute-sanitizer "not installed"
+fi
+step benchmarks "$build/benchmarks/kael_bench" --benchmark_filter='BM_Device'
 
 if [[ -d data/mnist ]]; then
-    "$build/examples/mnist_mlp" data/mnist --device cpu
-    "$build/examples/mnist_mlp" data/mnist --device cuda
-    "$build/examples/mnist_mlp" data/mnist --device cuda --hidden 1024
+    step mnist-cpu "$build/examples/mnist_mlp" data/mnist --device cpu
+    step mnist-cuda "$build/examples/mnist_mlp" data/mnist --device cuda
+    step mnist-cuda-1024 "$build/examples/mnist_mlp" data/mnist --device cuda --hidden 1024
+else
+    skip mnist "data/mnist is missing: run scripts/download_mnist.sh"
 fi
+
+if [[ -d data/shakespeare ]]; then
+    step char-gpt-cuda "$build/examples/char_gpt" --steps 200 --device cuda
+else
+    skip char-gpt-cuda "data/shakespeare is missing: run scripts/download_shakespeare.sh"
+fi
+
+if step python-build build_python; then
+    step python-sees-gpu python_tool -c 'import kael; assert kael.cuda_is_available()'
+    step python-tests python_tool -m pytest python/tests -q
+    if [[ -d data/mnist ]]; then
+        step python-mnist-cuda python_tool examples/mnist.py --device cuda
+    fi
+    if [[ -f data/gpt2/model.safetensors ]]; then
+        step gpt2-cuda python_tool examples/gpt2_generate.py --device cuda
+    else
+        skip gpt2-cuda "data/gpt2/model.safetensors is missing"
+    fi
+fi
+
+finish
