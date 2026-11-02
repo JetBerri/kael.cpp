@@ -1,13 +1,12 @@
 #include "kael/storage.h"
 
-#include <new>
-
+#include "kael/allocator.h"
 #include "kael/error.h"
 
 namespace kael {
 
-void Storage::AlignedDeleter::operator()(std::byte* ptr) const noexcept {
-    ::operator delete(ptr, std::align_val_t{kAlignment});
+void Storage::BlockDeleter::operator()(std::byte* ptr) const noexcept {
+    detail::release_block(ptr, capacity);
 }
 
 Storage::Storage(std::int64_t nbytes, Device device) : nbytes_(nbytes), device_(device) {
@@ -15,9 +14,8 @@ Storage::Storage(std::int64_t nbytes, Device device) : nbytes_(nbytes), device_(
     KAEL_CHECK(device == Device::CPU, "CUDA storage is not implemented yet");
 
     if (nbytes > 0) {
-        void* memory =
-            ::operator new(static_cast<std::size_t>(nbytes), std::align_val_t{kAlignment});
-        data_.reset(static_cast<std::byte*>(memory));
+        const std::int64_t capacity = detail::block_capacity(nbytes);
+        data_ = {detail::allocate_block(capacity), BlockDeleter{capacity}};
     }
 }
 

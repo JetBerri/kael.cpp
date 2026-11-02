@@ -1,5 +1,6 @@
 #pragma once
 
+#include "kael/allocator.h"
 #include "kael/autograd/engine.h"
 #include "kael/autograd/functions.h"
 #include "kael/autograd/grad_mode.h"

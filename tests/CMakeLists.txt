@@ -32,6 +32,7 @@ add_executable(kael_tests
     test_parallel.cpp
     test_matmul_versions.cpp
     test_parallel_ops.cpp
+    test_allocator.cpp
     support/npy.cpp
 )
 

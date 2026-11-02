@@ -28,11 +28,12 @@ public:
     void bump_version() noexcept { ++version_; }
 
 private:
-    struct AlignedDeleter {
+    struct BlockDeleter {
+        std::int64_t capacity = 0;
         void operator()(std::byte* ptr) const noexcept;
     };
 
-    std::unique_ptr<std::byte[], AlignedDeleter> data_;
+    std::unique_ptr<std::byte[], BlockDeleter> data_;
     std::int64_t nbytes_;
     Device device_;
     std::int64_t version_ = 0;

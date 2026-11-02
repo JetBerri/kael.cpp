@@ -45,6 +45,7 @@ add_library(kael
     src/view.cpp
     src/iterator.cpp
     src/parallel.cpp
+    src/allocator.cpp
     src/linalg/matmul_versions.cpp
     src/ops/binary.cpp
     src/ops/unary.cpp
@@ -81,6 +82,10 @@ target_include_directories(kael PUBLIC include PRIVATE src)
 target_compile_features(kael PUBLIC cxx_std_20)
 target_compile_definitions(kael PRIVATE KAEL_VERSION="${PROJECT_VERSION}")
 kael_configure_target(kael)
+
+if (KAEL_ENABLE_SANITIZERS OR KAEL_ENABLE_TSAN)
+    target_compile_definitions(kael PRIVATE KAEL_NO_CACHING_ALLOCATOR)
+endif ()
 
 find_package(Threads REQUIRED)
 target_link_libraries(kael PUBLIC Threads::Threads)
