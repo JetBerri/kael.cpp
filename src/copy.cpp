@@ -1,5 +1,7 @@
 #include "internal/copy.h"
 
+#include "kael/kernels.h"
+
 namespace kael::detail {
 
 void copy_strided(Tensor& dst, const Tensor& src) {
@@ -9,16 +11,11 @@ void copy_strided(Tensor& dst, const Tensor& src) {
 }
 
 void convert_strided(Tensor& dst, const Tensor& src) {
-    KAEL_CHECK(dst.shape() == src.shape(), "copy expects the same shape, got "
-                                               << to_string(dst.shape()) << " and "
-                                               << to_string(src.shape()));
+    TensorIterator iterator;
+    iterator.add_output(dst).add_input(src).build();
+    auto identity = [](auto value) { return value; };
     dispatch(src.dtype(), [&]<typename From>() {
-        dispatch(dst.dtype(), [&]<typename To>() {
-            for (std::int64_t linear = 0; linear < src.numel(); ++linear) {
-                const Shape index = index_from_linear(linear, src.shape());
-                dst.at<To>(index) = convert_value<To>(src.at<From>(index));
-            }
-        });
+        dispatch(dst.dtype(), [&]<typename To>() { run_typed<To, From, 1>(iterator, identity); });
     });
 }
 
