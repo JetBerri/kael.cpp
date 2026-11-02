@@ -6,6 +6,7 @@
 #include <gtest/gtest.h>
 
 #include "kael/error.h"
+#include "kael/ops.h"
 #include "kael/random.h"
 
 #include "support/values.h"
@@ -95,4 +96,19 @@ TEST(Random, NonFloatingDtypesThrow) {
     EXPECT_THROW(kael::rand({2}, DType::I64), kael::Error);
     EXPECT_THROW(kael::rand({2}, DType::Bool), kael::Error);
     EXPECT_THROW(kael::randn({2}, DType::I64), kael::Error);
+}
+
+TEST(Random, BernoulliRespectsProbabilityExtremes) {
+    EXPECT_EQ(kael::sum(kael::bernoulli({100}, 0.0)).item(), 0.0);
+    EXPECT_EQ(kael::sum(kael::bernoulli({100}, 1.0)).item(), 100.0);
+}
+
+TEST(Random, BernoulliMatchesProbability) {
+    kael::manual_seed(31);
+    EXPECT_NEAR(kael::mean(kael::bernoulli({100000}, 0.3)).item(), 0.3, 0.01);
+}
+
+TEST(Random, BernoulliRejectsInvalidProbability) {
+    EXPECT_THROW((void)kael::bernoulli({1}, 1.5), kael::Error);
+    EXPECT_THROW((void)kael::bernoulli({1}, -0.5), kael::Error);
 }

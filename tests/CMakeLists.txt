@@ -24,6 +24,8 @@ add_executable(kael_tests
     test_autograd_gradcheck.cpp
     test_autograd_sum_to_shape.cpp
     test_autograd_mlp.cpp
+    test_nn_module.cpp
+    test_nn_layers.cpp
     support/npy.cpp
 )
 

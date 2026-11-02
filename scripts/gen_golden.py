@@ -121,7 +121,59 @@ def write_mlp_fixture():
         np.save(directory / f"{name}_grad.npy", parameter.grad.numpy())
 
 
-CASES = []
+def save_all(directory, **arrays):
+    directory.mkdir(parents=True, exist_ok=True)
+    for name, array in arrays.items():
+        np.save(directory / f"{name}.npy", array.detach().numpy() if torch.is_tensor(array) else array)
+
+
+def write_nn_fixtures():
+    directory = GOLDEN_DIR / "nn"
+    torch.manual_seed(20261)
+    f = torch.nn.functional
+
+    x = torch.randn(4, 3, dtype=torch.float64)
+    weight = torch.randn(2, 3, dtype=torch.float64)
+    bias = torch.randn(2, dtype=torch.float64)
+    save_all(directory, linear_x=x, linear_weight=weight, linear_bias=bias, linear_out=f.linear(x, weight, bias))
+
+    x = torch.randn(2, 3, 4, dtype=torch.float64)
+    weight = torch.randn(3, 4, dtype=torch.float64)
+    bias = torch.randn(3, 4, dtype=torch.float64)
+    out = f.layer_norm(x, (3, 4), weight, bias, 1e-5)
+    save_all(directory, norm_x=x, norm_weight=weight, norm_bias=bias, norm_out=out)
+
+    weight = torch.randn(5, 3, dtype=torch.float64)
+    indices = torch.tensor([[0, 4, 2], [1, 1, 3]], dtype=torch.int64)
+    save_all(directory, embedding_weight=weight, embedding_indices=indices, embedding_out=f.embedding(indices, weight))
+
+    prediction = torch.randn(4, 3, dtype=torch.float64)
+    target = torch.randn(4, 3, dtype=torch.float64)
+    logits = torch.randn(5, 3, dtype=torch.float64)
+    classes = torch.tensor([0, 2, 1, 1, 2], dtype=torch.int64)
+    binary_logits = torch.randn(4, 3, dtype=torch.float64) * 5
+    binary_targets = torch.rand(4, 3, dtype=torch.float64).round()
+    save_all(
+        directory,
+        loss_prediction=prediction,
+        loss_target=target,
+        loss_logits=logits,
+        loss_classes=classes,
+        loss_binary_logits=binary_logits,
+        loss_binary_targets=binary_targets,
+    )
+    for reduction in ("mean", "sum", "none"):
+        save_all(
+            directory,
+            **{
+                f"mse_{reduction}": f.mse_loss(prediction, target, reduction=reduction),
+                f"nll_{reduction}": f.nll_loss(f.log_softmax(logits, dim=1), classes, reduction=reduction),
+                f"cross_entropy_{reduction}": f.cross_entropy(logits, classes, reduction=reduction),
+                f"bce_{reduction}": f.binary_cross_entropy_with_logits(
+                    binary_logits, binary_targets, reduction=reduction
+                ),
+            },
+        )
 
 
 def add_cases(op, compute, patterns):
@@ -494,6 +546,7 @@ def main():
         shutil.rmtree(GOLDEN_DIR)
     write_npy_fixtures()
     write_mlp_fixture()
+    write_nn_fixtures()
     manifest = []
     for op, name, inputs, args, compute in CASES:
         write_case(manifest, op, name, inputs, args, compute)

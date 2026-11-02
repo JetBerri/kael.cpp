@@ -49,6 +49,11 @@ add_library(kael
     src/autograd/functions_indexing.cpp
     src/autograd/functions_linalg.cpp
     src/autograd/gradcheck.cpp
+    src/nn/module.cpp
+    src/nn/init.cpp
+    src/nn/functional.cpp
+    src/nn/loss.cpp
+    src/nn/layers.cpp
     src/version.cpp
 )
 

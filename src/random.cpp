@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include "kael/factory.h"
+#include "kael/ops.h"
 
 namespace kael {
 
@@ -62,6 +63,12 @@ Tensor randperm(std::int64_t n) {
     std::int64_t* values = t.data_ptr<std::int64_t>();
     std::shuffle(values, values + n, global_generator());
     return t;
+}
+
+Tensor bernoulli(const Shape& shape, double probability, DType dtype) {
+    KAEL_CHECK(probability >= 0.0 && probability <= 1.0,
+               "bernoulli probability must be in [0, 1], got " << probability);
+    return (rand(shape, DType::F64) < probability).to(dtype);
 }
 
 } // namespace kael
