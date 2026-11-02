@@ -635,3 +635,21 @@ op=argmin case=transposed inputs=x view_x=transpose:0:1 args=dim:1
 op=argmin case=ties inputs=x view_x=none args=
 op=argmin case=nan inputs=x view_x=none args=
 op=argmin case=scalar inputs=x view_x=none args=
+op=matmul case=vector_vector inputs=a,b view_a=none view_b=none args=
+op=matmul case=matrix_matrix inputs=a,b view_a=none view_b=none args=
+op=matmul case=vector_matrix inputs=a,b view_a=none view_b=none args=
+op=matmul case=matrix_vector inputs=a,b view_a=none view_b=none args=
+op=matmul case=batch_same inputs=a,b view_a=none view_b=none args=
+op=matmul case=batch_broadcast inputs=a,b view_a=none view_b=none args=
+op=matmul case=batch_vector inputs=a,b view_a=none view_b=none args=
+op=matmul case=batch_matrix_vector inputs=a,b view_a=none view_b=none args=
+op=matmul case=transposed inputs=a,b view_a=transpose:0:1 view_b=transpose:0:1 args=
+op=matmul case=stepped inputs=a,b view_a=slice:1:0:6:2 view_b=none args=
+op=matmul case=expanded inputs=a,b view_a=expand:2:3 view_b=none args=
+op=matmul case=empty_inner inputs=a,b view_a=none view_b=none args=
+op=matmul case=empty_batch inputs=a,b view_a=none view_b=none args=
+op=matmul case=f64 inputs=a,b view_a=none view_b=none args=
+op=matmul case=i64 inputs=a,b view_a=none view_b=none args=
+op=dot case=vector_vector inputs=a,b view_a=none view_b=none args=
+op=outer case=plain inputs=a,b view_a=none view_b=none args=
+op=outer case=stepped inputs=a,b view_a=slice:0:0:6:2 view_b=none args=

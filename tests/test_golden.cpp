@@ -119,6 +119,10 @@ GoldenOp arg_reduction(Tensor (*flat)(const Tensor&), Tensor (*along)(const Tens
     };
 }
 
+GoldenOp tensor_pair(Tensor (*op)(const Tensor&, const Tensor&)) {
+    return [op](const Inputs& inputs, const Args&) { return op(inputs[0], inputs[1]); };
+}
+
 GoldenOp unary(Tensor (*op)(const Tensor&)) {
     return [op](const Inputs& inputs, const Args&) { return op(inputs[0]); };
 }
@@ -185,6 +189,9 @@ const std::map<std::string, GoldenOp>& golden_ops() {
         {"var_correction0", reduction_with_correction(kael::var, 0)},
         {"argmax", arg_reduction(kael::argmax, kael::argmax)},
         {"argmin", arg_reduction(kael::argmin, kael::argmin)},
+        {"matmul", tensor_pair(kael::matmul)},
+        {"dot", tensor_pair(kael::dot)},
+        {"outer", tensor_pair(kael::outer)},
         {"clamp",
          [](const Inputs& inputs, const Args& args) {
              return kael::clamp(inputs[0], args.real("min"), args.real("max"));

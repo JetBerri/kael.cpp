@@ -110,6 +110,8 @@ public:
     [[nodiscard]] Tensor sum(const Dims& dims = {}, bool keepdim = false) const;
     [[nodiscard]] Tensor mean(const Dims& dims = {}, bool keepdim = false) const;
 
+    [[nodiscard]] Tensor matmul(const Tensor& other) const;
+
     Tensor& add_(const Operand& other);
     Tensor& sub_(const Operand& other);
     Tensor& mul_(const Operand& other);

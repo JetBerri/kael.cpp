@@ -62,6 +62,12 @@ Tensor all(const Tensor& t, const Dims& dims = {}, bool keepdim = false);
 Tensor any(const Tensor& t, const Dims& dims = {}, bool keepdim = false);
 Tensor norm(const Tensor& t, const Dims& dims = {}, bool keepdim = false);
 
+Tensor matmul(const Tensor& a, const Tensor& b);
+Tensor dot(const Tensor& a, const Tensor& b);
+Tensor outer(const Tensor& a, const Tensor& b);
+Tensor mm(const Tensor& a, const Tensor& b);
+Tensor bmm(const Tensor& a, const Tensor& b);
+
 Tensor operator-(const Tensor& t);
 Tensor operator+(const Operand& a, const Operand& b);
 Tensor operator-(const Operand& a, const Operand& b);

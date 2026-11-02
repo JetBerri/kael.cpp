@@ -316,6 +316,34 @@ ARG_PATTERNS = [
 add_cases("argmax", lambda x, dim=None, keepdim=False: torch.argmax(x, dim=dim, keepdim=keepdim), ARG_PATTERNS)
 add_cases("argmin", lambda x, dim=None, keepdim=False: torch.argmin(x, dim=dim, keepdim=keepdim), ARG_PATTERNS)
 
+MATMUL_PATTERNS = [
+    ("vector_vector", {"a": spec((4,)), "b": spec((4,))}, {}),
+    ("matrix_matrix", {"a": spec((2, 3)), "b": spec((3, 4))}, {}),
+    ("vector_matrix", {"a": spec((3,)), "b": spec((3, 2))}, {}),
+    ("matrix_vector", {"a": spec((2, 3)), "b": spec((3,))}, {}),
+    ("batch_same", {"a": spec((5, 2, 3)), "b": spec((5, 3, 2))}, {}),
+    ("batch_broadcast", {"a": spec((2, 1, 3, 4)), "b": spec((5, 4, 2))}, {}),
+    ("batch_vector", {"a": spec((3,)), "b": spec((5, 3, 2))}, {}),
+    ("batch_matrix_vector", {"a": spec((5, 2, 3)), "b": spec((3,))}, {}),
+    ("transposed", {"a": spec((3, 2), view="transpose:0:1"), "b": spec((4, 3), view="transpose:0:1")}, {}),
+    ("stepped", {"a": spec((2, 6), view="slice:1:0:6:2"), "b": spec((3, 2))}, {}),
+    ("expanded", {"a": spec((3,), view="expand:2:3"), "b": spec((3, 2))}, {}),
+    ("empty_inner", {"a": spec((2, 0)), "b": spec((0, 3))}, {}),
+    ("empty_batch", {"a": spec((0, 2, 3)), "b": spec((3, 2))}, {}),
+    ("f64", {"a": spec((2, 3), "f64"), "b": spec((3, 2), "f64")}, {}),
+    ("i64", {"a": spec((2, 3), "i64"), "b": spec((3, 2), "i64")}, {}),
+]
+add_cases("matmul", torch.matmul, MATMUL_PATTERNS)
+add_cases("dot", torch.dot, MATMUL_PATTERNS[:1])
+add_cases(
+    "outer",
+    torch.outer,
+    [
+        ("plain", {"a": spec((3,)), "b": spec((4,))}, {}),
+        ("stepped", {"a": spec((6,), view="slice:0:0:6:2"), "b": spec((2,))}, {}),
+    ],
+)
+
 
 def main():
     if GOLDEN_DIR.exists():

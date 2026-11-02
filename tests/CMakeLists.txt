@@ -15,6 +15,7 @@ add_executable(kael_tests
     test_ops_unary.cpp
     test_ops_inplace.cpp
     test_ops_reduce.cpp
+    test_ops_linalg.cpp
     support/npy.cpp
 )
 
