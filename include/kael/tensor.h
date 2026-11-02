@@ -2,7 +2,10 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <initializer_list>
+#include <iosfwd>
 #include <memory>
+#include <span>
 
 #include "kael/dtype.h"
 #include "kael/error.h"
@@ -68,6 +71,49 @@ public:
     [[nodiscard]] std::byte* data_ptr_raw();
     [[nodiscard]] const std::byte* data_ptr_raw() const;
 
+    // ---- element access --------------------------------------------------------
+
+    // The value of a tensor with exactly one element, whatever its number of
+    // dimensions ([], [1] and [1, 1] all work). Throws otherwise, or if T
+    // does not match the dtype.
+    template <typename T>
+    [[nodiscard]] T item() const {
+        check_dtype<T>();
+        check_single_element();
+        return *reinterpret_cast<const T*>(data_ptr_raw());
+    }
+
+    // Same, converted to double from whatever the dtype is.
+    [[nodiscard]] double item() const;
+
+    // Reference to one element. Accepts Python-style negative indices (-1 is
+    // the last one in that dimension). Throws if out of range, if the number
+    // of indices does not match dim(), or if T does not match the dtype.
+    template <typename T>
+    [[nodiscard]] T& at(std::span<const std::int64_t> index) {
+        check_dtype<T>();
+        return *reinterpret_cast<T*>(impl_->storage->data() +
+                                     element_offset(index) * element_size(dtype()));
+    }
+
+    template <typename T>
+    [[nodiscard]] const T& at(std::span<const std::int64_t> index) const {
+        check_dtype<T>();
+        const Storage& storage = *impl_->storage;
+        return *reinterpret_cast<const T*>(storage.data() +
+                                           element_offset(index) * element_size(dtype()));
+    }
+
+    template <typename T>
+    [[nodiscard]] T& at(std::initializer_list<std::int64_t> index) {
+        return at<T>(std::span<const std::int64_t>(index.begin(), index.size()));
+    }
+
+    template <typename T>
+    [[nodiscard]] const T& at(std::initializer_list<std::int64_t> index) const {
+        return at<T>(std::span<const std::int64_t>(index.begin(), index.size()));
+    }
+
     // ---- copies and identity --------------------------------------------------
 
     // A new, contiguous tensor with the same values that shares nothing.
@@ -92,7 +138,17 @@ private:
                    "expected dtype " << dtype_of_v<T> << " but tensor has " << dtype());
     }
 
+    void check_single_element() const;
+
+    // Element offset inside the storage of a (possibly negative) index.
+    [[nodiscard]] std::int64_t element_offset(std::span<const std::int64_t> index) const;
+
     std::shared_ptr<TensorImpl> impl_;
 };
+
+// One line with the values in logical order, the shape and the dtype:
+//   tensor([0.0000, 1.0000], shape=[2], dtype=float32)
+// Tensors over 1000 elements only show the first and last 3 values.
+std::ostream& operator<<(std::ostream& os, const Tensor& t);
 
 } // namespace kael

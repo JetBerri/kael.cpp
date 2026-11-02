@@ -28,6 +28,7 @@ add_library(kael
     src/tensor.cpp
     src/factory.cpp
     src/random.cpp
+    src/print.cpp
 )
 
 add_library(kael::kael ALIAS kael)

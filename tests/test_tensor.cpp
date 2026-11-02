@@ -1,10 +1,13 @@
 #include <cstdint>
 #include <memory>
+#include <sstream>
 #include <string>
+#include <vector>
 
 #include <gtest/gtest.h>
 
 #include "kael/error.h"
+#include "kael/factory.h"
 #include "kael/tensor.h"
 
 namespace {
@@ -142,4 +145,124 @@ TEST(Tensor, EmptyTensor) {
     EXPECT_EQ(t.data_ptr<float>(), nullptr);
     kael::Tensor c = t.clone();
     EXPECT_EQ(c.shape(), (kael::Shape{0, 3}));
+}
+
+// ---- item ------------------------------------------------------------------
+
+TEST(TensorItem, AnyShapeWithOneElement) {
+    EXPECT_EQ(kael::scalar(2.5).item<float>(), 2.5f);
+    EXPECT_EQ(kael::full({1}, 3.0, kael::DType::F64).item<double>(), 3.0);
+    EXPECT_EQ(kael::full({1, 1}, 4.0, kael::DType::I64).item<std::int64_t>(), 4);
+}
+
+TEST(TensorItem, ManyElementsThrows) {
+    EXPECT_THROW((void)kael::zeros({2}).item<float>(), kael::Error);
+    EXPECT_THROW((void)kael::zeros({2}).item(), kael::Error);
+    EXPECT_THROW((void)kael::zeros({0}).item(), kael::Error);
+}
+
+TEST(TensorItem, WrongTypeThrows) {
+    EXPECT_THROW((void)kael::scalar(1).item<double>(), kael::Error);
+}
+
+TEST(TensorItem, UntypedConvertsToDouble) {
+    EXPECT_EQ(kael::scalar(1.5).item(), 1.5);
+    EXPECT_EQ(kael::scalar(7, kael::DType::I64).item(), 7.0);
+    EXPECT_EQ(kael::scalar(1, kael::DType::Bool).item(), 1.0);
+}
+
+// ---- at ----------------------------------------------------------------------
+
+TEST(TensorAt, ReadsAndWrites) {
+    auto t = kael::arange(0, 6, 1, kael::DType::I64);
+    EXPECT_EQ(t.at<std::int64_t>({4}), 4);
+    t.at<std::int64_t>({4}) = 99;
+    EXPECT_EQ(t.data_ptr<std::int64_t>()[4], 99);
+
+    auto m = kael::zeros({2, 3}, kael::DType::F64);
+    m.at<double>({1, 2}) = 5.0;
+    EXPECT_EQ(m.data_ptr<double>()[5], 5.0);
+    const kael::Tensor& cm = m;
+    EXPECT_EQ(cm.at<double>({1, 2}), 5.0);
+}
+
+TEST(TensorAt, AcceptsSpanAndShape) {
+    auto m = kael::zeros({2, 3});
+    const kael::Shape index = {1, 0};
+    m.at<float>(index) = 1.0f;
+    EXPECT_EQ(m.data_ptr<float>()[3], 1.0f);
+}
+
+TEST(TensorAt, NegativeIndicesCountFromTheEnd) {
+    auto t = kael::arange(0, 6, 1, kael::DType::I64);
+    EXPECT_EQ(t.at<std::int64_t>({-1}), 5);
+    EXPECT_EQ(t.at<std::int64_t>({-6}), 0);
+}
+
+TEST(TensorAt, OutOfRangeThrows) {
+    auto m = kael::zeros({2, 3});
+    EXPECT_THROW((void)m.at<float>({2, 0}), kael::Error);
+    EXPECT_THROW((void)m.at<float>({0, -4}), kael::Error);
+    EXPECT_THROW((void)m.at<float>({0}), kael::Error);
+    EXPECT_THROW((void)m.at<double>({0, 0}), kael::Error);
+}
+
+TEST(TensorAt, RespectsOffsetAndStrides) {
+    kael::Tensor t = make_tensor({2}, kael::DType::I64, 10, 3, {4});
+    auto* storage = reinterpret_cast<std::int64_t*>(t.impl()->storage->data());
+    for (int i = 0; i < 10; ++i) {
+        storage[i] = i;
+    }
+    EXPECT_EQ(t.at<std::int64_t>({0}), 3);
+    EXPECT_EQ(t.at<std::int64_t>({1}), 7);
+}
+
+TEST(TensorAt, Scalar) {
+    auto s = kael::scalar(9, kael::DType::I64);
+    EXPECT_EQ(s.at<std::int64_t>({}), 9);
+}
+
+// ---- printing --------------------------------------------------------------
+
+namespace {
+std::string print(const kael::Tensor& t) {
+    std::ostringstream os;
+    os << t;
+    return os.str();
+}
+} // namespace
+
+TEST(TensorPrint, Float32) {
+    EXPECT_EQ(print(kael::arange(0, 3, 1)), "tensor([0.0000, 1.0000, 2.0000], shape=[3], dtype=float32)");
+}
+
+TEST(TensorPrint, Matrix) {
+    EXPECT_EQ(print(kael::arange(0, 6, 1, kael::DType::I64).clone()),
+              "tensor([0, 1, 2, 3, 4, 5], shape=[6], dtype=int64)");
+    EXPECT_EQ(print(kael::from_vector(std::vector<std::int64_t>{0, 1, 2, 3}, {2, 2})),
+              "tensor([0, 1, 2, 3], shape=[2, 2], dtype=int64)");
+}
+
+TEST(TensorPrint, Bool) {
+    EXPECT_EQ(print(kael::from_vector({true, false})),
+              "tensor([true, false], shape=[2], dtype=bool)");
+}
+
+TEST(TensorPrint, Empty) {
+    EXPECT_EQ(print(kael::zeros({0})), "tensor([], shape=[0], dtype=float32)");
+}
+
+TEST(TensorPrint, Scalar) {
+    EXPECT_EQ(print(kael::scalar(1.5, kael::DType::F64)), "tensor([1.5000], shape=[], dtype=float64)");
+}
+
+TEST(TensorPrint, LongTensorIsSummarized) {
+    EXPECT_EQ(print(kael::arange(0, 2000, 1, kael::DType::I64)),
+              "tensor([0, 1, 2, ..., 1997, 1998, 1999], shape=[2000], dtype=int64)");
+}
+
+TEST(TensorPrint, LeavesStreamFlagsUntouched) {
+    std::ostringstream os;
+    os << kael::scalar(1.0) << " " << 2.5;
+    EXPECT_EQ(os.str(), "tensor([1.0000], shape=[], dtype=float32) 2.5");
 }

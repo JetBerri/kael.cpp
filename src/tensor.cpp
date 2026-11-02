@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <utility>
+#include <vector>
 
 namespace kael {
 
@@ -60,6 +61,31 @@ Tensor Tensor::clone() const {
         std::memcpy(impl->storage->data(), data_ptr_raw(), static_cast<std::size_t>(nbytes()));
     }
     return Tensor(std::move(impl));
+}
+
+void Tensor::check_single_element() const {
+    KAEL_CHECK(numel() == 1, "item needs a tensor with one element, got shape "
+                                 << to_string(shape()) << " with " << numel() << " elements");
+}
+
+double Tensor::item() const {
+    check_single_element();
+    return dispatch(dtype(), [&]<typename T>() {
+        return static_cast<double>(*reinterpret_cast<const T*>(data_ptr_raw()));
+    });
+}
+
+std::int64_t Tensor::element_offset(std::span<const std::int64_t> index) const {
+    KAEL_CHECK(static_cast<std::int64_t>(index.size()) == dim(),
+               "got " << index.size() << " indices for a tensor with " << dim() << " dimensions");
+    std::vector<std::int64_t> wrapped(index.begin(), index.end());
+    for (std::size_t i = 0; i < wrapped.size(); ++i) {
+        if (wrapped[i] < 0) {
+            wrapped[i] += shape()[i];
+        }
+    }
+    // Validates the range, so an index that is still negative here throws.
+    return offset_from_index(shape(), strides(), offset(), wrapped);
 }
 
 } // namespace kael
