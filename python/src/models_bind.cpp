@@ -46,6 +46,12 @@ void bind_models(nb::module_& m) {
     m.def("multinomial", &kael::multinomial, nb::arg("weights"), nb::arg("samples"),
           nb::arg("replacement") = false);
 
+    m.def("explain", &kael::explain, nb::arg("tensor"), "Describe the memory layout of a tensor.");
+    m.def("autograd_graph", &kael::autograd_graph_dot, nb::arg("tensor"),
+          "The graph behind a tensor, in Graphviz DOT format.");
+    m.def("set_anomaly_detection", &kael::set_anomaly_detection,
+          "Make backward fail at the first node producing NaN.");
+
     nb::class_<nn::GPT>(m, "GPT", "A GPT-2 style transformer implemented in C++.")
         .def(
             "__init__",

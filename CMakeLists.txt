@@ -69,6 +69,7 @@ add_library(kael
     src/parallel.cpp
     src/allocator.cpp
     src/device.cpp
+    src/debug.cpp
     ${kael_device_backend}
     src/linalg/matmul_versions.cpp
     src/ops/binary.cpp

@@ -6,6 +6,7 @@
 #include "kael/autograd/grad_mode.h"
 #include "kael/autograd/gradcheck.h"
 #include "kael/autograd/node.h"
+#include "kael/debug.h"
 #include "kael/device.h"
 #include "kael/dtype.h"
 #include "kael/error.h"

@@ -1,5 +1,7 @@
 #include "kael/autograd/engine.h"
 
+#include <cstdlib>
+#include <iostream>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -62,6 +64,21 @@ void check_gradient(const Node& node, std::size_t index, const Tensor& gradient)
                            << input.dtype);
 }
 
+void trace_node(std::ostream& output, const Node& node, const Tensor& gradient) {
+    output << "backward " << node.name() << " shape=" << to_string(gradient.shape())
+           << " norm=" << kael::sum(gradient.to(DType::F64) * gradient.to(DType::F64)).item()
+           << '\n';
+}
+
+void check_anomaly(const Node& node, const GradientList& gradients) {
+    for (const std::optional<Tensor>& gradient : gradients) {
+        if (gradient && is_floating_point(gradient->dtype())) {
+            KAEL_CHECK(!kael::any(*gradient != *gradient).item<std::uint8_t>(),
+                       "Function " << node.name() << " returned NaN in its gradient");
+        }
+    }
+}
+
 void add_to_buffer(std::unordered_map<Node*, Tensor>& buffers, Node* node, const Tensor& gradient) {
     const auto [slot, inserted] = buffers.try_emplace(node, gradient);
     if (!inserted) {
@@ -70,6 +87,21 @@ void add_to_buffer(std::unordered_map<Node*, Tensor>& buffers, Node* node, const
 }
 
 } // namespace
+
+namespace detail {
+
+std::ostream*& trace_output() {
+    static std::ostream* output =
+        std::getenv("KAEL_TRACE_BACKWARD") != nullptr ? &std::cerr : nullptr;
+    return output;
+}
+
+bool& anomaly_detection() {
+    static bool enabled = false;
+    return enabled;
+}
+
+} // namespace detail
 
 void backward(const Tensor& root, const std::optional<Tensor>& gradient, bool retain_graph) {
     KAEL_CHECK(root.requires_grad(), "backward needs a tensor that requires grad");
@@ -90,7 +122,13 @@ void backward(const Tensor& root, const std::optional<Tensor>& gradient, bool re
             const Tensor incoming = std::move(buffered->second);
             buffers.erase(buffered);
             node->store_retained_gradient(incoming);
+            if (std::ostream* output = detail::trace_output()) {
+                trace_node(*output, *node, incoming);
+            }
             gradients = node->apply(incoming);
+            if (detail::anomaly_detection()) {
+                check_anomaly(*node, gradients);
+            }
         }
         if (!retain_graph) {
             node->release_variables();

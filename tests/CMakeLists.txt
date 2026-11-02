@@ -39,6 +39,7 @@ add_executable(kael_tests
     test_sequence_ops.cpp
     test_safetensors.cpp
     test_transformer.cpp
+    test_debug.cpp
     support/npy.cpp
 )
 
