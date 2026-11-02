@@ -3,6 +3,7 @@ project(kael VERSION 0.1.0 LANGUAGES CXX)
 
 option(KAEL_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 option(KAEL_ENABLE_SANITIZERS "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+option(KAEL_BUILD_BENCHMARKS "Build the benchmarks (use a Release build)" OFF)
 
 function(kael_configure_target target)
     set(gcc_like "$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>")
@@ -46,3 +47,16 @@ FetchContent_MakeAvailable(googletest)
 
 enable_testing()
 add_subdirectory(tests)
+
+if (KAEL_BUILD_BENCHMARKS)
+    if (KAEL_ENABLE_SANITIZERS)
+        message(FATAL_ERROR "Sanitizers distort timings: do not combine them with benchmarks")
+    endif ()
+    set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(
+        benchmark
+        URL https://github.com/google/benchmark/archive/refs/tags/v1.9.0.tar.gz
+    )
+    FetchContent_MakeAvailable(benchmark)
+    add_subdirectory(benchmarks)
+endif ()
