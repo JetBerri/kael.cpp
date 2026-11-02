@@ -328,7 +328,7 @@ TEST(BroadcastStrides, SemanticBroadcastRows) {
 
         std::int64_t offset = kael::offset_from_index(target, broadcasted, 0, index);
 
-        EXPECT_FLOAT_EQ(data.at(offset), data.at(index[1]));
+        EXPECT_FLOAT_EQ(data.at(static_cast<std::size_t>(offset)), data.at(static_cast<std::size_t>(index[1])));
     }
 }
 
@@ -346,7 +346,7 @@ TEST(BroadcastStrides, SemanticBroadcastColumns) {
 
         std::int64_t offset = kael::offset_from_index(target, broadcasted, 0, index);
 
-        EXPECT_FLOAT_EQ(data.at(offset), data.at(index[0]));
+        EXPECT_FLOAT_EQ(data.at(static_cast<std::size_t>(offset)), data.at(static_cast<std::size_t>(index[0])));
     }
 }
 

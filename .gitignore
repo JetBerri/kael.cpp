@@ -1,5 +1,6 @@
 notes
 build/
+build-*/
 cmake-build-*/
 out/
 CMakeCache.txt

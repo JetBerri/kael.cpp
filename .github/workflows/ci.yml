@@ -7,15 +7,27 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - name: linux-gcc
+            os: ubuntu-latest
             cc: gcc
             cxx: g++
-          - os: ubuntu-latest
+            sanitizers: OFF
+          - name: linux-clang
+            os: ubuntu-latest
             cc: clang
             cxx: clang++
-          - os: macos-latest
+            sanitizers: OFF
+          - name: macos-clang
+            os: macos-latest
             cc: clang
             cxx: clang++
+            sanitizers: OFF
+          - name: linux-clang-sanitizers
+            os: ubuntu-latest
+            cc: clang
+            cxx: clang++
+            sanitizers: ON
+    name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     env:
       CC: ${{ matrix.cc }}
@@ -23,7 +35,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+        run: >
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+          -DKAEL_WARNINGS_AS_ERRORS=ON
+          -DKAEL_ENABLE_SANITIZERS=${{ matrix.sanitizers }}
       - name: Build
         run: cmake --build build --parallel
       - name: Test
