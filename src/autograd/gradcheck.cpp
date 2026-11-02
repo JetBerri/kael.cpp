@@ -48,8 +48,8 @@ bool derivatives_close(double analytic, double numeric, const GradcheckOptions& 
 }
 
 void check_input(const Tensor& input, std::size_t position) {
-    KAEL_CHECK(input.dtype() == DType::F64,
-               "gradcheck input " << position << " must be F64, got " << input.dtype());
+    KAEL_CHECK_TYPE(input.dtype() == DType::F64,
+                    "gradcheck input " << position << " must be F64, got " << input.dtype());
     KAEL_CHECK(input.requires_grad(), "gradcheck input " << position << " must require grad");
     KAEL_CHECK(input.is_leaf(), "gradcheck input " << position << " must be a leaf");
 }

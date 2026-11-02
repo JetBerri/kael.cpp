@@ -76,17 +76,17 @@ inline void clamp_into(Tensor& out, const Tensor& input, Scalar min, Scalar max)
 }
 
 inline void check_no_bool(const Tensor& a, const Tensor& b, const char* op) {
-    KAEL_CHECK(a.dtype() != DType::Bool && b.dtype() != DType::Bool,
-               op << " does not support dtype bool");
+    KAEL_CHECK_TYPE(a.dtype() != DType::Bool && b.dtype() != DType::Bool,
+                    op << " does not support dtype bool");
 }
 
 inline void check_integer_exponent(const Tensor& base, const Operand& exponent) {
     if (exponent.is_tensor() || is_floating_point(base.dtype())) {
         return;
     }
-    KAEL_CHECK(is_floating_point(exponent.scalar().dtype()) ||
-                   exponent.scalar().as<std::int64_t>() >= 0,
-               "integers to negative integer powers are not allowed");
+    KAEL_CHECK_VALUE(is_floating_point(exponent.scalar().dtype()) ||
+                         exponent.scalar().as<std::int64_t>() >= 0,
+                     "integers to negative integer powers are not allowed");
 }
 
 inline DType add_dtype(const Tensor& a, const Tensor& b) {

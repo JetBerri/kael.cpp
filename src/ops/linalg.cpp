@@ -83,25 +83,25 @@ Tensor multiply_batches(const Tensor& a, const Tensor& b, const Shape& batch,
 
 void check_ranks(const Tensor& a, const Tensor& b, std::int64_t rank_a, std::int64_t rank_b,
                  const char* op) {
-    KAEL_CHECK(a.dim() == rank_a && b.dim() == rank_b,
-               op << " needs tensors with " << rank_a << " and " << rank_b
-                  << " dimensions, got shapes " << to_string(a.shape()) << " and "
-                  << to_string(b.shape()));
+    KAEL_CHECK_VALUE(a.dim() == rank_a && b.dim() == rank_b,
+                     op << " needs tensors with " << rank_a << " and " << rank_b
+                        << " dimensions, got shapes " << to_string(a.shape()) << " and "
+                        << to_string(b.shape()));
 }
 
 Tensor matmul_forward(const Tensor& a, const Tensor& b) {
-    KAEL_CHECK(a.dim() >= 1 && b.dim() >= 1, "matmul needs at least 1 dimension, got shapes "
-                                                 << to_string(a.shape()) << " and "
-                                                 << to_string(b.shape()));
+    KAEL_CHECK_VALUE(a.dim() >= 1 && b.dim() >= 1, "matmul needs at least 1 dimension, got shapes "
+                                                       << to_string(a.shape()) << " and "
+                                                       << to_string(b.shape()));
 
     const bool a_is_vector = a.dim() == 1;
     const bool b_is_vector = b.dim() == 1;
     const Tensor left = a_is_vector ? a.unsqueeze(0) : a;
     const Tensor right = b_is_vector ? b.unsqueeze(1) : b;
 
-    KAEL_CHECK(left.size(-1) == right.size(-2), "matmul shapes " << to_string(a.shape()) << " and "
-                                                                 << to_string(b.shape())
-                                                                 << " do not align");
+    KAEL_CHECK_VALUE(left.size(-1) == right.size(-2),
+                     "matmul shapes " << to_string(a.shape()) << " and " << to_string(b.shape())
+                                      << " do not align");
 
     const Shape batch = broadcast_shapes(batch_shape_of(left), batch_shape_of(right));
     Tensor out =

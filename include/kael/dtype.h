@@ -150,8 +150,8 @@ template <typename F> decltype(auto) dispatch(DType dtype, F&& f) {
 }
 
 template <typename F> decltype(auto) dispatch_floating(DType dtype, const char* op, F&& f) {
-    KAEL_CHECK(is_floating_point(dtype),
-               op << " only supports floating point dtypes, got " << dtype);
+    KAEL_CHECK_TYPE(is_floating_point(dtype),
+                    op << " only supports floating point dtypes, got " << dtype);
     if (dtype == DType::F32) {
         return f.template operator()<float>();
     }
@@ -159,7 +159,7 @@ template <typename F> decltype(auto) dispatch_floating(DType dtype, const char* 
 }
 
 template <typename F> decltype(auto) dispatch_no_bool(DType dtype, const char* op, F&& f) {
-    KAEL_CHECK(dtype != DType::Bool, op << " does not support dtype bool");
+    KAEL_CHECK_TYPE(dtype != DType::Bool, op << " does not support dtype bool");
     if (dtype == DType::F32) {
         return f.template operator()<float>();
     }

@@ -49,9 +49,9 @@ void set_history(const Tensor& output, std::string name, const std::vector<Tenso
 }
 
 Tensor sum_to_shape(const Tensor& gradient, const Shape& target) {
-    KAEL_CHECK(gradient.dim() >= static_cast<std::int64_t>(target.size()),
-               "cannot reduce gradient of shape " << to_string(gradient.shape()) << " to "
-                                                  << to_string(target));
+    KAEL_CHECK_VALUE(gradient.dim() >= static_cast<std::int64_t>(target.size()),
+                     "cannot reduce gradient of shape " << to_string(gradient.shape()) << " to "
+                                                        << to_string(target));
     const auto extra = static_cast<std::size_t>(gradient.dim()) - target.size();
     Tensor reduced = gradient;
     if (extra > 0) {

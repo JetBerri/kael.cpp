@@ -208,7 +208,7 @@ private:
 } // namespace
 
 void set_num_threads(std::int64_t count) {
-    KAEL_CHECK(count > 0, "thread count must be positive, got " << count);
+    KAEL_CHECK_VALUE(count > 0, "thread count must be positive, got " << count);
     KAEL_CHECK(!inside_parallel_region, "cannot change the thread count inside parallel_for");
     ParallelRuntime::instance().set_thread_count(count);
 }
@@ -219,7 +219,7 @@ std::int64_t get_num_threads() {
 
 void parallel_for(std::int64_t begin, std::int64_t end, std::int64_t grain,
                   const ParallelBody& body) {
-    KAEL_CHECK(grain > 0, "parallel_for grain must be positive, got " << grain);
+    KAEL_CHECK_VALUE(grain > 0, "parallel_for grain must be positive, got " << grain);
     const std::int64_t length = end - begin;
     if (length <= 0) {
         return;

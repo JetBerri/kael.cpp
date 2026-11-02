@@ -45,7 +45,7 @@ Tensor Linear::forward(const Tensor& input) {
 }
 
 Dropout::Dropout(double p) : p_(p) {
-    KAEL_CHECK(p >= 0.0 && p < 1.0, "dropout probability must be in [0, 1), got " << p);
+    KAEL_CHECK_VALUE(p >= 0.0 && p < 1.0, "dropout probability must be in [0, 1), got " << p);
 }
 
 Tensor Dropout::forward(const Tensor& input) {
@@ -59,11 +59,11 @@ LayerNorm::LayerNorm(Shape normalized_shape, double eps, DType dtype)
 
 Tensor LayerNorm::forward(const Tensor& input) {
     const std::size_t count = normalized_shape_.size();
-    KAEL_CHECK(static_cast<std::size_t>(input.dim()) >= count &&
-                   Shape(input.shape().end() - static_cast<std::ptrdiff_t>(count),
-                         input.shape().end()) == normalized_shape_,
-               "LayerNorm over " << to_string(normalized_shape_) << " got input shape "
-                                 << to_string(input.shape()));
+    KAEL_CHECK_VALUE(static_cast<std::size_t>(input.dim()) >= count &&
+                         Shape(input.shape().end() - static_cast<std::ptrdiff_t>(count),
+                               input.shape().end()) == normalized_shape_,
+                     "LayerNorm over " << to_string(normalized_shape_) << " got input shape "
+                                       << to_string(input.shape()));
     return kael::standardize(input, static_cast<std::int64_t>(count), eps_) * weight_ + bias_;
 }
 

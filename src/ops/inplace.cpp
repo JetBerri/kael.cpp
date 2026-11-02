@@ -26,16 +26,16 @@ void check_grad_rules(const Tensor& self, const Tensor* source, const char* op) 
 }
 
 void check_writable(const Tensor& self, const char* op) {
-    KAEL_CHECK(!self.has_internal_overlap(),
-               op << " cannot write to shape " << to_string(self.shape()) << " with strides "
-                  << to_string(self.strides())
-                  << " because several positions share one element; call clone() first");
+    KAEL_CHECK_VALUE(!self.has_internal_overlap(),
+                     op << " cannot write to shape " << to_string(self.shape()) << " with strides "
+                        << to_string(self.strides())
+                        << " because several positions share one element; call clone() first");
 }
 
 void check_result_fits(DType result, DType self, const char* op) {
-    KAEL_CHECK(dtype_category(result) <= dtype_category(self),
-               op << " result of dtype " << result << " cannot be stored in a tensor of dtype "
-                  << self);
+    KAEL_CHECK_TYPE(dtype_category(result) <= dtype_category(self),
+                    op << " result of dtype " << result << " cannot be stored in a tensor of dtype "
+                       << self);
 }
 
 bool same_layout(const Tensor& a, const Tensor& b) {
@@ -47,15 +47,15 @@ Tensor without_partial_aliasing(const Tensor& self, const Tensor& input) {
 }
 
 void check_scatter_source(const Tensor& indices, const Tensor& source) {
-    KAEL_CHECK(source.dim() == indices.dim(),
-               "scatter_add_ source shape " << to_string(source.shape()) << " and indices shape "
-                                            << to_string(indices.shape())
-                                            << " have different number of dimensions");
+    KAEL_CHECK_VALUE(source.dim() == indices.dim(),
+                     "scatter_add_ source shape "
+                         << to_string(source.shape()) << " and indices shape "
+                         << to_string(indices.shape()) << " have different number of dimensions");
     for (std::size_t i = 0; i < indices.shape().size(); ++i) {
-        KAEL_CHECK(indices.shape()[i] <= source.shape()[i], "scatter_add_ indices shape "
-                                                                << to_string(indices.shape())
-                                                                << " is larger than source shape "
-                                                                << to_string(source.shape()));
+        KAEL_CHECK_VALUE(indices.shape()[i] <= source.shape()[i],
+                         "scatter_add_ indices shape " << to_string(indices.shape())
+                                                       << " is larger than source shape "
+                                                       << to_string(source.shape()));
     }
 }
 
@@ -127,7 +127,8 @@ Tensor& Tensor::zero_() {
 }
 
 Tensor& Tensor::masked_fill_(const Tensor& mask, Scalar value) {
-    KAEL_CHECK(mask.dtype() == DType::Bool, "masked_fill needs a bool mask, got " << mask.dtype());
+    KAEL_CHECK_TYPE(mask.dtype() == DType::Bool,
+                    "masked_fill needs a bool mask, got " << mask.dtype());
     check_grad_rules(*this, nullptr, "masked_fill_");
     check_writable(*this, "masked_fill_");
 
@@ -153,8 +154,8 @@ Tensor& Tensor::scatter_add_(std::int64_t dim, const Tensor& indices, const Tens
     detail::check_gather_shapes(*this, indices, position, "scatter_add_");
     check_scatter_source(indices, source);
     check_writable(*this, "scatter_add_");
-    KAEL_CHECK(source.dtype() == dtype(),
-               "scatter_add_ needs a source of dtype " << dtype() << ", got " << source.dtype());
+    KAEL_CHECK_TYPE(source.dtype() == dtype(), "scatter_add_ needs a source of dtype "
+                                                   << dtype() << ", got " << source.dtype());
     KAEL_CHECK(!source.shares_storage(*this) && !indices.shares_storage(*this),
                "scatter_add_ cannot read from the tensor it writes to; call clone() first");
 
@@ -173,12 +174,13 @@ Tensor& Tensor::scatter_add_(std::int64_t dim, const Tensor& indices, const Tens
 
 Tensor& Tensor::index_add_(std::int64_t dim, const Tensor& indices, const Tensor& source) {
     detail::check_index_tensor(indices, "index_add_");
-    KAEL_CHECK(indices.dim() == 1,
-               "index_add_ needs 1-d indices, got shape " << to_string(indices.shape()));
+    KAEL_CHECK_VALUE(indices.dim() == 1,
+                     "index_add_ needs 1-d indices, got shape " << to_string(indices.shape()));
     const std::size_t position = dim_position(dim, this->dim());
-    KAEL_CHECK(source.dim() == this->dim() && source.shape()[position] == indices.numel(),
-               "index_add_ source shape " << to_string(source.shape()) << " does not match "
-                                          << indices.numel() << " indices at dimension " << dim);
+    KAEL_CHECK_VALUE(source.dim() == this->dim() && source.shape()[position] == indices.numel(),
+                     "index_add_ source shape " << to_string(source.shape()) << " does not match "
+                                                << indices.numel() << " indices at dimension "
+                                                << dim);
     Shape along_dim(shape().size(), 1);
     along_dim[position] = indices.numel();
     const autograd::NoGradGuard guard;

@@ -49,7 +49,7 @@ template <typename T> T tanh_gelu(T x) {
 } // namespace
 
 Tensor neg(const Tensor& t) {
-    KAEL_CHECK(t.dtype() != DType::Bool, "neg does not support dtype bool");
+    KAEL_CHECK_TYPE(t.dtype() != DType::Bool, "neg does not support dtype bool");
     Tensor out = unary_kernel(t, [](auto x) { return -x; });
     autograd::record_neg(out, t);
     return out;

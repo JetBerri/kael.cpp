@@ -15,16 +15,17 @@ namespace {
 constexpr double kMaxArangeElements = 9.0e18;
 
 std::int64_t arange_count(double start, double end, double step) {
-    KAEL_CHECK(std::isfinite(start) && std::isfinite(end) && std::isfinite(step),
-               "arange needs finite start, end and step, got " << start << ", " << end << ", "
-                                                               << step);
-    KAEL_CHECK(step != 0.0, "arange step must be non-zero");
-    KAEL_CHECK((step > 0.0 && start <= end) || (step < 0.0 && start >= end),
-               "arange step " << step << " goes the wrong way from " << start << " to " << end);
+    KAEL_CHECK_VALUE(std::isfinite(start) && std::isfinite(end) && std::isfinite(step),
+                     "arange needs finite start, end and step, got " << start << ", " << end << ", "
+                                                                     << step);
+    KAEL_CHECK_VALUE(step != 0.0, "arange step must be non-zero");
+    KAEL_CHECK_VALUE((step > 0.0 && start <= end) || (step < 0.0 && start >= end),
+                     "arange step " << step << " goes the wrong way from " << start << " to "
+                                    << end);
 
     const double count = std::ceil((end - start) / step);
-    KAEL_CHECK(count < kMaxArangeElements,
-               "arange would produce too many elements (" << count << ")");
+    KAEL_CHECK_VALUE(count < kMaxArangeElements,
+                     "arange would produce too many elements (" << count << ")");
     return static_cast<std::int64_t>(count);
 }
 
@@ -42,9 +43,9 @@ namespace detail {
 
 void check_value_count(std::size_t value_count, const Shape& shape) {
     const std::int64_t expected = numel(shape);
-    KAEL_CHECK(static_cast<std::int64_t>(value_count) == expected,
-               "from_vector got " << value_count << " values but shape " << to_string(shape)
-                                  << " has " << expected << " elements");
+    KAEL_CHECK_VALUE(static_cast<std::int64_t>(value_count) == expected,
+                     "from_vector got " << value_count << " values but shape " << to_string(shape)
+                                        << " has " << expected << " elements");
 }
 
 } // namespace detail
@@ -92,7 +93,7 @@ Tensor arange(double end, DType dtype) {
 }
 
 Tensor arange(double start, double end, double step, DType dtype) {
-    KAEL_CHECK(dtype != DType::Bool, "arange does not support dtype bool");
+    KAEL_CHECK_TYPE(dtype != DType::Bool, "arange does not support dtype bool");
     const std::int64_t count = arange_count(start, end, step);
 
     Tensor t = empty({count}, dtype);
@@ -106,7 +107,7 @@ Tensor arange(double start, double end, double step, DType dtype) {
 }
 
 Tensor linspace(double start, double end, std::int64_t steps, DType dtype) {
-    KAEL_CHECK(steps >= 0, "linspace number of steps must be non-negative, got " << steps);
+    KAEL_CHECK_VALUE(steps >= 0, "linspace number of steps must be non-negative, got " << steps);
 
     Tensor t = empty({steps}, dtype);
     dispatch_floating(dtype, "linspace", [&]<typename T>() {
@@ -123,7 +124,7 @@ Tensor linspace(double start, double end, std::int64_t steps, DType dtype) {
 }
 
 Tensor eye(std::int64_t n, DType dtype) {
-    KAEL_CHECK(n >= 0, "eye size must be non-negative, got " << n);
+    KAEL_CHECK_VALUE(n >= 0, "eye size must be non-negative, got " << n);
 
     Tensor t = zeros({n, n}, dtype);
     dispatch(dtype, [&]<typename T>() {

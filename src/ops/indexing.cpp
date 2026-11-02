@@ -15,20 +15,21 @@ namespace {
 
 void check_same_except(const Tensor& reference, const Tensor& other, std::size_t position,
                        const char* op) {
-    KAEL_CHECK(reference.dim() == other.dim(),
-               op << " needs the same number of dimensions, got shapes "
-                  << to_string(reference.shape()) << " and " << to_string(other.shape()));
+    KAEL_CHECK_VALUE(reference.dim() == other.dim(),
+                     op << " needs the same number of dimensions, got shapes "
+                        << to_string(reference.shape()) << " and " << to_string(other.shape()));
     for (std::size_t i = 0; i < reference.shape().size(); ++i) {
-        KAEL_CHECK(i == position || reference.shape()[i] == other.shape()[i],
-                   op << " shapes " << to_string(reference.shape()) << " and "
-                      << to_string(other.shape()) << " differ outside dimension " << position);
+        KAEL_CHECK_VALUE(i == position || reference.shape()[i] == other.shape()[i],
+                         op << " shapes " << to_string(reference.shape()) << " and "
+                            << to_string(other.shape()) << " differ outside dimension "
+                            << position);
     }
 }
 
 } // namespace
 
 Tensor cat(const std::vector<Tensor>& tensors, std::int64_t dim) {
-    KAEL_CHECK(!tensors.empty(), "cat needs at least one tensor");
+    KAEL_CHECK_VALUE(!tensors.empty(), "cat needs at least one tensor");
     const Tensor& first = tensors.front();
     const std::size_t position = dim_position(dim, first.dim());
 
@@ -58,23 +59,23 @@ Tensor cat(const std::vector<Tensor>& tensors, std::int64_t dim) {
 }
 
 Tensor stack(const std::vector<Tensor>& tensors, std::int64_t dim) {
-    KAEL_CHECK(!tensors.empty(), "stack needs at least one tensor");
+    KAEL_CHECK_VALUE(!tensors.empty(), "stack needs at least one tensor");
     const std::int64_t position = wrap_dim(dim, tensors.front().dim() + 1);
 
     std::vector<Tensor> unsqueezed;
     unsqueezed.reserve(tensors.size());
     for (const Tensor& t : tensors) {
-        KAEL_CHECK(t.shape() == tensors.front().shape(), "stack needs the same shape, got "
-                                                             << to_string(tensors.front().shape())
-                                                             << " and " << to_string(t.shape()));
+        KAEL_CHECK_VALUE(t.shape() == tensors.front().shape(),
+                         "stack needs the same shape, got " << to_string(tensors.front().shape())
+                                                            << " and " << to_string(t.shape()));
         unsqueezed.push_back(t.unsqueeze(position));
     }
     return cat(unsqueezed, position);
 }
 
 Tensor where(const Tensor& condition, const Operand& a, const Operand& b) {
-    KAEL_CHECK(condition.dtype() == DType::Bool,
-               "where needs a bool condition, got " << condition.dtype());
+    KAEL_CHECK_TYPE(condition.dtype() == DType::Bool,
+                    "where needs a bool condition, got " << condition.dtype());
     const auto [x, y] = detail::resolve_operands(a, b);
     Tensor out = ternary_kernel(
         condition, x, y, []<typename T>(T keep, T p, T q) -> T { return keep != T{0} ? p : q; });
@@ -94,8 +95,8 @@ Tensor masked_fill(const Tensor& t, const Tensor& mask, Scalar value) {
 
 Tensor index_select(const Tensor& t, std::int64_t dim, const Tensor& indices) {
     detail::check_index_tensor(indices, "index_select");
-    KAEL_CHECK(indices.dim() == 1,
-               "index_select needs 1-d indices, got shape " << to_string(indices.shape()));
+    KAEL_CHECK_VALUE(indices.dim() == 1,
+                     "index_select needs 1-d indices, got shape " << to_string(indices.shape()));
     const std::size_t position = dim_position(dim, t.dim());
 
     Shape out_shape = t.shape();

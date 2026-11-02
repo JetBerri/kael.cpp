@@ -16,14 +16,16 @@ namespace {
 
 Tensor seed_gradient(const Tensor& root, const std::optional<Tensor>& gradient) {
     if (!gradient) {
-        KAEL_CHECK(root.numel() == 1, "grad can be implicitly created only for scalar outputs, got "
-                                      "shape "
-                                          << to_string(root.shape()));
+        KAEL_CHECK_VALUE(root.numel() == 1,
+                         "grad can be implicitly created only for scalar outputs, got "
+                         "shape "
+                             << to_string(root.shape()));
         return ones_like(root);
     }
-    KAEL_CHECK(gradient->shape() == root.shape(),
-               "gradient shape " << to_string(gradient->shape()) << " does not match output shape "
-                                 << to_string(root.shape()));
+    KAEL_CHECK_VALUE(gradient->shape() == root.shape(), "gradient shape "
+                                                            << to_string(gradient->shape())
+                                                            << " does not match output shape "
+                                                            << to_string(root.shape()));
     return gradient->to(root.dtype());
 }
 

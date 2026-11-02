@@ -90,9 +90,9 @@ void TensorIterator::check_inputs() const {
     KAEL_CHECK(output_.has_value() || output_dtype_.has_value(),
                "iterator needs an output or an output dtype");
     for (const Tensor& input : inputs_) {
-        KAEL_CHECK(input.dtype() == inputs_.front().dtype(),
-                   "iterator inputs must share a dtype, got " << inputs_.front().dtype() << " and "
-                                                              << input.dtype());
+        KAEL_CHECK_TYPE(input.dtype() == inputs_.front().dtype(),
+                        "iterator inputs must share a dtype, got " << inputs_.front().dtype()
+                                                                   << " and " << input.dtype());
     }
 }
 

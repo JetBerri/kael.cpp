@@ -147,8 +147,8 @@ private:
     explicit Tensor(std::shared_ptr<TensorImpl> impl);
 
     template <typename T> void check_dtype() const {
-        KAEL_CHECK(dtype_of_v<T> == dtype(),
-                   "expected dtype " << dtype_of_v<T> << " but tensor has " << dtype());
+        KAEL_CHECK_TYPE(dtype_of_v<T> == dtype(),
+                        "expected dtype " << dtype_of_v<T> << " but tensor has " << dtype());
     }
 
     template <typename T> [[nodiscard]] T* element_ptr(std::span<const std::int64_t> index) const {

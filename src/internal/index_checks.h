@@ -8,13 +8,13 @@
 namespace kael::detail {
 
 inline void check_index_tensor(const Tensor& indices, const char* op) {
-    KAEL_CHECK(indices.dtype() == DType::I64,
-               op << " needs int64 indices, got " << indices.dtype());
+    KAEL_CHECK_TYPE(indices.dtype() == DType::I64,
+                    op << " needs int64 indices, got " << indices.dtype());
 }
 
 inline std::int64_t checked_index(std::int64_t index, std::int64_t size, const char* op) {
-    KAEL_CHECK(index >= 0 && index < size,
-               op << " index " << index << " out of range [0, " << size << ")");
+    KAEL_CHECK_INDEX(index >= 0 && index < size,
+                     op << " index " << index << " out of range [0, " << size << ")");
     return index;
 }
 

@@ -30,7 +30,7 @@ Tensor log_softmax(const Tensor& input, std::int64_t dim) {
 }
 
 Tensor dropout(const Tensor& input, double p, bool training) {
-    KAEL_CHECK(p >= 0.0 && p < 1.0, "dropout probability must be in [0, 1), got " << p);
+    KAEL_CHECK_VALUE(p >= 0.0 && p < 1.0, "dropout probability must be in [0, 1), got " << p);
     if (!training || p == 0.0) {
         return input;
     }

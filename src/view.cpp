@@ -31,17 +31,17 @@ void insert_at(Container& container, std::size_t position, std::int64_t value) {
 }
 
 Shape resolve_expand_shape(const Shape& current, const Shape& requested) {
-    KAEL_CHECK(requested.size() >= current.size(),
-               "cannot expand shape " << to_string(current) << " to " << to_string(requested)
-                                      << ": too few dimensions");
+    KAEL_CHECK_VALUE(requested.size() >= current.size(),
+                     "cannot expand shape " << to_string(current) << " to " << to_string(requested)
+                                            << ": too few dimensions");
     const std::size_t new_dims = requested.size() - current.size();
     Shape resolved = requested;
     for (std::size_t i = 0; i < requested.size(); ++i) {
         if (requested[i] != -1) {
             continue;
         }
-        KAEL_CHECK(i >= new_dims, "expand cannot use -1 for new dimension "
-                                      << i << " in shape " << to_string(requested));
+        KAEL_CHECK_VALUE(i >= new_dims, "expand cannot use -1 for new dimension "
+                                            << i << " in shape " << to_string(requested));
         resolved[i] = current[i - new_dims];
     }
     return resolved;
@@ -54,9 +54,9 @@ std::int64_t clamp_slice_bound(std::int64_t bound, std::int64_t size) {
 } // namespace
 
 Tensor Tensor::view(const Shape& requested) const {
-    KAEL_CHECK(is_contiguous(), "view needs a contiguous tensor, but shape "
-                                    << to_string(shape()) << " has strides " << to_string(strides())
-                                    << "; use reshape instead");
+    KAEL_CHECK_VALUE(is_contiguous(), "view needs a contiguous tensor, but shape "
+                                          << to_string(shape()) << " has strides "
+                                          << to_string(strides()) << "; use reshape instead");
     Shape target = infer_shape(requested, numel());
     Strides target_strides = contiguous_strides(target);
     Tensor out = make_view(*this, std::move(target), std::move(target_strides), offset());
@@ -91,15 +91,15 @@ Tensor Tensor::transpose(std::int64_t dim0, std::int64_t dim1) const {
 }
 
 Tensor Tensor::permute(const Dims& dims) const {
-    KAEL_CHECK(static_cast<std::int64_t>(dims.size()) == dim(),
-               "permute got " << dims.size() << " dimensions for a tensor with " << dim());
+    KAEL_CHECK_VALUE(static_cast<std::int64_t>(dims.size()) == dim(),
+                     "permute got " << dims.size() << " dimensions for a tensor with " << dim());
 
     std::vector<bool> seen(dims.size(), false);
     Shape new_shape(dims.size());
     Strides new_strides(dims.size());
     for (std::size_t i = 0; i < dims.size(); ++i) {
         const std::size_t source = dim_position(dims[i], dim());
-        KAEL_CHECK(!seen[source], "permute got dimension " << dims[i] << " more than once");
+        KAEL_CHECK_VALUE(!seen[source], "permute got dimension " << dims[i] << " more than once");
         seen[source] = true;
         new_shape[i] = shape()[source];
         new_strides[i] = strides()[source];
@@ -110,13 +110,14 @@ Tensor Tensor::permute(const Dims& dims) const {
 }
 
 Tensor Tensor::T() const {
-    KAEL_CHECK(dim() <= 2, "T needs at most 2 dimensions, got shape "
-                               << to_string(shape()) << "; use transpose or mT instead");
+    KAEL_CHECK_VALUE(dim() <= 2, "T needs at most 2 dimensions, got shape "
+                                     << to_string(shape()) << "; use transpose or mT instead");
     return dim() == 2 ? transpose(0, 1) : *this;
 }
 
 Tensor Tensor::mT() const {
-    KAEL_CHECK(dim() >= 2, "mT needs at least 2 dimensions, got shape " << to_string(shape()));
+    KAEL_CHECK_VALUE(dim() >= 2,
+                     "mT needs at least 2 dimensions, got shape " << to_string(shape()));
     return transpose(-2, -1);
 }
 
@@ -185,7 +186,7 @@ bool Tensor::has_internal_overlap() const {
 
 Tensor Tensor::slice(std::int64_t dim, std::int64_t start, std::int64_t end,
                      std::int64_t step) const {
-    KAEL_CHECK(step > 0, "slice step must be positive, got " << step);
+    KAEL_CHECK_VALUE(step > 0, "slice step must be positive, got " << step);
 
     const std::size_t position = dim_position(dim, this->dim());
     const std::int64_t first = clamp_slice_bound(start, shape()[position]);
@@ -207,8 +208,9 @@ Tensor Tensor::select(std::int64_t dim, std::int64_t index) const {
     const std::size_t position = dim_position(dim, this->dim());
     const std::int64_t size = shape()[position];
     const std::int64_t wrapped = index < 0 ? index + size : index;
-    KAEL_CHECK(wrapped >= 0 && wrapped < size, "select index " << index << " out of range for size "
-                                                               << size << " at dimension " << dim);
+    KAEL_CHECK_INDEX(wrapped >= 0 && wrapped < size, "select index "
+                                                         << index << " out of range for size "
+                                                         << size << " at dimension " << dim);
 
     Shape new_shape = shape();
     Strides new_strides = strides();
@@ -223,11 +225,12 @@ Tensor Tensor::select(std::int64_t dim, std::int64_t index) const {
 Tensor Tensor::narrow(std::int64_t dim, std::int64_t start, std::int64_t length) const {
     const std::int64_t size = shape()[dim_position(dim, this->dim())];
     const std::int64_t first = start < 0 ? start + size : start;
-    KAEL_CHECK(first >= 0 && first <= size, "narrow start " << start << " out of range for size "
-                                                            << size << " at dimension " << dim);
-    KAEL_CHECK(length >= 0 && length <= size - first, "narrow length "
-                                                          << length << " does not fit size " << size
-                                                          << " from start " << first);
+    KAEL_CHECK_INDEX(first >= 0 && first <= size, "narrow start "
+                                                      << start << " out of range for size " << size
+                                                      << " at dimension " << dim);
+    KAEL_CHECK_VALUE(length >= 0 && length <= size - first, "narrow length "
+                                                                << length << " does not fit size "
+                                                                << size << " from start " << first);
     return slice(dim, first, first + length);
 }
 
@@ -237,8 +240,8 @@ Tensor Tensor::flatten(std::int64_t start_dim, std::int64_t end_dim) const {
     }
     const std::size_t first = dim_position(start_dim, dim());
     const std::size_t last = dim_position(end_dim, dim());
-    KAEL_CHECK(first <= last,
-               "flatten start dimension " << start_dim << " is after end dimension " << end_dim);
+    KAEL_CHECK_VALUE(first <= last, "flatten start dimension "
+                                        << start_dim << " is after end dimension " << end_dim);
     if (first == last) {
         return *this;
     }
@@ -265,7 +268,7 @@ Tensor Tensor::unflatten(std::int64_t dim, const Shape& sizes) const {
 }
 
 std::vector<Tensor> Tensor::split(std::int64_t chunk_size, std::int64_t dim) const {
-    KAEL_CHECK(chunk_size > 0, "split size must be positive, got " << chunk_size);
+    KAEL_CHECK_VALUE(chunk_size > 0, "split size must be positive, got " << chunk_size);
 
     const std::int64_t total = size(dim);
     std::vector<Tensor> pieces;
@@ -278,7 +281,7 @@ std::vector<Tensor> Tensor::split(std::int64_t chunk_size, std::int64_t dim) con
 }
 
 std::vector<Tensor> Tensor::chunk(std::int64_t chunks, std::int64_t dim) const {
-    KAEL_CHECK(chunks > 0, "chunk count must be positive, got " << chunks);
+    KAEL_CHECK_VALUE(chunks > 0, "chunk count must be positive, got " << chunks);
 
     const std::int64_t total = size(dim);
     if (total == 0) {

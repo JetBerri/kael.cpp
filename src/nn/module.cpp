@@ -86,9 +86,10 @@ void Module::load_state_dict(const StateDict& state) {
     for (const auto& [name, parameter] : all) {
         const auto found = state.find(name);
         KAEL_CHECK(found != state.end(), "state dict is missing parameter " << name);
-        KAEL_CHECK(found->second.shape() == parameter.shape(),
-                   "parameter " << name << " has shape " << to_string(parameter.shape())
-                                << " but the state dict has " << to_string(found->second.shape()));
+        KAEL_CHECK_VALUE(found->second.shape() == parameter.shape(),
+                         "parameter " << name << " has shape " << to_string(parameter.shape())
+                                      << " but the state dict has "
+                                      << to_string(found->second.shape()));
     }
     const autograd::NoGradGuard guard;
     for (auto& [name, parameter] : all) {

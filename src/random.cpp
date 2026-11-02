@@ -49,7 +49,7 @@ Tensor randn(const Shape& shape, DType dtype) {
 }
 
 Tensor randint(std::int64_t low, std::int64_t high, const Shape& shape) {
-    KAEL_CHECK(low < high, "randint needs low < high, got [" << low << ", " << high << ")");
+    KAEL_CHECK_VALUE(low < high, "randint needs low < high, got [" << low << ", " << high << ")");
     Tensor t = empty(shape, DType::I64);
     std::uniform_int_distribution<std::int64_t> distribution(low, high - 1);
     std::generate_n(t.data_ptr<std::int64_t>(), t.numel(),
@@ -58,7 +58,7 @@ Tensor randint(std::int64_t low, std::int64_t high, const Shape& shape) {
 }
 
 Tensor randperm(std::int64_t n) {
-    KAEL_CHECK(n >= 0, "randperm size must be non-negative, got " << n);
+    KAEL_CHECK_VALUE(n >= 0, "randperm size must be non-negative, got " << n);
     Tensor t = arange(0.0, static_cast<double>(n), 1.0, DType::I64);
     std::int64_t* values = t.data_ptr<std::int64_t>();
     std::shuffle(values, values + n, global_generator());
@@ -66,8 +66,8 @@ Tensor randperm(std::int64_t n) {
 }
 
 Tensor bernoulli(const Shape& shape, double probability, DType dtype) {
-    KAEL_CHECK(probability >= 0.0 && probability <= 1.0,
-               "bernoulli probability must be in [0, 1], got " << probability);
+    KAEL_CHECK_VALUE(probability >= 0.0 && probability <= 1.0,
+                     "bernoulli probability must be in [0, 1], got " << probability);
     return (rand(shape, DType::F64) < probability).to(dtype);
 }
 

@@ -39,8 +39,8 @@ std::byte* Tensor::first_element() const {
 }
 
 void Tensor::check_single_element() const {
-    KAEL_CHECK(numel() == 1, "item needs a tensor with one element, got shape "
-                                 << to_string(shape()) << " with " << numel() << " elements");
+    KAEL_CHECK_VALUE(numel() == 1, "item needs a tensor with one element, got shape "
+                                       << to_string(shape()) << " with " << numel() << " elements");
 }
 
 double Tensor::item() const {
@@ -51,8 +51,9 @@ double Tensor::item() const {
 }
 
 std::int64_t Tensor::element_offset(std::span<const std::int64_t> index) const {
-    KAEL_CHECK(static_cast<std::int64_t>(index.size()) == dim(),
-               "got " << index.size() << " indices for a tensor with " << dim() << " dimensions");
+    KAEL_CHECK_VALUE(static_cast<std::int64_t>(index.size()) == dim(),
+                     "got " << index.size() << " indices for a tensor with " << dim()
+                            << " dimensions");
     std::vector<std::int64_t> wrapped(index.begin(), index.end());
     for (std::size_t i = 0; i < wrapped.size(); ++i) {
         if (wrapped[i] < 0) {

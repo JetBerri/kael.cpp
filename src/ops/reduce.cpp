@@ -73,8 +73,8 @@ std::vector<bool> reduced_positions(const Tensor& t, const Dims& dims) {
             continue;
         }
         const std::size_t position = dim_position(dim, t.dim());
-        KAEL_CHECK(!reduced[position],
-                   "dimension " << dim << " appears more than once in reduction");
+        KAEL_CHECK_VALUE(!reduced[position],
+                         "dimension " << dim << " appears more than once in reduction");
         reduced[position] = true;
     }
     return reduced;
@@ -111,8 +111,8 @@ Reduction plan_reduction(const Tensor& t, const Dims& dims, bool keepdim) {
 
 Reduction plan_nonempty_reduction(const Tensor& t, const Dims& dims, bool keepdim, const char* op) {
     Reduction reduction = plan_reduction(t, dims, keepdim);
-    KAEL_CHECK(reduction.chunk_size > 0, op << " of an empty dimension in shape "
-                                            << to_string(t.shape()) << " has no result");
+    KAEL_CHECK_VALUE(reduction.chunk_size > 0, op << " of an empty dimension in shape "
+                                                  << to_string(t.shape()) << " has no result");
     return reduction;
 }
 

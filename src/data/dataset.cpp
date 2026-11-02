@@ -1,10 +1,10 @@
-#include "kael/data/dataloader.h"
 #include "kael/data/dataset.h"
 
 #include <algorithm>
 #include <utility>
 #include <vector>
 
+#include "kael/data/dataloader.h"
 #include "kael/factory.h"
 #include "kael/ops.h"
 #include "kael/random.h"
@@ -24,9 +24,10 @@ Example Dataset::get_batch(const Tensor& indices) const {
 
 TensorDataset::TensorDataset(Tensor inputs, Tensor targets)
     : inputs_(std::move(inputs)), targets_(std::move(targets)) {
-    KAEL_CHECK(inputs_.dim() >= 1 && targets_.dim() >= 1 && inputs_.size(0) == targets_.size(0),
-               "TensorDataset needs the same first dimension, got shapes "
-                   << to_string(inputs_.shape()) << " and " << to_string(targets_.shape()));
+    KAEL_CHECK_VALUE(inputs_.dim() >= 1 && targets_.dim() >= 1 &&
+                         inputs_.size(0) == targets_.size(0),
+                     "TensorDataset needs the same first dimension, got shapes "
+                         << to_string(inputs_.shape()) << " and " << to_string(targets_.shape()));
 }
 
 Example TensorDataset::get(std::int64_t index) const {
@@ -39,7 +40,8 @@ Example TensorDataset::get_batch(const Tensor& indices) const {
 
 DataLoader::DataLoader(const Dataset& dataset, const DataLoaderOptions& options)
     : dataset_(dataset), options_(options) {
-    KAEL_CHECK(options.batch_size > 0, "batch size must be positive, got " << options.batch_size);
+    KAEL_CHECK_VALUE(options.batch_size > 0,
+                     "batch size must be positive, got " << options.batch_size);
 }
 
 std::int64_t DataLoader::num_batches() const noexcept {
@@ -50,7 +52,8 @@ std::int64_t DataLoader::num_batches() const noexcept {
 
 DataLoader::Iterator DataLoader::begin() const {
     const std::int64_t size = dataset_.size();
-    Tensor order = options_.shuffle ? randperm(size) : arange(0, static_cast<double>(size), 1.0, DType::I64);
+    Tensor order =
+        options_.shuffle ? randperm(size) : arange(0, static_cast<double>(size), 1.0, DType::I64);
     return Iterator(this, std::move(order), 0);
 }
 

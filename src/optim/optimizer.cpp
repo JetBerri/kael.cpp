@@ -25,7 +25,8 @@ double cosine_between(double high, double low, double progress) {
 
 Optimizer::Optimizer(std::vector<Tensor> parameters, double learning_rate)
     : parameters_(std::move(parameters)), learning_rate_(learning_rate) {
-    KAEL_CHECK(learning_rate >= 0.0, "learning rate must be non-negative, got " << learning_rate);
+    KAEL_CHECK_VALUE(learning_rate >= 0.0,
+                     "learning rate must be non-negative, got " << learning_rate);
     for (const Tensor& parameter : parameters_) {
         KAEL_CHECK(parameter.requires_grad() && parameter.is_leaf(),
                    "optimizers need leaf tensors that require grad");
@@ -44,14 +45,16 @@ void Optimizer::zero_grad() {
 }
 
 void Optimizer::set_learning_rate(double learning_rate) {
-    KAEL_CHECK(learning_rate >= 0.0, "learning rate must be non-negative, got " << learning_rate);
+    KAEL_CHECK_VALUE(learning_rate >= 0.0,
+                     "learning rate must be non-negative, got " << learning_rate);
     learning_rate_ = learning_rate;
 }
 
 SGD::SGD(std::vector<Tensor> parameters, const SgdOptions& options)
     : Optimizer(std::move(parameters), options.learning_rate), options_(options),
       velocities_(this->parameters().size()) {
-    KAEL_CHECK(!options.nesterov || options.momentum > 0.0, "nesterov needs a positive momentum");
+    KAEL_CHECK_VALUE(!options.nesterov || options.momentum > 0.0,
+                     "nesterov needs a positive momentum");
 }
 
 void SGD::update() {
@@ -150,7 +153,7 @@ void LRScheduler::apply_schedule() {
 
 StepLR::StepLR(Optimizer& optimizer, std::int64_t step_size, double gamma)
     : LRScheduler(optimizer), step_size_(step_size), gamma_(gamma) {
-    KAEL_CHECK(step_size > 0, "StepLR step size must be positive, got " << step_size);
+    KAEL_CHECK_VALUE(step_size > 0, "StepLR step size must be positive, got " << step_size);
     apply_schedule();
 }
 
@@ -160,7 +163,8 @@ double StepLR::lr_at(std::int64_t step) const {
 
 CosineAnnealingLR::CosineAnnealingLR(Optimizer& optimizer, std::int64_t total_steps, double min_lr)
     : LRScheduler(optimizer), total_steps_(total_steps), min_lr_(min_lr) {
-    KAEL_CHECK(total_steps > 0, "cosine schedule length must be positive, got " << total_steps);
+    KAEL_CHECK_VALUE(total_steps > 0,
+                     "cosine schedule length must be positive, got " << total_steps);
     apply_schedule();
 }
 
@@ -172,7 +176,7 @@ double CosineAnnealingLR::lr_at(std::int64_t step) const {
 
 LinearWarmup::LinearWarmup(Optimizer& optimizer, std::int64_t warmup_steps)
     : LRScheduler(optimizer), warmup_steps_(warmup_steps) {
-    KAEL_CHECK(warmup_steps > 0, "warmup length must be positive, got " << warmup_steps);
+    KAEL_CHECK_VALUE(warmup_steps > 0, "warmup length must be positive, got " << warmup_steps);
     apply_schedule();
 }
 
@@ -185,8 +189,9 @@ WarmupCosineLR::WarmupCosineLR(Optimizer& optimizer, std::int64_t warmup_steps,
                                std::int64_t total_steps, double min_lr)
     : LRScheduler(optimizer), warmup_steps_(warmup_steps), total_steps_(total_steps),
       min_lr_(min_lr) {
-    KAEL_CHECK(warmup_steps >= 0 && warmup_steps < total_steps,
-               "warmup of " << warmup_steps << " steps does not fit a schedule of " << total_steps);
+    KAEL_CHECK_VALUE(warmup_steps >= 0 && warmup_steps < total_steps,
+                     "warmup of " << warmup_steps << " steps does not fit a schedule of "
+                                  << total_steps);
     apply_schedule();
 }
 

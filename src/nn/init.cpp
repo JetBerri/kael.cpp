@@ -18,8 +18,8 @@ double leaky_relu_gain(double a) {
 } // namespace
 
 Fans fans_of(const Tensor& weight) {
-    KAEL_CHECK(weight.dim() >= 2, "fans need a tensor with at least 2 dimensions, got shape "
-                                      << to_string(weight.shape()));
+    KAEL_CHECK_VALUE(weight.dim() >= 2, "fans need a tensor with at least 2 dimensions, got shape "
+                                            << to_string(weight.shape()));
     const std::int64_t receptive_field = weight.numel() / (weight.size(0) * weight.size(1));
     return {weight.size(1) * receptive_field, weight.size(0) * receptive_field};
 }

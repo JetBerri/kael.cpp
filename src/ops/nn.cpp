@@ -153,9 +153,9 @@ Tensor log_softmax(const Tensor& t, std::int64_t dim) {
 }
 
 Tensor standardize(const Tensor& t, std::int64_t normalized_dims, double eps) {
-    KAEL_CHECK(normalized_dims > 0 && normalized_dims <= t.dim(),
-               "standardize over " << normalized_dims << " dimensions got shape "
-                                   << to_string(t.shape()));
+    KAEL_CHECK_VALUE(normalized_dims > 0 && normalized_dims <= t.dim(),
+                     "standardize over " << normalized_dims << " dimensions got shape "
+                                         << to_string(t.shape()));
     Tensor out = autograd::without_grad([&] {
         const Tensor x = as_floating(t).contiguous();
         if (x.numel() == 0) {
