@@ -15,3 +15,4 @@
 #include "kael/storage.h"
 #include "kael/tensor.h"
 #include "kael/tensor_impl.h"
+#include "kael/version.h"

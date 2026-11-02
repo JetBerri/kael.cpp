@@ -49,12 +49,14 @@ add_library(kael
     src/autograd/functions_indexing.cpp
     src/autograd/functions_linalg.cpp
     src/autograd/gradcheck.cpp
+    src/version.cpp
 )
 
 add_library(kael::kael ALIAS kael)
 
 target_include_directories(kael PUBLIC include PRIVATE src)
 target_compile_features(kael PUBLIC cxx_std_20)
+target_compile_definitions(kael PRIVATE KAEL_VERSION="${PROJECT_VERSION}")
 kael_configure_target(kael)
 
 include(FetchContent)

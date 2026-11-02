@@ -6,6 +6,7 @@
 
 #include "kael/dtype.h"
 #include "kael/error.h"
+#include "kael/version.h"
 
 using kael::Device;
 using kael::DType;
@@ -83,4 +84,8 @@ TEST(DType, DispatchNoBoolRejectsBool) {
     auto f = []<typename T>() { return kael::dtype_of_v<T>; };
     EXPECT_EQ(kael::dispatch_no_bool(DType::I64, "test", f), DType::I64);
     EXPECT_THROW(kael::dispatch_no_bool(DType::Bool, "test", f), kael::Error);
+}
+
+TEST(Version, MatchesTheProjectVersion) {
+    EXPECT_EQ(kael::version(), KAEL_EXPECTED_VERSION);
 }
