@@ -28,8 +28,8 @@ using BlockSizes = Sizes;
 
 constexpr BlockSizes kTileBlocks{64, 256, 2048};
 constexpr BlockSizes kPackedBlocks{384, 512, 4096};
-constexpr std::int64_t kSmallProblem = 32 * 32 * 32;
-constexpr std::int64_t kThreadedProblem = 128 * 128 * 128;
+constexpr std::int64_t kSmallProblem = std::int64_t{32} * 32 * 32;
+constexpr std::int64_t kThreadedProblem = std::int64_t{128} * 128 * 128;
 constexpr std::size_t kPackAlignment = 64;
 
 struct FreeAligned {

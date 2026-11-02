@@ -1,0 +1,14 @@
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions,
+  -bugprone-exception-escape,
+  -bugprone-unchecked-optional-access,
+  -bugprone-random-generator-seed,
+  performance-*,
+  -performance-enum-size,
+  -performance-avoid-endl
+HeaderFilterRegex: '(include/kael|src)/.*'
+ExcludeHeaderFilterRegex: '_deps/.*'
+WarningsAsErrors: '*'

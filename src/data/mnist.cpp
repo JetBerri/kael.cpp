@@ -30,9 +30,10 @@ std::vector<std::int64_t> read_header(std::ifstream& file, const std::filesystem
                                       std::uint32_t magic, std::size_t dimensions) {
     KAEL_CHECK(file.is_open(), "cannot open IDX file " << path);
     const std::uint32_t found = read_big_endian(file, path);
-    KAEL_CHECK(found == magic, "IDX file " << path << " has magic number " << found << ", expected "
-                                           << magic);
+    KAEL_CHECK(found == magic,
+               "IDX file " << path << " has magic number " << found << ", expected " << magic);
     std::vector<std::int64_t> sizes;
+    sizes.reserve(dimensions);
     for (std::size_t i = 0; i < dimensions; ++i) {
         sizes.push_back(static_cast<std::int64_t>(read_big_endian(file, path)));
     }
@@ -88,8 +89,8 @@ MnistSplit load_mnist(const std::filesystem::path& directory, MnistPart part) {
     const std::string prefix = part == MnistPart::Train ? "train" : "t10k";
     const Tensor images = read_idx_images(directory / (prefix + "-images-idx3-ubyte"));
     const Tensor labels = read_idx_labels(directory / (prefix + "-labels-idx1-ubyte"));
-    KAEL_CHECK(images.size(0) == labels.size(0), "MNIST has " << images.size(0) << " images but "
-                                                              << labels.size(0) << " labels");
+    KAEL_CHECK(images.size(0) == labels.size(0),
+               "MNIST has " << images.size(0) << " images but " << labels.size(0) << " labels");
     return {(images - kMnistMean) / kMnistStd, labels};
 }
 

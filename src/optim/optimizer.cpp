@@ -158,7 +158,8 @@ StepLR::StepLR(Optimizer& optimizer, std::int64_t step_size, double gamma)
 }
 
 double StepLR::lr_at(std::int64_t step) const {
-    return base_lr() * std::pow(gamma_, static_cast<double>(step / step_size_));
+    const std::int64_t decays = step / step_size_;
+    return base_lr() * std::pow(gamma_, static_cast<double>(decays));
 }
 
 CosineAnnealingLR::CosineAnnealingLR(Optimizer& optimizer, std::int64_t total_steps, double min_lr)

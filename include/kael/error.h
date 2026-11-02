@@ -42,6 +42,7 @@ template <typename Exception>
 } // namespace kael
 
 // `msg` is not parenthesized so that stream chains like "index " << i work.
+// NOLINTBEGIN(bugprone-macro-parentheses)
 #define KAEL_CHECK_AS(exception, cond, msg)                                                        \
     do {                                                                                           \
         if (!(cond)) {                                                                             \
@@ -50,6 +51,7 @@ template <typename Exception>
             ::kael::detail::fail<exception>(__FILE__, __LINE__, #cond, kael_check_stream_.str());  \
         }                                                                                          \
     } while (0)
+// NOLINTEND(bugprone-macro-parentheses)
 
 #define KAEL_CHECK(cond, msg) KAEL_CHECK_AS(::kael::Error, cond, msg)
 #define KAEL_CHECK_INDEX(cond, msg) KAEL_CHECK_AS(::kael::IndexError, cond, msg)

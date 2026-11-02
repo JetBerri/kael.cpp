@@ -159,8 +159,9 @@ std::int64_t hardware_thread_count() {
 
 std::int64_t default_thread_count() {
     if (const char* configured = std::getenv("KAEL_NUM_THREADS")) {
-        const std::int64_t parsed = std::atoll(configured);
-        if (parsed > 0) {
+        char* end = nullptr;
+        const std::int64_t parsed = std::strtoll(configured, &end, 10);
+        if (parsed > 0 && *end == '\0') {
             return parsed;
         }
     }
