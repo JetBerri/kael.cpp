@@ -20,11 +20,11 @@ Tensor Tensor::from_impl(std::shared_ptr<TensorImpl> impl) {
 }
 
 std::int64_t Tensor::size(std::int64_t dim) const {
-    return shape()[static_cast<std::size_t>(wrap_dim(dim, this->dim()))];
+    return shape()[dim_position(dim, this->dim())];
 }
 
 std::int64_t Tensor::stride(std::int64_t dim) const {
-    return strides()[static_cast<std::size_t>(wrap_dim(dim, this->dim()))];
+    return strides()[dim_position(dim, this->dim())];
 }
 
 std::int64_t Tensor::nbytes() const {
@@ -73,7 +73,7 @@ Tensor Tensor::to(DType target) const {
 Tensor Tensor::clone() const {
     Tensor out = empty(shape(), dtype());
     if (!is_contiguous()) {
-        detail::copy_strided(out, *this);
+        detail::convert_strided(out, *this);
     } else if (nbytes() > 0) {
         std::memcpy(out.data_ptr_raw(), data_ptr_raw(), static_cast<std::size_t>(nbytes()));
     }

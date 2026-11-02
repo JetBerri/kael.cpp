@@ -20,10 +20,6 @@ Tensor make_view(const Tensor& base, Shape shape, Strides strides, std::int64_t 
     return Tensor::from_impl(std::move(impl));
 }
 
-std::size_t wrapped_index(std::int64_t dim, std::int64_t ndim) {
-    return static_cast<std::size_t>(wrap_dim(dim, ndim));
-}
-
 template <typename Container> void erase_at(Container& container, std::size_t position) {
     container.erase(container.begin() + static_cast<std::ptrdiff_t>(position));
 }
@@ -70,8 +66,8 @@ Tensor Tensor::reshape(const Shape& requested) const {
 }
 
 Tensor Tensor::transpose(std::int64_t dim0, std::int64_t dim1) const {
-    const std::size_t first = wrapped_index(dim0, dim());
-    const std::size_t second = wrapped_index(dim1, dim());
+    const std::size_t first = dim_position(dim0, dim());
+    const std::size_t second = dim_position(dim1, dim());
 
     Shape new_shape = shape();
     Strides new_strides = strides();
@@ -88,7 +84,7 @@ Tensor Tensor::permute(const Dims& dims) const {
     Shape new_shape(dims.size());
     Strides new_strides(dims.size());
     for (std::size_t i = 0; i < dims.size(); ++i) {
-        const std::size_t source = wrapped_index(dims[i], dim());
+        const std::size_t source = dim_position(dims[i], dim());
         KAEL_CHECK(!seen[source], "permute got dimension " << dims[i] << " more than once");
         seen[source] = true;
         new_shape[i] = shape()[source];
@@ -121,7 +117,7 @@ Tensor Tensor::squeeze() const {
 }
 
 Tensor Tensor::squeeze(std::int64_t dim) const {
-    const std::size_t position = wrapped_index(dim, this->dim());
+    const std::size_t position = dim_position(dim, this->dim());
     if (shape()[position] != 1) {
         return *this;
     }
@@ -133,7 +129,7 @@ Tensor Tensor::squeeze(std::int64_t dim) const {
 }
 
 Tensor Tensor::unsqueeze(std::int64_t dim) const {
-    const std::size_t position = wrapped_index(dim, this->dim() + 1);
+    const std::size_t position = dim_position(dim, this->dim() + 1);
     const std::int64_t new_stride =
         position < shape().size() ? shape()[position] * strides()[position] : 1;
 
@@ -163,7 +159,7 @@ Tensor Tensor::slice(std::int64_t dim, std::int64_t start, std::int64_t end,
                      std::int64_t step) const {
     KAEL_CHECK(step > 0, "slice step must be positive, got " << step);
 
-    const std::size_t position = wrapped_index(dim, this->dim());
+    const std::size_t position = dim_position(dim, this->dim());
     const std::int64_t first = clamp_slice_bound(start, shape()[position]);
     const std::int64_t last = clamp_slice_bound(end, shape()[position]);
     const std::int64_t stride = strides()[position];
@@ -178,7 +174,7 @@ Tensor Tensor::slice(std::int64_t dim, std::int64_t start, std::int64_t end,
 }
 
 Tensor Tensor::select(std::int64_t dim, std::int64_t index) const {
-    const std::size_t position = wrapped_index(dim, this->dim());
+    const std::size_t position = dim_position(dim, this->dim());
     const std::int64_t size = shape()[position];
     const std::int64_t wrapped = index < 0 ? index + size : index;
     KAEL_CHECK(wrapped >= 0 && wrapped < size, "select index " << index << " out of range for size "
@@ -193,7 +189,7 @@ Tensor Tensor::select(std::int64_t dim, std::int64_t index) const {
 }
 
 Tensor Tensor::narrow(std::int64_t dim, std::int64_t start, std::int64_t length) const {
-    const std::int64_t size = shape()[wrapped_index(dim, this->dim())];
+    const std::int64_t size = shape()[dim_position(dim, this->dim())];
     const std::int64_t first = start < 0 ? start + size : start;
     KAEL_CHECK(first >= 0 && first <= size, "narrow start " << start << " out of range for size "
                                                             << size << " at dimension " << dim);
@@ -207,8 +203,8 @@ Tensor Tensor::flatten(std::int64_t start_dim, std::int64_t end_dim) const {
     if (dim() == 0) {
         return reshape({1});
     }
-    const std::size_t first = wrapped_index(start_dim, dim());
-    const std::size_t last = wrapped_index(end_dim, dim());
+    const std::size_t first = dim_position(start_dim, dim());
+    const std::size_t last = dim_position(end_dim, dim());
     KAEL_CHECK(first <= last,
                "flatten start dimension " << start_dim << " is after end dimension " << end_dim);
     if (first == last) {
@@ -226,7 +222,7 @@ Tensor Tensor::flatten(std::int64_t start_dim, std::int64_t end_dim) const {
 }
 
 Tensor Tensor::unflatten(std::int64_t dim, const Shape& sizes) const {
-    const std::size_t position = wrapped_index(dim, this->dim());
+    const std::size_t position = dim_position(dim, this->dim());
     const Shape resolved = infer_shape(sizes, shape()[position]);
 
     const auto position_it = shape().begin() + static_cast<std::ptrdiff_t>(position);

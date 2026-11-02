@@ -24,6 +24,7 @@ Shape broadcast_shapes(const Shape& a, const Shape& b);
 Strides broadcast_strides(const Shape& shape, const Strides& strides, const Shape& target);
 
 std::int64_t wrap_dim(std::int64_t dim, std::int64_t ndim);
+std::size_t dim_position(std::int64_t dim, std::int64_t ndim);
 Shape infer_shape(const Shape& requested, std::int64_t element_count);
 
 } // namespace kael

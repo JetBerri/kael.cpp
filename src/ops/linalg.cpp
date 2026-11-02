@@ -5,9 +5,15 @@ namespace kael {
 
 namespace {
 
+struct MatrixSizes {
+    std::int64_t rows;
+    std::int64_t inner;
+    std::int64_t columns;
+};
+
 template <typename T>
-void multiply_matrices(const T* a, const T* b, T* out, std::int64_t rows, std::int64_t inner,
-                       std::int64_t columns) {
+void multiply_matrices(const T* a, const T* b, T* out, const MatrixSizes& sizes) {
+    const auto [rows, inner, columns] = sizes;
     for (std::int64_t i = 0; i < rows; ++i) {
         T* out_row = out + i * columns;
         for (std::int64_t k = 0; k < inner; ++k) {
@@ -19,13 +25,6 @@ void multiply_matrices(const T* a, const T* b, T* out, std::int64_t rows, std::i
         }
     }
 }
-
-struct MatmulLayout {
-    Shape batch;
-    std::int64_t rows;
-    std::int64_t inner;
-    std::int64_t columns;
-};
 
 Shape batch_shape_of(const Tensor& matrix) {
     return Shape(matrix.shape().begin(), matrix.shape().end() - 2);
@@ -43,11 +42,10 @@ Tensor as_batch_of_matrices(const Tensor& matrix, const Shape& batch, std::int64
         .reshape({numel(batch), rows, columns});
 }
 
-Tensor multiply_batches(const Tensor& a, const Tensor& b, const MatmulLayout& layout) {
+Tensor multiply_batches(const Tensor& a, const Tensor& b, const Shape& batch,
+                        const MatrixSizes& sizes) {
     const DType dtype = promote_types(a.dtype(), b.dtype());
-    KAEL_CHECK(dtype != DType::Bool, "matmul does not support dtype bool");
-
-    const auto [batch, rows, inner, columns] = layout;
+    const auto [rows, inner, columns] = sizes;
     const Tensor flat_a = as_batch_of_matrices(a.to(dtype), batch, rows, inner);
     const Tensor flat_b = as_batch_of_matrices(b.to(dtype), batch, inner, columns);
     Tensor out = zeros(with_matrix_dims(batch, rows, columns), dtype);
@@ -59,10 +57,18 @@ Tensor multiply_batches(const Tensor& a, const Tensor& b, const MatmulLayout& la
         T* data_out = out.data_ptr<T>();
         for (std::int64_t i = 0; i < batch_count; ++i) {
             multiply_matrices(data_a + i * rows * inner, data_b + i * inner * columns,
-                              data_out + i * rows * columns, rows, inner, columns);
+                              data_out + i * rows * columns, sizes);
         }
     });
     return out;
+}
+
+void check_ranks(const Tensor& a, const Tensor& b, std::int64_t rank_a, std::int64_t rank_b,
+                 const char* op) {
+    KAEL_CHECK(a.dim() == rank_a && b.dim() == rank_b,
+               op << " needs tensors with " << rank_a << " and " << rank_b
+                  << " dimensions, got shapes " << to_string(a.shape()) << " and "
+                  << to_string(b.shape()));
 }
 
 } // namespace
@@ -81,9 +87,9 @@ Tensor matmul(const Tensor& a, const Tensor& b) {
                                                                  << to_string(b.shape())
                                                                  << " do not align");
 
-    const MatmulLayout layout{broadcast_shapes(batch_shape_of(left), batch_shape_of(right)),
-                              left.size(-2), left.size(-1), right.size(-1)};
-    Tensor out = multiply_batches(left, right, layout);
+    const Shape batch = broadcast_shapes(batch_shape_of(left), batch_shape_of(right));
+    Tensor out =
+        multiply_batches(left, right, batch, {left.size(-2), left.size(-1), right.size(-1)});
     if (b_is_vector) {
         out = out.squeeze(-1);
     }
@@ -91,30 +97,22 @@ Tensor matmul(const Tensor& a, const Tensor& b) {
 }
 
 Tensor dot(const Tensor& a, const Tensor& b) {
-    KAEL_CHECK(a.dim() == 1 && b.dim() == 1, "dot needs 1-d tensors, got shapes "
-                                                 << to_string(a.shape()) << " and "
-                                                 << to_string(b.shape()));
+    check_ranks(a, b, 1, 1, "dot");
     return matmul(a, b);
 }
 
 Tensor outer(const Tensor& a, const Tensor& b) {
-    KAEL_CHECK(a.dim() == 1 && b.dim() == 1, "outer needs 1-d tensors, got shapes "
-                                                 << to_string(a.shape()) << " and "
-                                                 << to_string(b.shape()));
+    check_ranks(a, b, 1, 1, "outer");
     return a.unsqueeze(1) * b.unsqueeze(0);
 }
 
 Tensor mm(const Tensor& a, const Tensor& b) {
-    KAEL_CHECK(a.dim() == 2 && b.dim() == 2, "mm needs 2-d tensors, got shapes "
-                                                 << to_string(a.shape()) << " and "
-                                                 << to_string(b.shape()));
+    check_ranks(a, b, 2, 2, "mm");
     return matmul(a, b);
 }
 
 Tensor bmm(const Tensor& a, const Tensor& b) {
-    KAEL_CHECK(a.dim() == 3 && b.dim() == 3, "bmm needs 3-d tensors, got shapes "
-                                                 << to_string(a.shape()) << " and "
-                                                 << to_string(b.shape()));
+    check_ranks(a, b, 3, 3, "bmm");
     return matmul(a, b);
 }
 

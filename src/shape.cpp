@@ -147,6 +147,10 @@ std::int64_t wrap_dim(std::int64_t dim, std::int64_t ndim) {
     return dim < 0 ? dim + ndim : dim;
 }
 
+std::size_t dim_position(std::int64_t dim, std::int64_t ndim) {
+    return static_cast<std::size_t>(wrap_dim(dim, ndim));
+}
+
 Shape infer_shape(const Shape& requested, std::int64_t element_count) {
     KAEL_CHECK(std::ranges::count(requested, kInferredDim) <= 1,
                "only one dimension can be -1 in shape " << to_string(requested));

@@ -27,7 +27,7 @@ std::vector<bool> reduced_positions(const Tensor& t, const Dims& dims) {
             wrap_dim(dim, 1);
             continue;
         }
-        const auto position = static_cast<std::size_t>(wrap_dim(dim, t.dim()));
+        const std::size_t position = dim_position(dim, t.dim());
         KAEL_CHECK(!reduced[position],
                    "dimension " << dim << " appears more than once in reduction");
         reduced[position] = true;
@@ -61,6 +61,13 @@ Reduction plan_reduction(const Tensor& t, const Dims& dims, bool keepdim) {
 
     return {t.permute(kept_first).contiguous(), numel(reduced_sizes), numel(kept_sizes),
             std::move(output_shape)};
+}
+
+Reduction plan_nonempty_reduction(const Tensor& t, const Dims& dims, bool keepdim, const char* op) {
+    Reduction reduction = plan_reduction(t, dims, keepdim);
+    KAEL_CHECK(reduction.chunk_size > 0, op << " of an empty dimension in shape "
+                                            << to_string(t.shape()) << " has no result");
+    return reduction;
 }
 
 template <typename Out, typename In, typename F>
@@ -98,9 +105,7 @@ Tensor accumulate(const Tensor& t, const Dims& dims, bool keepdim, int initial, 
 
 template <typename Pick>
 Tensor extreme(const Tensor& t, const Dims& dims, bool keepdim, const char* op, Pick pick) {
-    const Reduction reduction = plan_reduction(t, dims, keepdim);
-    KAEL_CHECK(reduction.chunk_size > 0, op << " of an empty dimension in shape "
-                                            << to_string(t.shape()) << " has no result");
+    const Reduction reduction = plan_nonempty_reduction(t, dims, keepdim, op);
     return dispatch(t.dtype(), [&]<typename T>() {
         return reduce_chunks<T, T>(reduction, t.dtype(), [&](const T* chunk, std::int64_t size) {
             return std::accumulate(chunk + 1, chunk + size, chunk[0], pick);
@@ -130,9 +135,7 @@ std::int64_t best_position(const T* chunk, std::int64_t size, Better better) {
 
 template <template <typename> typename Better>
 Tensor arg_extreme(const Tensor& t, const Dims& dims, bool keepdim, const char* op) {
-    const Reduction reduction = plan_reduction(t, dims, keepdim);
-    KAEL_CHECK(reduction.chunk_size > 0, op << " of an empty dimension in shape "
-                                            << to_string(t.shape()) << " has no result");
+    const Reduction reduction = plan_nonempty_reduction(t, dims, keepdim, op);
     return dispatch(t.dtype(), [&]<typename T>() {
         return reduce_chunks<std::int64_t, T>(reduction, DType::I64,
                                               [](const T* chunk, std::int64_t size) {
@@ -147,6 +150,17 @@ template <typename T> double chunk_mean(const T* chunk, std::int64_t size) {
         total += static_cast<double>(chunk[i]);
     }
     return total / static_cast<double>(size);
+}
+
+template <typename F>
+Tensor reduce_floating(const Tensor& t, const Dims& dims, bool keepdim, const char* op,
+                       F chunk_value) {
+    const Reduction reduction = plan_reduction(t, dims, keepdim);
+    return dispatch_floating(t.dtype(), op, [&]<typename T>() {
+        return reduce_chunks<T, T>(reduction, t.dtype(), [&](const T* chunk, std::int64_t size) {
+            return static_cast<T>(chunk_value(chunk, size));
+        });
+    });
 }
 
 template <typename Predicate>
@@ -173,11 +187,8 @@ Tensor prod(const Tensor& t, const Dims& dims, bool keepdim) {
 }
 
 Tensor mean(const Tensor& t, const Dims& dims, bool keepdim) {
-    const Reduction reduction = plan_reduction(t, dims, keepdim);
-    return dispatch_floating(t.dtype(), "mean", [&]<typename T>() {
-        return reduce_chunks<T, T>(reduction, t.dtype(), [](const T* chunk, std::int64_t size) {
-            return static_cast<T>(chunk_mean(chunk, size));
-        });
+    return reduce_floating(t, dims, keepdim, "mean", [](const auto* chunk, std::int64_t size) {
+        return chunk_mean(chunk, size);
     });
 }
 
@@ -208,18 +219,14 @@ Tensor argmin(const Tensor& t, std::int64_t dim, bool keepdim) {
 }
 
 Tensor var(const Tensor& t, const Dims& dims, bool keepdim, std::int64_t correction) {
-    const Reduction reduction = plan_reduction(t, dims, keepdim);
-    return dispatch_floating(t.dtype(), "var", [&]<typename T>() {
-        return reduce_chunks<T, T>(reduction, t.dtype(), [&](const T* chunk, std::int64_t size) {
-            const double center = chunk_mean(chunk, size);
-            double squares = 0.0;
-            for (std::int64_t i = 0; i < size; ++i) {
-                const double deviation = static_cast<double>(chunk[i]) - center;
-                squares += deviation * deviation;
-            }
-            const auto divisor = static_cast<double>(std::max<std::int64_t>(size - correction, 0));
-            return static_cast<T>(squares / divisor);
-        });
+    return reduce_floating(t, dims, keepdim, "var", [&](const auto* chunk, std::int64_t size) {
+        const double center = chunk_mean(chunk, size);
+        double squares = 0.0;
+        for (std::int64_t i = 0; i < size; ++i) {
+            const double deviation = static_cast<double>(chunk[i]) - center;
+            squares += deviation * deviation;
+        }
+        return squares / static_cast<double>(std::max<std::int64_t>(size - correction, 0));
     });
 }
 
@@ -240,15 +247,12 @@ Tensor any(const Tensor& t, const Dims& dims, bool keepdim) {
 }
 
 Tensor norm(const Tensor& t, const Dims& dims, bool keepdim) {
-    const Reduction reduction = plan_reduction(t, dims, keepdim);
-    return dispatch_floating(t.dtype(), "norm", [&]<typename T>() {
-        return reduce_chunks<T, T>(reduction, t.dtype(), [](const T* chunk, std::int64_t size) {
-            double squares = 0.0;
-            for (std::int64_t i = 0; i < size; ++i) {
-                squares += static_cast<double>(chunk[i]) * static_cast<double>(chunk[i]);
-            }
-            return static_cast<T>(std::sqrt(squares));
-        });
+    return reduce_floating(t, dims, keepdim, "norm", [](const auto* chunk, std::int64_t size) {
+        double squares = 0.0;
+        for (std::int64_t i = 0; i < size; ++i) {
+            squares += static_cast<double>(chunk[i]) * static_cast<double>(chunk[i]);
+        }
+        return std::sqrt(squares);
     });
 }
 

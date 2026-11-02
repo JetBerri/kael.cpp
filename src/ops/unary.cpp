@@ -55,43 +55,43 @@ Tensor sign(const Tensor& t) {
 }
 
 Tensor exp(const Tensor& t) {
-    return floating_unary_kernel(t, "exp", [](auto x) { return std::exp(x); });
+    return floating_unary_kernel(t, [](auto x) { return std::exp(x); });
 }
 
 Tensor log(const Tensor& t) {
-    return floating_unary_kernel(t, "log", [](auto x) { return std::log(x); });
+    return floating_unary_kernel(t, [](auto x) { return std::log(x); });
 }
 
 Tensor log1p(const Tensor& t) {
-    return floating_unary_kernel(t, "log1p", [](auto x) { return std::log1p(x); });
+    return floating_unary_kernel(t, [](auto x) { return std::log1p(x); });
 }
 
 Tensor expm1(const Tensor& t) {
-    return floating_unary_kernel(t, "expm1", [](auto x) { return std::expm1(x); });
+    return floating_unary_kernel(t, [](auto x) { return std::expm1(x); });
 }
 
 Tensor sqrt(const Tensor& t) {
-    return floating_unary_kernel(t, "sqrt", [](auto x) { return std::sqrt(x); });
+    return floating_unary_kernel(t, [](auto x) { return std::sqrt(x); });
 }
 
 Tensor rsqrt(const Tensor& t) {
-    return floating_unary_kernel(t, "rsqrt", [](auto x) { return 1 / std::sqrt(x); });
+    return floating_unary_kernel(t, [](auto x) { return 1 / std::sqrt(x); });
 }
 
 Tensor sin(const Tensor& t) {
-    return floating_unary_kernel(t, "sin", [](auto x) { return std::sin(x); });
+    return floating_unary_kernel(t, [](auto x) { return std::sin(x); });
 }
 
 Tensor cos(const Tensor& t) {
-    return floating_unary_kernel(t, "cos", [](auto x) { return std::cos(x); });
+    return floating_unary_kernel(t, [](auto x) { return std::cos(x); });
 }
 
 Tensor tanh(const Tensor& t) {
-    return floating_unary_kernel(t, "tanh", [](auto x) { return std::tanh(x); });
+    return floating_unary_kernel(t, [](auto x) { return std::tanh(x); });
 }
 
 Tensor sigmoid(const Tensor& t) {
-    return floating_unary_kernel(t, "sigmoid", [](auto x) { return stable_sigmoid(x); });
+    return floating_unary_kernel(t, [](auto x) { return stable_sigmoid(x); });
 }
 
 Tensor relu(const Tensor& t) {
@@ -99,7 +99,7 @@ Tensor relu(const Tensor& t) {
 }
 
 Tensor gelu(const Tensor& t) {
-    return floating_unary_kernel(t, "gelu", [](auto x) { return exact_gelu(x); });
+    return floating_unary_kernel(t, [](auto x) { return exact_gelu(x); });
 }
 
 Tensor clamp(const Tensor& t, Scalar min, Scalar max) {

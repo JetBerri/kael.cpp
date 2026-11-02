@@ -4,12 +4,6 @@
 
 namespace kael::detail {
 
-void copy_strided(Tensor& dst, const Tensor& src) {
-    KAEL_CHECK(dst.dtype() == src.dtype(),
-               "copy expects the same dtype, got " << dst.dtype() << " and " << src.dtype());
-    convert_strided(dst, src);
-}
-
 void convert_strided(Tensor& dst, const Tensor& src) {
     TensorIterator iterator;
     iterator.add_output(dst).add_input(src).build();

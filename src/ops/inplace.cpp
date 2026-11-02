@@ -4,6 +4,7 @@
 
 #include "internal/arithmetic.h"
 #include "internal/copy.h"
+#include "internal/index_checks.h"
 #include "internal/operands.h"
 
 namespace kael {
@@ -36,6 +37,19 @@ bool same_layout(const Tensor& a, const Tensor& b) {
 
 Tensor without_partial_aliasing(const Tensor& self, const Tensor& input) {
     return input.shares_storage(self) && !same_layout(input, self) ? input.clone() : input;
+}
+
+void check_scatter_source(const Tensor& indices, const Tensor& source) {
+    KAEL_CHECK(source.dim() == indices.dim(),
+               "scatter_add_ source shape " << to_string(source.shape()) << " and indices shape "
+                                            << to_string(indices.shape())
+                                            << " have different number of dimensions");
+    for (std::size_t i = 0; i < indices.shape().size(); ++i) {
+        KAEL_CHECK(indices.shape()[i] <= source.shape()[i], "scatter_add_ indices shape "
+                                                                << to_string(indices.shape())
+                                                                << " is larger than source shape "
+                                                                << to_string(source.shape()));
+    }
 }
 
 template <typename F>
@@ -100,6 +114,35 @@ Tensor& Tensor::fill_(Scalar value) {
 
 Tensor& Tensor::zero_() {
     return fill_(0);
+}
+
+Tensor& Tensor::masked_fill_(const Tensor& mask, Scalar value) {
+    KAEL_CHECK(mask.dtype() == DType::Bool, "masked_fill needs a bool mask, got " << mask.dtype());
+    check_writable(*this, "masked_fill_");
+    binary_kernel_out(*this, *this, mask,
+                      [fill = value.value()]<typename T>(T current, T selected) -> T {
+                          return selected != T{0} ? convert_value<T>(fill) : current;
+                      });
+    return *this;
+}
+
+Tensor& Tensor::scatter_add_(std::int64_t dim, const Tensor& indices, const Tensor& source) {
+    detail::check_index_tensor(indices, "scatter_add_");
+    const std::size_t position = dim_position(dim, this->dim());
+    detail::check_gather_shapes(*this, indices, position, "scatter_add_");
+    check_scatter_source(indices, source);
+
+    const Tensor converted = source.to(dtype());
+    dispatch(dtype(), [&]<typename T>() {
+        detail::for_each_index(indices.shape(), [&](const Shape& index) {
+            Shape target = index;
+            target[position] = detail::checked_index(indices.at<std::int64_t>(index),
+                                                     shape()[position], "scatter_add_");
+            T& element = at<T>(target);
+            element = static_cast<T>(element + converted.at<T>(index));
+        });
+    });
+    return *this;
 }
 
 Tensor& operator+=(Tensor& t, const Operand& other) {
