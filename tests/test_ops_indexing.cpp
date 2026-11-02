@@ -111,11 +111,23 @@ TEST(MaskedFill, MinusInfinityForCausalMasks) {
     EXPECT_EQ(out.item<float>(), -std::numeric_limits<float>::infinity());
 }
 
+TEST(MaskedFill, BroadcastsTheResultLikePyTorch) {
+    auto mask = kael::from_vector({true, false, true, false, false, false}, {2, 3});
+    auto out = kael::masked_fill(kael::zeros({3}), mask, 1);
+    EXPECT_EQ(out.shape(), (Shape{2, 3}));
+    EXPECT_EQ(values<float>(out), (std::vector<float>{1, 0, 1, 0, 0, 0}));
+}
+
+TEST(MaskedFill, OverlappingMaskIsReadBeforeWriting) {
+    auto t = kael::from_vector({true, false, true, false}, {2, 2});
+    t.masked_fill_(t.select(0, 0), false);
+    EXPECT_EQ(values<std::uint8_t>(t), (std::vector<std::uint8_t>{0, 0, 0, 0}));
+}
+
 TEST(MaskedFill, Errors) {
     auto t = kael::zeros({2});
     EXPECT_THROW(kael::masked_fill(t, kael::zeros({2}), 1), kael::Error);
-    EXPECT_THROW(kael::masked_fill(t, kael::from_vector({true, false}).reshape({2, 1}), 1),
-                 kael::Error);
+    EXPECT_THROW(t.masked_fill_(kael::from_vector({true, false}).reshape({2, 1}), 1), kael::Error);
     auto expanded = kael::zeros({2}).expand({2, 2});
     EXPECT_THROW(expanded.masked_fill_(kael::from_vector({true, true}), 1), kael::Error);
 }
@@ -180,4 +192,16 @@ TEST(ScatterAdd, Errors) {
     auto t = kael::zeros({2, 3});
     EXPECT_THROW(t.scatter_add_(1, index_tensor({3}, {1, 1}), kael::ones({1, 1})), kael::Error);
     EXPECT_THROW(t.scatter_add_(1, index_tensor({0, 0}, {2, 1}), kael::ones({1, 1})), kael::Error);
+    EXPECT_THROW(t.scatter_add_(1, index_tensor({0}, {1, 1}), kael::ones({1, 1}, DType::F64)),
+                 kael::Error);
+    EXPECT_THROW(t.scatter_add_(1, index_tensor({0}, {1, 1}), t), kael::Error);
+    auto expanded = kael::zeros({3}).expand({2, 3});
+    EXPECT_THROW(expanded.scatter_add_(1, index_tensor({0}, {1, 1}), kael::ones({1, 1})),
+                 kael::Error);
+}
+
+TEST(ScatterAdd, BoolStaysValid) {
+    auto t = kael::zeros({1}, DType::Bool);
+    t.scatter_add_(0, index_tensor({0, 0, 0}, {3}), kael::ones({3}, DType::Bool));
+    EXPECT_EQ(t.item<std::uint8_t>(), 1);
 }

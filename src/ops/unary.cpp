@@ -2,6 +2,7 @@
 #include <numbers>
 #include <type_traits>
 
+#include "kael/factory.h"
 #include "kael/kernels.h"
 #include "kael/ops.h"
 
@@ -104,7 +105,10 @@ Tensor gelu(const Tensor& t) {
 
 Tensor clamp(const Tensor& t, Scalar min, Scalar max) {
     const DType dtype = promote_with_scalar(promote_with_scalar(t.dtype(), min), max);
-    return unary_kernel(t.to(dtype), detail::Clamper{min.value(), max.value()});
+    const Tensor input = t.to(dtype);
+    Tensor out = empty_like(input);
+    detail::clamp_into(out, input, min, max);
+    return out;
 }
 
 Tensor operator-(const Tensor& t) {

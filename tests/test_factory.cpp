@@ -83,6 +83,18 @@ TEST(Factory, ArangeExamples) {
     expect_fresh_contiguous(t);
 }
 
+TEST(Factory, ArangeIntegersTruncateStartAndStepLikePyTorch) {
+    EXPECT_EQ(values<std::int64_t>(kael::arange(0.5, 3.5, 1.5, DType::I64)),
+              (std::vector<std::int64_t>{0, 1}));
+    EXPECT_EQ(values<std::int64_t>(kael::arange(-0.5, 3.0, 1.5, DType::I64)),
+              (std::vector<std::int64_t>{0, 1, 2}));
+}
+
+TEST(Factory, FromVectorNormalizesBoolBytes) {
+    auto t = kael::from_vector(std::vector<std::uint8_t>{2, 0});
+    EXPECT_EQ(values<std::uint8_t>(t), (std::vector<std::uint8_t>{1, 0}));
+}
+
 TEST(Factory, ArangeEmptyRange) {
     EXPECT_EQ(kael::arange(3, 3, 1).numel(), 0);
 }

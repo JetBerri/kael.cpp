@@ -53,6 +53,10 @@ constexpr bool is_floating_point(DType dtype) {
     return dtype == DType::F32 || dtype == DType::F64;
 }
 
+constexpr int dtype_category(DType dtype) {
+    return dtype == DType::Bool ? 0 : (dtype == DType::I64 ? 1 : 2);
+}
+
 constexpr DType promote_types(DType a, DType b) {
     constexpr auto rank = [](DType dtype) {
         switch (dtype) {

@@ -106,6 +106,17 @@ TEST(Clamp, ScalarCategoryPromotes) {
               (std::vector<float>{-0.5f, 0.f, 0.5f}));
 }
 
+TEST(Clamp, NanBoundGivesNan) {
+    EXPECT_TRUE(std::isnan(single(kael::clamp(one(1), kNan, 2))));
+    EXPECT_TRUE(std::isnan(single(kael::clamp(one(1), 0, kNan))));
+}
+
+TEST(Clamp, LargeIntegerBoundsAreExact) {
+    const auto highest = std::numeric_limits<std::int64_t>::max();
+    EXPECT_EQ(values<std::int64_t>(kael::clamp(int_tensor(), 0, highest)),
+              (std::vector<std::int64_t>{0, 0, 3}));
+}
+
 TEST(Unary, EmptyAndNonContiguous) {
     EXPECT_EQ(kael::exp(kael::zeros({0, 2})).numel(), 0);
     auto t = kael::arange(0, 4).reshape({2, 2}).T();

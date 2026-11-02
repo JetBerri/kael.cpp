@@ -78,6 +78,24 @@ TEST(Arithmetic, FloorDivideRoundsDown) {
               (std::vector<float>{-4.f}));
 }
 
+TEST(Arithmetic, FloorDivideFloatsFollowPyTorch) {
+    const double inf = std::numeric_limits<double>::infinity();
+    auto a = kael::from_vector({1.0, inf, -1.0, 5.0, -5.0});
+    auto b = kael::from_vector({0.1, 1.0, inf, 0.0, 0.0});
+    auto v = values<double>(kael::floor_divide(a, b));
+    EXPECT_EQ(v[0], 9.0);
+    EXPECT_TRUE(std::isnan(v[1]));
+    EXPECT_EQ(v[2], -1.0);
+    EXPECT_EQ(v[3], inf);
+    EXPECT_EQ(v[4], -inf);
+}
+
+TEST(Arithmetic, FloorDivideOfMinimumByMinusOneWraps) {
+    const std::int64_t lowest = std::numeric_limits<std::int64_t>::min();
+    EXPECT_EQ(values<std::int64_t>(kael::floor_divide(ints({lowest}), ints({-1}))),
+              (std::vector<std::int64_t>{lowest}));
+}
+
 TEST(Arithmetic, FloorDivideIntegerByZeroThrows) {
     EXPECT_THROW(kael::floor_divide(ints({1}), ints({0})), kael::Error);
 }
@@ -85,7 +103,18 @@ TEST(Arithmetic, FloorDivideIntegerByZeroThrows) {
 TEST(Arithmetic, PowIntegersAreExact) {
     EXPECT_EQ(values<std::int64_t>(kael::pow(ints({3, 2, -2}), ints({30, 0, 3}))),
               (std::vector<std::int64_t>{205891132094649, 1, -8}));
-    EXPECT_THROW(kael::pow(ints({2}), ints({-1})), kael::Error);
+    EXPECT_THROW(kael::pow(ints({2}), -1), kael::Error);
+}
+
+TEST(Arithmetic, PowOfNegativeTensorExponentMatchesPyTorch) {
+    EXPECT_EQ(values<std::int64_t>(kael::pow(ints({2, 1, -1, -1, 0}), ints({-1, -1, -1, -2, -1}))),
+              (std::vector<std::int64_t>{0, 1, -1, 1, 0}));
+}
+
+TEST(Arithmetic, PowOfLargeBaseDoesNotOverflowWhileSquaring) {
+    const std::int64_t large = std::int64_t{1} << 40;
+    EXPECT_EQ(values<std::int64_t>(kael::pow(ints({large}), ints({1}))),
+              (std::vector<std::int64_t>{large}));
 }
 
 TEST(Arithmetic, PowFloats) {
@@ -117,6 +146,20 @@ TEST(Promotion, ScalarsDoNotRaisePrecision) {
     EXPECT_EQ(kael::add(ints({1}), 2.5).dtype(), DType::F32);
     EXPECT_EQ(kael::add(ints({1}), 2).dtype(), DType::I64);
     EXPECT_EQ(kael::add(bools({true}), 2).dtype(), DType::I64);
+}
+
+TEST(Promotion, ZeroDimensionalTensorsOnlyWinWithHigherCategory) {
+    const auto wide_scalar = kael::scalar(1, DType::F64);
+    EXPECT_EQ(kael::add(kael::zeros({2}), wide_scalar).dtype(), DType::F32);
+    EXPECT_EQ(kael::add(kael::zeros({2}, DType::I64), wide_scalar).dtype(), DType::F64);
+    EXPECT_EQ(kael::add(kael::scalar(1), wide_scalar).dtype(), DType::F64);
+    EXPECT_EQ(kael::add(bools({true}), kael::scalar(1, DType::I64)).dtype(), DType::I64);
+}
+
+TEST(Scalars, IntegersKeepFullPrecision) {
+    const std::int64_t large = (std::int64_t{1} << 53) + 1;
+    EXPECT_EQ(values<std::int64_t>(kael::add(ints({0}), large)),
+              (std::vector<std::int64_t>{large}));
 }
 
 TEST(Scalars, WorkOnBothSides) {

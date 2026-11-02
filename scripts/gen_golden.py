@@ -119,6 +119,9 @@ BROADCAST_PATTERNS = [
     ("f64", {"a": spec((3, 4), "f64"), "b": spec((3, 4), "f64")}, {}),
 ]
 PROMOTION_PATTERNS = [
+    ("zero_dim_wider", {"a": spec((3,)), "b": spec((), "f64")}, {}),
+    ("zero_dim_higher_category", {"a": spec((3,), "i64"), "b": spec(())}, {}),
+    ("zero_dim_lower_category", {"a": spec((3,)), "b": spec((), "i64")}, {}),
     ("f32_i64", {"a": spec((5,)), "b": spec((5,), "i64")}, {}),
     ("f64_f32", {"a": spec((5,), "f64"), "b": spec((5,))}, {}),
     ("i64_i64", {"a": spec((5,), "i64"), "b": spec((5,), "i64")}, {}),
@@ -142,6 +145,7 @@ add_cases(
     "floor_divide",
     torch.floor_divide,
     BROADCAST_PATTERNS
+    + SPECIAL_PATTERN
     + [
         (
             "i64_nonzero",
@@ -165,6 +169,14 @@ add_cases(
             {
                 "a": spec((4,), "i64", values=[2, -3, 5, 0]),
                 "b": spec((4,), "i64", values=[10, 3, 0, 4]),
+            },
+            {},
+        ),
+        (
+            "i64_negative_exponent",
+            {
+                "a": spec((5,), "i64", values=[2, 1, -1, -1, 0]),
+                "b": spec((5,), "i64", values=[-1, -1, -1, -2, -1]),
             },
             {},
         ),
@@ -386,6 +398,7 @@ add_cases(
         ("broadcast_mask", {"x": spec((2, 3)), "m": spec((3,), "bool")}, {"value": -1.0}),
         ("transposed", {"x": spec((4, 3), view="transpose:0:1"), "m": spec((3, 4), "bool")}, {"value": 2.0}),
         ("minus_infinity", {"x": spec((3,)), "m": spec((3,), "bool")}, {"value": -float("inf")}),
+        ("wider_mask", {"x": spec((3,)), "m": spec((2, 3), "bool")}, {"value": 1.5}),
         ("i64", {"x": spec((4,), "i64"), "m": spec((4,), "bool")}, {"value": 9}),
     ],
 )
@@ -444,8 +457,8 @@ add_cases(
     NN_PATTERNS
     + [ALL_MINUS_INFINITY, PLUS_INFINITY, ("keepdim", {"x": spec((3, 4))}, {"dim": 1, "keepdim": True})],
 )
-add_cases("softmax", torch.softmax, NN_PATTERNS)
-add_cases("log_softmax", torch.log_softmax, NN_PATTERNS)
+add_cases("softmax", torch.softmax, NN_PATTERNS + [ALL_MINUS_INFINITY, PLUS_INFINITY])
+add_cases("log_softmax", torch.log_softmax, NN_PATTERNS + [ALL_MINUS_INFINITY, PLUS_INFINITY])
 
 
 def main():

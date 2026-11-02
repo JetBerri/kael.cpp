@@ -72,6 +72,12 @@ TEST(LogSoftmax, ExpMatchesSoftmax) {
     EXPECT_TRUE(allclose(kael::exp(kael::log_softmax(x, 1)), kael::softmax(x, 1)));
 }
 
+TEST(LogSoftmax, InfinityGivesNanLikePyTorch) {
+    auto v = values<float>(kael::log_softmax(kael::from_vector({kInf, 1.f}), 0));
+    EXPECT_TRUE(std::isnan(v[0]));
+    EXPECT_TRUE(std::isnan(v[1]));
+}
+
 TEST(LogSoftmax, EmptyKeepsShape) {
     EXPECT_EQ(kael::log_softmax(kael::zeros({0, 3}), 1).shape(), (Shape{0, 3}));
     EXPECT_EQ(kael::softmax(kael::zeros({0, 3}), 1).shape(), (Shape{0, 3}));

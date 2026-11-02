@@ -525,3 +525,11 @@ TEST(ViewChain, GeneratedNumPyCases) {
         EXPECT_EQ(values<std::int64_t>(t.clone()), cases[i].expected_values);
     }
 }
+
+TEST(ZeroDimensional, TransposeAndSqueezeAcceptDimZero) {
+    auto s = kael::scalar(1);
+    EXPECT_TRUE(s.transpose(0, -1).is_same(s));
+    EXPECT_TRUE(s.squeeze(0).is_same(s));
+    EXPECT_THROW((void)s.transpose(0, 1), kael::Error);
+    EXPECT_THROW((void)s.squeeze(1), kael::Error);
+}

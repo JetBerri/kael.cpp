@@ -66,6 +66,11 @@ Tensor Tensor::reshape(const Shape& requested) const {
 }
 
 Tensor Tensor::transpose(std::int64_t dim0, std::int64_t dim1) const {
+    if (dim() == 0) {
+        wrap_dim(dim0, 1);
+        wrap_dim(dim1, 1);
+        return *this;
+    }
     const std::size_t first = dim_position(dim0, dim());
     const std::size_t second = dim_position(dim1, dim());
 
@@ -117,6 +122,10 @@ Tensor Tensor::squeeze() const {
 }
 
 Tensor Tensor::squeeze(std::int64_t dim) const {
+    if (this->dim() == 0) {
+        wrap_dim(dim, 1);
+        return *this;
+    }
     const std::size_t position = dim_position(dim, this->dim());
     if (shape()[position] != 1) {
         return *this;

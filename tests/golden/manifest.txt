@@ -9,6 +9,9 @@ op=add case=scalar_tensor inputs=a,b view_a=none view_b=none args=
 op=add case=scalar_scalar inputs=a,b view_a=none view_b=none args=
 op=add case=empty inputs=a,b view_a=none view_b=none args=
 op=add case=f64 inputs=a,b view_a=none view_b=none args=
+op=add case=zero_dim_wider inputs=a,b view_a=none view_b=none args=
+op=add case=zero_dim_higher_category inputs=a,b view_a=none view_b=none args=
+op=add case=zero_dim_lower_category inputs=a,b view_a=none view_b=none args=
 op=add case=f32_i64 inputs=a,b view_a=none view_b=none args=
 op=add case=f64_f32 inputs=a,b view_a=none view_b=none args=
 op=add case=i64_i64 inputs=a,b view_a=none view_b=none args=
@@ -25,6 +28,9 @@ op=sub case=scalar_tensor inputs=a,b view_a=none view_b=none args=
 op=sub case=scalar_scalar inputs=a,b view_a=none view_b=none args=
 op=sub case=empty inputs=a,b view_a=none view_b=none args=
 op=sub case=f64 inputs=a,b view_a=none view_b=none args=
+op=sub case=zero_dim_wider inputs=a,b view_a=none view_b=none args=
+op=sub case=zero_dim_higher_category inputs=a,b view_a=none view_b=none args=
+op=sub case=zero_dim_lower_category inputs=a,b view_a=none view_b=none args=
 op=sub case=f32_i64 inputs=a,b view_a=none view_b=none args=
 op=sub case=f64_f32 inputs=a,b view_a=none view_b=none args=
 op=sub case=i64_i64 inputs=a,b view_a=none view_b=none args=
@@ -40,6 +46,9 @@ op=mul case=scalar_tensor inputs=a,b view_a=none view_b=none args=
 op=mul case=scalar_scalar inputs=a,b view_a=none view_b=none args=
 op=mul case=empty inputs=a,b view_a=none view_b=none args=
 op=mul case=f64 inputs=a,b view_a=none view_b=none args=
+op=mul case=zero_dim_wider inputs=a,b view_a=none view_b=none args=
+op=mul case=zero_dim_higher_category inputs=a,b view_a=none view_b=none args=
+op=mul case=zero_dim_lower_category inputs=a,b view_a=none view_b=none args=
 op=mul case=f32_i64 inputs=a,b view_a=none view_b=none args=
 op=mul case=f64_f32 inputs=a,b view_a=none view_b=none args=
 op=mul case=i64_i64 inputs=a,b view_a=none view_b=none args=
@@ -57,6 +66,9 @@ op=div case=scalar_tensor inputs=a,b view_a=none view_b=none args=
 op=div case=scalar_scalar inputs=a,b view_a=none view_b=none args=
 op=div case=empty inputs=a,b view_a=none view_b=none args=
 op=div case=f64 inputs=a,b view_a=none view_b=none args=
+op=div case=zero_dim_wider inputs=a,b view_a=none view_b=none args=
+op=div case=zero_dim_higher_category inputs=a,b view_a=none view_b=none args=
+op=div case=zero_dim_lower_category inputs=a,b view_a=none view_b=none args=
 op=div case=f32_i64 inputs=a,b view_a=none view_b=none args=
 op=div case=f64_f32 inputs=a,b view_a=none view_b=none args=
 op=div case=i64_i64 inputs=a,b view_a=none view_b=none args=
@@ -74,6 +86,9 @@ op=maximum case=scalar_tensor inputs=a,b view_a=none view_b=none args=
 op=maximum case=scalar_scalar inputs=a,b view_a=none view_b=none args=
 op=maximum case=empty inputs=a,b view_a=none view_b=none args=
 op=maximum case=f64 inputs=a,b view_a=none view_b=none args=
+op=maximum case=zero_dim_wider inputs=a,b view_a=none view_b=none args=
+op=maximum case=zero_dim_higher_category inputs=a,b view_a=none view_b=none args=
+op=maximum case=zero_dim_lower_category inputs=a,b view_a=none view_b=none args=
 op=maximum case=f32_i64 inputs=a,b view_a=none view_b=none args=
 op=maximum case=f64_f32 inputs=a,b view_a=none view_b=none args=
 op=maximum case=i64_i64 inputs=a,b view_a=none view_b=none args=
@@ -89,6 +104,9 @@ op=minimum case=scalar_tensor inputs=a,b view_a=none view_b=none args=
 op=minimum case=scalar_scalar inputs=a,b view_a=none view_b=none args=
 op=minimum case=empty inputs=a,b view_a=none view_b=none args=
 op=minimum case=f64 inputs=a,b view_a=none view_b=none args=
+op=minimum case=zero_dim_wider inputs=a,b view_a=none view_b=none args=
+op=minimum case=zero_dim_higher_category inputs=a,b view_a=none view_b=none args=
+op=minimum case=zero_dim_lower_category inputs=a,b view_a=none view_b=none args=
 op=minimum case=f32_i64 inputs=a,b view_a=none view_b=none args=
 op=minimum case=f64_f32 inputs=a,b view_a=none view_b=none args=
 op=minimum case=i64_i64 inputs=a,b view_a=none view_b=none args=
@@ -104,11 +122,13 @@ op=floor_divide case=scalar_tensor inputs=a,b view_a=none view_b=none args=
 op=floor_divide case=scalar_scalar inputs=a,b view_a=none view_b=none args=
 op=floor_divide case=empty inputs=a,b view_a=none view_b=none args=
 op=floor_divide case=f64 inputs=a,b view_a=none view_b=none args=
+op=floor_divide case=special inputs=a,b view_a=none view_b=none args=
 op=floor_divide case=i64_nonzero inputs=a,b view_a=none view_b=none args=
 op=pow case=positive_base inputs=a,b view_a=none view_b=none args=
 op=pow case=broadcast inputs=a,b view_a=none view_b=none args=
 op=pow case=transposed inputs=a,b view_a=transpose:0:1 view_b=none args=
 op=pow case=i64 inputs=a,b view_a=none view_b=none args=
+op=pow case=i64_negative_exponent inputs=a,b view_a=none view_b=none args=
 op=eq case=same inputs=a,b view_a=none view_b=none args=
 op=eq case=broadcast_rank inputs=a,b view_a=none view_b=none args=
 op=eq case=broadcast_ones inputs=a,b view_a=none view_b=none args=
@@ -120,6 +140,9 @@ op=eq case=scalar_tensor inputs=a,b view_a=none view_b=none args=
 op=eq case=scalar_scalar inputs=a,b view_a=none view_b=none args=
 op=eq case=empty inputs=a,b view_a=none view_b=none args=
 op=eq case=f64 inputs=a,b view_a=none view_b=none args=
+op=eq case=zero_dim_wider inputs=a,b view_a=none view_b=none args=
+op=eq case=zero_dim_higher_category inputs=a,b view_a=none view_b=none args=
+op=eq case=zero_dim_lower_category inputs=a,b view_a=none view_b=none args=
 op=eq case=f32_i64 inputs=a,b view_a=none view_b=none args=
 op=eq case=f64_f32 inputs=a,b view_a=none view_b=none args=
 op=eq case=i64_i64 inputs=a,b view_a=none view_b=none args=
@@ -137,6 +160,9 @@ op=ne case=scalar_tensor inputs=a,b view_a=none view_b=none args=
 op=ne case=scalar_scalar inputs=a,b view_a=none view_b=none args=
 op=ne case=empty inputs=a,b view_a=none view_b=none args=
 op=ne case=f64 inputs=a,b view_a=none view_b=none args=
+op=ne case=zero_dim_wider inputs=a,b view_a=none view_b=none args=
+op=ne case=zero_dim_higher_category inputs=a,b view_a=none view_b=none args=
+op=ne case=zero_dim_lower_category inputs=a,b view_a=none view_b=none args=
 op=ne case=f32_i64 inputs=a,b view_a=none view_b=none args=
 op=ne case=f64_f32 inputs=a,b view_a=none view_b=none args=
 op=ne case=i64_i64 inputs=a,b view_a=none view_b=none args=
@@ -154,6 +180,9 @@ op=lt case=scalar_tensor inputs=a,b view_a=none view_b=none args=
 op=lt case=scalar_scalar inputs=a,b view_a=none view_b=none args=
 op=lt case=empty inputs=a,b view_a=none view_b=none args=
 op=lt case=f64 inputs=a,b view_a=none view_b=none args=
+op=lt case=zero_dim_wider inputs=a,b view_a=none view_b=none args=
+op=lt case=zero_dim_higher_category inputs=a,b view_a=none view_b=none args=
+op=lt case=zero_dim_lower_category inputs=a,b view_a=none view_b=none args=
 op=lt case=f32_i64 inputs=a,b view_a=none view_b=none args=
 op=lt case=f64_f32 inputs=a,b view_a=none view_b=none args=
 op=lt case=i64_i64 inputs=a,b view_a=none view_b=none args=
@@ -171,6 +200,9 @@ op=le case=scalar_tensor inputs=a,b view_a=none view_b=none args=
 op=le case=scalar_scalar inputs=a,b view_a=none view_b=none args=
 op=le case=empty inputs=a,b view_a=none view_b=none args=
 op=le case=f64 inputs=a,b view_a=none view_b=none args=
+op=le case=zero_dim_wider inputs=a,b view_a=none view_b=none args=
+op=le case=zero_dim_higher_category inputs=a,b view_a=none view_b=none args=
+op=le case=zero_dim_lower_category inputs=a,b view_a=none view_b=none args=
 op=le case=f32_i64 inputs=a,b view_a=none view_b=none args=
 op=le case=f64_f32 inputs=a,b view_a=none view_b=none args=
 op=le case=i64_i64 inputs=a,b view_a=none view_b=none args=
@@ -188,6 +220,9 @@ op=gt case=scalar_tensor inputs=a,b view_a=none view_b=none args=
 op=gt case=scalar_scalar inputs=a,b view_a=none view_b=none args=
 op=gt case=empty inputs=a,b view_a=none view_b=none args=
 op=gt case=f64 inputs=a,b view_a=none view_b=none args=
+op=gt case=zero_dim_wider inputs=a,b view_a=none view_b=none args=
+op=gt case=zero_dim_higher_category inputs=a,b view_a=none view_b=none args=
+op=gt case=zero_dim_lower_category inputs=a,b view_a=none view_b=none args=
 op=gt case=f32_i64 inputs=a,b view_a=none view_b=none args=
 op=gt case=f64_f32 inputs=a,b view_a=none view_b=none args=
 op=gt case=i64_i64 inputs=a,b view_a=none view_b=none args=
@@ -205,6 +240,9 @@ op=ge case=scalar_tensor inputs=a,b view_a=none view_b=none args=
 op=ge case=scalar_scalar inputs=a,b view_a=none view_b=none args=
 op=ge case=empty inputs=a,b view_a=none view_b=none args=
 op=ge case=f64 inputs=a,b view_a=none view_b=none args=
+op=ge case=zero_dim_wider inputs=a,b view_a=none view_b=none args=
+op=ge case=zero_dim_higher_category inputs=a,b view_a=none view_b=none args=
+op=ge case=zero_dim_lower_category inputs=a,b view_a=none view_b=none args=
 op=ge case=f32_i64 inputs=a,b view_a=none view_b=none args=
 op=ge case=f64_f32 inputs=a,b view_a=none view_b=none args=
 op=ge case=i64_i64 inputs=a,b view_a=none view_b=none args=
@@ -222,6 +260,9 @@ op=logical_and case=scalar_tensor inputs=a,b view_a=none view_b=none args=
 op=logical_and case=scalar_scalar inputs=a,b view_a=none view_b=none args=
 op=logical_and case=empty inputs=a,b view_a=none view_b=none args=
 op=logical_and case=f64 inputs=a,b view_a=none view_b=none args=
+op=logical_and case=zero_dim_wider inputs=a,b view_a=none view_b=none args=
+op=logical_and case=zero_dim_higher_category inputs=a,b view_a=none view_b=none args=
+op=logical_and case=zero_dim_lower_category inputs=a,b view_a=none view_b=none args=
 op=logical_and case=f32_i64 inputs=a,b view_a=none view_b=none args=
 op=logical_and case=f64_f32 inputs=a,b view_a=none view_b=none args=
 op=logical_and case=i64_i64 inputs=a,b view_a=none view_b=none args=
@@ -239,6 +280,9 @@ op=logical_or case=scalar_tensor inputs=a,b view_a=none view_b=none args=
 op=logical_or case=scalar_scalar inputs=a,b view_a=none view_b=none args=
 op=logical_or case=empty inputs=a,b view_a=none view_b=none args=
 op=logical_or case=f64 inputs=a,b view_a=none view_b=none args=
+op=logical_or case=zero_dim_wider inputs=a,b view_a=none view_b=none args=
+op=logical_or case=zero_dim_higher_category inputs=a,b view_a=none view_b=none args=
+op=logical_or case=zero_dim_lower_category inputs=a,b view_a=none view_b=none args=
 op=logical_or case=f32_i64 inputs=a,b view_a=none view_b=none args=
 op=logical_or case=f64_f32 inputs=a,b view_a=none view_b=none args=
 op=logical_or case=i64_i64 inputs=a,b view_a=none view_b=none args=
@@ -256,6 +300,9 @@ op=logical_xor case=scalar_tensor inputs=a,b view_a=none view_b=none args=
 op=logical_xor case=scalar_scalar inputs=a,b view_a=none view_b=none args=
 op=logical_xor case=empty inputs=a,b view_a=none view_b=none args=
 op=logical_xor case=f64 inputs=a,b view_a=none view_b=none args=
+op=logical_xor case=zero_dim_wider inputs=a,b view_a=none view_b=none args=
+op=logical_xor case=zero_dim_higher_category inputs=a,b view_a=none view_b=none args=
+op=logical_xor case=zero_dim_lower_category inputs=a,b view_a=none view_b=none args=
 op=logical_xor case=f32_i64 inputs=a,b view_a=none view_b=none args=
 op=logical_xor case=f64_f32 inputs=a,b view_a=none view_b=none args=
 op=logical_xor case=i64_i64 inputs=a,b view_a=none view_b=none args=
@@ -673,6 +720,7 @@ op=masked_fill case=same inputs=x,m view_x=none view_m=none args=value:7.5
 op=masked_fill case=broadcast_mask inputs=x,m view_x=none view_m=none args=value:-1.0
 op=masked_fill case=transposed inputs=x,m view_x=transpose:0:1 view_m=none args=value:2.0
 op=masked_fill case=minus_infinity inputs=x,m view_x=none view_m=none args=value:-inf
+op=masked_fill case=wider_mask inputs=x,m view_x=none view_m=none args=value:1.5
 op=masked_fill case=i64 inputs=x,m view_x=none view_m=none args=value:9
 op=index_select case=dim0 inputs=x,i view_x=none view_i=none args=dim:0
 op=index_select case=dim1 inputs=x,i view_x=none view_i=none args=dim:1
@@ -711,6 +759,8 @@ op=softmax case=some_minus_infinity inputs=x view_x=none args=dim:0
 op=softmax case=empty inputs=x view_x=none args=dim:1
 op=softmax case=scalar inputs=x view_x=none args=dim:0
 op=softmax case=f64 inputs=x view_x=none args=dim:1
+op=softmax case=all_minus_infinity inputs=x view_x=none args=dim:0
+op=softmax case=plus_infinity inputs=x view_x=none args=dim:0
 op=log_softmax case=dim0 inputs=x view_x=none args=dim:0
 op=log_softmax case=dim1 inputs=x view_x=none args=dim:1
 op=log_softmax case=negative inputs=x view_x=none args=dim:-1
@@ -721,3 +771,5 @@ op=log_softmax case=some_minus_infinity inputs=x view_x=none args=dim:0
 op=log_softmax case=empty inputs=x view_x=none args=dim:1
 op=log_softmax case=scalar inputs=x view_x=none args=dim:0
 op=log_softmax case=f64 inputs=x view_x=none args=dim:1
+op=log_softmax case=all_minus_infinity inputs=x view_x=none args=dim:0
+op=log_softmax case=plus_infinity inputs=x view_x=none args=dim:0

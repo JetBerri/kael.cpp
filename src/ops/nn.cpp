@@ -16,6 +16,10 @@ Tensor finite_or_zero(const Tensor& t) {
     return where(abs(t) == infinity, 0, t);
 }
 
+Tensor shifted_by_max(const Tensor& x, std::int64_t dim) {
+    return x - max(x, {dim}, true);
+}
+
 } // namespace
 
 Tensor logsumexp(const Tensor& t, std::int64_t dim, bool keepdim) {
@@ -33,13 +37,17 @@ Tensor softmax(const Tensor& t, std::int64_t dim) {
     if (x.numel() == 0) {
         return x.clone();
     }
-    const Tensor exponentials = exp(x - max(x, {dim}, true));
+    const Tensor exponentials = exp(shifted_by_max(x, dim));
     return exponentials / sum(exponentials, {dim}, true);
 }
 
 Tensor log_softmax(const Tensor& t, std::int64_t dim) {
     const Tensor x = as_floating(t);
-    return x - logsumexp(x, dim, true);
+    if (x.numel() == 0) {
+        return x.clone();
+    }
+    const Tensor shifted = shifted_by_max(x, dim);
+    return shifted - log(sum(exp(shifted), {dim}, true));
 }
 
 } // namespace kael

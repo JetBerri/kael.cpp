@@ -2,6 +2,8 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <initializer_list>
+#include <optional>
 #include <utility>
 
 #include "kael/dtype.h"
@@ -9,6 +11,21 @@
 #include "kael/tensor.h"
 
 namespace kael {
+
+// Tensors with dimensions decide the dtype; a 0-d tensor only wins with a higher category.
+inline DType result_dtype(std::initializer_list<const Tensor*> tensors) {
+    std::optional<DType> dimensioned;
+    std::optional<DType> zero_dimensional;
+    for (const Tensor* t : tensors) {
+        std::optional<DType>& group = t->dim() == 0 ? zero_dimensional : dimensioned;
+        group = group ? promote_types(*group, t->dtype()) : t->dtype();
+    }
+    if (!dimensioned || !zero_dimensional) {
+        return dimensioned ? *dimensioned : *zero_dimensional;
+    }
+    return dtype_category(*zero_dimensional) > dtype_category(*dimensioned) ? *zero_dimensional
+                                                                            : *dimensioned;
+}
 
 namespace detail {
 
@@ -78,7 +95,7 @@ template <typename F> void unary_kernel_out(Tensor& out, const Tensor& input, F 
 }
 
 template <typename F> Tensor binary_kernel(const Tensor& a, const Tensor& b, F f) {
-    return detail::same_dtype_kernel(promote_types(a.dtype(), b.dtype()), f, a, b);
+    return detail::same_dtype_kernel(result_dtype({&a, &b}), f, a, b);
 }
 
 template <typename F> void binary_kernel_out(Tensor& out, const Tensor& a, const Tensor& b, F f) {
@@ -87,12 +104,12 @@ template <typename F> void binary_kernel_out(Tensor& out, const Tensor& a, const
 
 template <typename F>
 Tensor ternary_kernel(const Tensor& a, const Tensor& b, const Tensor& c, F f) {
-    const DType dtype = promote_types(promote_types(a.dtype(), b.dtype()), c.dtype());
+    const DType dtype = result_dtype({&a, &b, &c});
     return detail::same_dtype_kernel(dtype, f, a, b, c);
 }
 
 template <typename F> Tensor comparison_kernel(const Tensor& a, const Tensor& b, F f) {
-    const DType dtype = promote_types(a.dtype(), b.dtype());
+    const DType dtype = result_dtype({&a, &b});
     TensorIterator iterator;
     iterator.allocate_output(DType::Bool).add_input(a.to(dtype)).add_input(b.to(dtype)).build();
     dispatch(dtype, [&]<typename T>() { detail::run_typed<std::uint8_t, T, 2>(iterator, f); });

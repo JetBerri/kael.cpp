@@ -115,6 +115,7 @@ void TensorIterator::prepare_output(const Shape& common_shape) {
 }
 
 void TensorIterator::prepare_loop(const Shape& common_shape) {
+    base_pointers_.clear();
     LoopDims full;
     full.shape = common_shape;
     full.operand_strides.push_back(to_bytes(output_->strides(), output_->dtype()));

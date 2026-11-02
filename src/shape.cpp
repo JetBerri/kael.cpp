@@ -6,6 +6,8 @@
 
 #include "kael/error.h"
 
+#include "internal/checked_math.h"
+
 namespace kael {
 
 namespace {
@@ -59,7 +61,7 @@ Strides contiguous_strides(const Shape& shape) {
     std::int64_t stride = 1;
     for (std::size_t i = shape.size(); i-- > 0;) {
         strides[i] = stride;
-        stride *= std::max<std::int64_t>(shape[i], 1);
+        stride = detail::checked_mul(stride, std::max<std::int64_t>(shape[i], 1), "tensor stride");
     }
     return strides;
 }

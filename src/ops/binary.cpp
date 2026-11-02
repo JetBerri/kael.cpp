@@ -21,17 +21,41 @@ Tensor materialize(const Operand& operand, const Operand& other) {
     const Scalar value = operand.scalar();
     const DType dtype =
         other.is_tensor() ? promote_with_scalar(other.tensor().dtype(), value) : value.dtype();
-    return scalar(value.value(), dtype);
+    return scalar(value, dtype);
+}
+
+template <typename T> T floating_floor_division(T a, T b) {
+    if (b == T{0}) {
+        return a / b;
+    }
+    const T remainder = std::fmod(a, b);
+    T quotient = (a - remainder) / b;
+    if (remainder != T{0} && (b < T{0}) != (remainder < T{0})) {
+        quotient -= T{1};
+    }
+    if (quotient == T{0}) {
+        return std::copysign(T{0}, a / b);
+    }
+    const T floored = std::floor(quotient);
+    return quotient - floored > T(0.5) ? floored + T{1} : floored;
+}
+
+template <typename T> T integer_floor_division(T a, T b) {
+    KAEL_CHECK(b != T{0}, "floor_divide by zero with integer dtype");
+    if (b == static_cast<T>(-1)) {
+        using Wrapping = std::make_unsigned_t<T>;
+        return static_cast<T>(Wrapping{0} - static_cast<Wrapping>(a));
+    }
+    const T quotient = static_cast<T>(a / b);
+    const bool rounded_towards_zero = (a % b != 0) && ((a < 0) != (b < 0));
+    return rounded_towards_zero ? static_cast<T>(quotient - 1) : quotient;
 }
 
 template <typename T> T floor_division(T a, T b) {
     if constexpr (std::is_floating_point_v<T>) {
-        return std::floor(a / b);
+        return floating_floor_division(a, b);
     } else {
-        KAEL_CHECK(b != 0, "floor_divide by zero with integer dtype");
-        const T quotient = static_cast<T>(a / b);
-        const bool rounded_towards_zero = (a % b != 0) && ((a < 0) != (b < 0));
-        return rounded_towards_zero ? quotient - 1 : quotient;
+        return integer_floor_division(a, b);
     }
 }
 
@@ -62,7 +86,7 @@ std::pair<Tensor, Tensor> resolve_operands(const Operand& a, const Operand& b) {
 
 Tensor add(const Operand& a, const Operand& b) {
     const auto [x, y] = detail::resolve_operands(a, b);
-    const DType dtype = detail::add_dtype(x.dtype(), y.dtype());
+    const DType dtype = detail::add_dtype(x, y);
     return binary_kernel(x.to(dtype), y.to(dtype), detail::kPlus);
 }
 
@@ -79,7 +103,7 @@ Tensor mul(const Operand& a, const Operand& b) {
 
 Tensor div(const Operand& a, const Operand& b) {
     const auto [x, y] = detail::resolve_operands(a, b);
-    const DType dtype = detail::div_dtype(x.dtype(), y.dtype());
+    const DType dtype = detail::div_dtype(x, y);
     return binary_kernel(x.to(dtype), y.to(dtype), detail::kDivides);
 }
 
@@ -92,6 +116,7 @@ Tensor floor_divide(const Operand& a, const Operand& b) {
 Tensor pow(const Operand& base, const Operand& exponent) {
     const auto [x, y] = detail::resolve_operands(base, exponent);
     detail::check_no_bool(x, y, "pow");
+    detail::check_integer_exponent(x, exponent);
     return binary_kernel(x, y, detail::kPower);
 }
 

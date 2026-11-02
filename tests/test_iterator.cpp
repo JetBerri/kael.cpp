@@ -139,6 +139,15 @@ TEST(Iterator, GivenOutputIsWrittenInItsOrder) {
     EXPECT_EQ(values<float>(output), (std::vector<float>{0, 1, 2, 3}));
 }
 
+TEST(Iterator, BuildingTwiceIsSafe) {
+    TensorIterator iterator;
+    iterator.allocate_output(DType::F32).add_input(kael::ones({2})).build();
+    iterator.build();
+    int calls = 0;
+    iterator.run([&](std::byte* const*, const std::int64_t*, std::int64_t) { ++calls; });
+    EXPECT_EQ(calls, 1);
+}
+
 TEST(Iterator, Errors) {
     TensorIterator wrong_output;
     wrong_output.add_output(kael::zeros({3})).add_input(kael::zeros({2, 3}));

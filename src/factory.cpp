@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <memory>
+#include <type_traits>
 #include <utility>
 
 #include "internal/checked_math.h"
@@ -25,6 +26,14 @@ std::int64_t arange_count(double start, double end, double step) {
     KAEL_CHECK(count < kMaxArangeElements,
                "arange would produce too many elements (" << count << ")");
     return static_cast<std::int64_t>(count);
+}
+
+template <typename T> T arange_value(double start, double step, std::int64_t i) {
+    if constexpr (std::is_integral_v<T>) {
+        return static_cast<T>(static_cast<T>(start) + static_cast<T>(i) * static_cast<T>(step));
+    } else {
+        return static_cast<T>(start + static_cast<double>(i) * step);
+    }
 }
 
 } // namespace
@@ -52,20 +61,18 @@ Tensor empty(const Shape& shape, DType dtype) {
     return Tensor::from_impl(std::move(impl));
 }
 
-Tensor full(const Shape& shape, double value, DType dtype) {
+Tensor full(const Shape& shape, Scalar value, DType dtype) {
     Tensor t = empty(shape, dtype);
-    dispatch(dtype, [&]<typename T>() {
-        std::fill_n(t.data_ptr<T>(), t.numel(), convert_value<T>(value));
-    });
+    dispatch(dtype, [&]<typename T>() { std::fill_n(t.data_ptr<T>(), t.numel(), value.as<T>()); });
     return t;
 }
 
 Tensor zeros(const Shape& shape, DType dtype) {
-    return full(shape, 0.0, dtype);
+    return full(shape, 0, dtype);
 }
 
 Tensor ones(const Shape& shape, DType dtype) {
-    return full(shape, 1.0, dtype);
+    return full(shape, 1, dtype);
 }
 
 Tensor empty_like(const Tensor& t) {
@@ -92,7 +99,7 @@ Tensor arange(double start, double end, double step, DType dtype) {
     dispatch(dtype, [&]<typename T>() {
         T* values = t.data_ptr<T>();
         for (std::int64_t i = 0; i < count; ++i) {
-            values[i] = static_cast<T>(start + static_cast<double>(i) * step);
+            values[i] = arange_value<T>(start, step, i);
         }
     });
     return t;
@@ -128,7 +135,7 @@ Tensor eye(std::int64_t n, DType dtype) {
     return t;
 }
 
-Tensor scalar(double value, DType dtype) {
+Tensor scalar(Scalar value, DType dtype) {
     return full({}, value, dtype);
 }
 

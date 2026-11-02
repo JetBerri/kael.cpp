@@ -75,7 +75,7 @@ Tensor where(const Tensor& condition, const Operand& a, const Operand& b) {
 }
 
 Tensor masked_fill(const Tensor& t, const Tensor& mask, Scalar value) {
-    Tensor out = t.clone();
+    Tensor out = t.expand(broadcast_shapes(t.shape(), mask.shape())).clone();
     out.masked_fill_(mask, value);
     return out;
 }
