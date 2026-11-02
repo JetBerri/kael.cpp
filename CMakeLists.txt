@@ -31,6 +31,7 @@ add_library(kael
     src/copy.cpp
     src/view.cpp
     src/iterator.cpp
+    src/ops/binary.cpp
 )
 
 add_library(kael::kael ALIAS kael)

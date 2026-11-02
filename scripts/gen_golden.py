@@ -97,6 +97,85 @@ def write_npy_fixtures():
 CASES = []
 
 
+def add_cases(op, compute, patterns):
+    for name, inputs, args in patterns:
+        CASES.append((op, name, inputs, args, compute))
+
+
+SPECIAL_A = [v for v in SPECIAL_VALUES for _ in SPECIAL_VALUES]
+SPECIAL_B = [v for _ in SPECIAL_VALUES for v in SPECIAL_VALUES]
+
+BROADCAST_PATTERNS = [
+    ("same", {"a": spec((3, 4)), "b": spec((3, 4))}, {}),
+    ("broadcast_rank", {"a": spec((2, 3, 4)), "b": spec((4,))}, {}),
+    ("broadcast_ones", {"a": spec((3, 1)), "b": spec((1, 4))}, {}),
+    ("transposed", {"a": spec((4, 3), view="transpose:0:1"), "b": spec((3, 4))}, {}),
+    ("stepped", {"a": spec((3, 8), view="slice:1:0:8:2"), "b": spec((3, 4))}, {}),
+    ("expanded", {"a": spec((4,), view="expand:3:4"), "b": spec((3, 4))}, {}),
+    ("permuted_broadcast", {"a": spec((4, 2, 3), view="permute:1:2:0"), "b": spec((3, 1))}, {}),
+    ("scalar_tensor", {"a": spec(()), "b": spec((3,))}, {}),
+    ("scalar_scalar", {"a": spec(()), "b": spec(())}, {}),
+    ("empty", {"a": spec((0, 3)), "b": spec((3,))}, {}),
+    ("f64", {"a": spec((3, 4), "f64"), "b": spec((3, 4), "f64")}, {}),
+]
+PROMOTION_PATTERNS = [
+    ("f32_i64", {"a": spec((5,)), "b": spec((5,), "i64")}, {}),
+    ("f64_f32", {"a": spec((5,), "f64"), "b": spec((5,))}, {}),
+    ("i64_i64", {"a": spec((5,), "i64"), "b": spec((5,), "i64")}, {}),
+]
+SPECIAL_PATTERN = [
+    ("special", {"a": spec((100,), values=SPECIAL_A), "b": spec((100,), values=SPECIAL_B)}, {}),
+]
+BOOL_PATTERNS = [
+    ("bools", {"a": spec((6,), "bool"), "b": spec((6,), "bool")}, {}),
+    ("bool_f32", {"a": spec((6,), "bool"), "b": spec((6,))}, {}),
+]
+ALL_BINARY = BROADCAST_PATTERNS + PROMOTION_PATTERNS + SPECIAL_PATTERN
+
+add_cases("add", torch.add, ALL_BINARY + BOOL_PATTERNS[1:])
+add_cases("sub", torch.sub, ALL_BINARY)
+add_cases("mul", torch.mul, ALL_BINARY + BOOL_PATTERNS)
+add_cases("div", torch.div, ALL_BINARY + BOOL_PATTERNS)
+add_cases("maximum", torch.maximum, ALL_BINARY)
+add_cases("minimum", torch.minimum, ALL_BINARY)
+add_cases(
+    "floor_divide",
+    torch.floor_divide,
+    BROADCAST_PATTERNS
+    + [
+        (
+            "i64_nonzero",
+            {
+                "a": spec((6,), "i64", values=[7, -7, 7, -7, 0, 5]),
+                "b": spec((6,), "i64", values=[2, 2, -2, -2, 3, 7]),
+            },
+            {},
+        )
+    ],
+)
+add_cases(
+    "pow",
+    torch.pow,
+    [
+        ("positive_base", {"a": spec((3, 4), kind="positive"), "b": spec((3, 4))}, {}),
+        ("broadcast", {"a": spec((2, 3), kind="positive"), "b": spec((3,))}, {}),
+        ("transposed", {"a": spec((4, 3), kind="positive", view="transpose:0:1"), "b": spec((3, 4))}, {}),
+        (
+            "i64",
+            {
+                "a": spec((4,), "i64", values=[2, -3, 5, 0]),
+                "b": spec((4,), "i64", values=[10, 3, 0, 4]),
+            },
+            {},
+        ),
+    ],
+)
+for comparison in [torch.eq, torch.ne, torch.lt, torch.le, torch.gt, torch.ge]:
+    add_cases(comparison.__name__, comparison, ALL_BINARY + BOOL_PATTERNS)
+for logical in [torch.logical_and, torch.logical_or, torch.logical_xor]:
+    add_cases(logical.__name__, logical, ALL_BINARY + BOOL_PATTERNS)
+
+
 def main():
     if GOLDEN_DIR.exists():
         shutil.rmtree(GOLDEN_DIR)

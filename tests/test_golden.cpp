@@ -10,6 +10,7 @@
 
 #include "kael/error.h"
 #include "kael/kael.h"
+#include "kael/ops.h"
 #include "support/allclose.h"
 #include "support/npy.h"
 
@@ -86,8 +87,29 @@ Tensor apply_view(const Tensor& t, const std::string& view) {
 using Inputs = std::vector<Tensor>;
 using GoldenOp = std::function<Tensor(const Inputs&, const Args&)>;
 
+GoldenOp binary(Tensor (*op)(const kael::Operand&, const kael::Operand&)) {
+    return [op](const Inputs& inputs, const Args&) { return op(inputs[0], inputs[1]); };
+}
+
 const std::map<std::string, GoldenOp>& golden_ops() {
     static const std::map<std::string, GoldenOp> ops = {
+        {"add", binary(kael::add)},
+        {"sub", binary(kael::sub)},
+        {"mul", binary(kael::mul)},
+        {"div", binary(kael::div)},
+        {"floor_divide", binary(kael::floor_divide)},
+        {"pow", binary(kael::pow)},
+        {"maximum", binary(kael::maximum)},
+        {"minimum", binary(kael::minimum)},
+        {"eq", binary(kael::eq)},
+        {"ne", binary(kael::ne)},
+        {"lt", binary(kael::lt)},
+        {"le", binary(kael::le)},
+        {"gt", binary(kael::gt)},
+        {"ge", binary(kael::ge)},
+        {"logical_and", binary(kael::logical_and)},
+        {"logical_or", binary(kael::logical_or)},
+        {"logical_xor", binary(kael::logical_xor)},
     };
     return ops;
 }
