@@ -53,6 +53,23 @@ constexpr bool is_floating_point(DType dtype) {
     return dtype == DType::F32 || dtype == DType::F64;
 }
 
+constexpr DType promote_types(DType a, DType b) {
+    constexpr auto rank = [](DType dtype) {
+        switch (dtype) {
+        case DType::Bool:
+            return 0;
+        case DType::I64:
+            return 1;
+        case DType::F32:
+            return 2;
+        case DType::F64:
+            return 3;
+        }
+        detail::unreachable();
+    };
+    return rank(a) >= rank(b) ? a : b;
+}
+
 inline std::ostream& operator<<(std::ostream& os, DType dtype) {
     return os << to_string(dtype);
 }

@@ -6,6 +6,7 @@
 #include "kael/error.h"
 #include "kael/factory.h"
 #include "kael/iterator.h"
+#include "kael/scalar.h"
 #include "support/values.h"
 
 using kael::DType;
@@ -157,4 +158,27 @@ TEST(Iterator, Errors) {
     TensorIterator no_input;
     no_input.allocate_output(DType::F32);
     EXPECT_THROW(no_input.build(), kael::Error);
+}
+
+TEST(Promotion, Table) {
+    using kael::promote_types;
+    static_assert(promote_types(DType::Bool, DType::Bool) == DType::Bool);
+    static_assert(promote_types(DType::Bool, DType::I64) == DType::I64);
+    static_assert(promote_types(DType::I64, DType::F32) == DType::F32);
+    static_assert(promote_types(DType::F32, DType::I64) == DType::F32);
+    static_assert(promote_types(DType::F32, DType::F64) == DType::F64);
+    static_assert(promote_types(DType::F64, DType::Bool) == DType::F64);
+}
+
+TEST(Promotion, Scalars) {
+    using kael::promote_with_scalar;
+    static_assert(promote_with_scalar(DType::F32, 2.5) == DType::F32);
+    static_assert(promote_with_scalar(DType::F64, 2.5f) == DType::F64);
+    static_assert(promote_with_scalar(DType::I64, 2.5) == DType::F32);
+    static_assert(promote_with_scalar(DType::Bool, 2.5) == DType::F32);
+    static_assert(promote_with_scalar(DType::I64, 2) == DType::I64);
+    static_assert(promote_with_scalar(DType::F32, 2) == DType::F32);
+    static_assert(promote_with_scalar(DType::Bool, 2) == DType::I64);
+    static_assert(promote_with_scalar(DType::Bool, true) == DType::Bool);
+    static_assert(promote_with_scalar(DType::F64, true) == DType::F64);
 }
