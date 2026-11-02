@@ -177,3 +177,113 @@ TEST(Reshape, NonContiguousCopiesInLogicalOrder) {
     EXPECT_FALSE(r.shares_storage(t));
     EXPECT_EQ(values<std::int64_t>(r), (std::vector<std::int64_t>{0, 3, 1, 4, 2, 5}));
 }
+
+TEST(Transpose, SwapsShapeAndStrides) {
+    auto t = iota_shaped({2, 3});
+    auto tr = t.transpose(0, 1);
+    EXPECT_EQ(tr.shape(), (Shape{3, 2}));
+    EXPECT_EQ(tr.strides(), (Strides{1, 3}));
+    EXPECT_EQ(tr.offset(), 0);
+    EXPECT_TRUE(tr.shares_storage(t));
+    EXPECT_EQ(values<std::int64_t>(tr), (std::vector<std::int64_t>{0, 3, 1, 4, 2, 5}));
+}
+
+TEST(Transpose, TwiceRestoresMetadata) {
+    auto t = iota_shaped({2, 3, 4});
+    auto back = t.transpose(0, 2).transpose(0, 2);
+    EXPECT_EQ(back.shape(), t.shape());
+    EXPECT_EQ(back.strides(), t.strides());
+}
+
+TEST(Transpose, NegativeDims) {
+    auto t = iota_shaped({2, 3, 4});
+    EXPECT_EQ(t.transpose(-1, 0).shape(), (Shape{4, 3, 2}));
+    EXPECT_THROW((void)t.transpose(0, 3), kael::Error);
+}
+
+TEST(Permute, Example) {
+    auto t = iota_shaped({2, 3, 4});
+    auto p = t.permute({2, 0, 1});
+    EXPECT_EQ(p.shape(), (Shape{4, 2, 3}));
+    EXPECT_EQ(p.strides(), (Strides{1, 12, 4}));
+}
+
+TEST(Permute, IdentityKeepsMetadata) {
+    auto t = iota_shaped({2, 3});
+    auto p = t.permute({0, 1});
+    EXPECT_EQ(p.shape(), t.shape());
+    EXPECT_EQ(p.strides(), t.strides());
+}
+
+TEST(Permute, InverseRestoresOriginal) {
+    auto t = iota_shaped({2, 3, 4});
+    auto back = t.permute({2, 0, 1}).permute({1, 2, 0});
+    EXPECT_EQ(back.shape(), t.shape());
+    EXPECT_EQ(back.strides(), t.strides());
+}
+
+TEST(Permute, Errors) {
+    auto t = iota_shaped({2, 3});
+    EXPECT_THROW((void)t.permute({0, 0}), kael::Error);
+    EXPECT_THROW((void)t.permute({0, -2}), kael::Error);
+    EXPECT_THROW((void)t.permute({0}), kael::Error);
+    EXPECT_THROW((void)t.permute({0, 2}), kael::Error);
+}
+
+TEST(MatrixTranspose, T) {
+    auto m = iota_shaped({2, 3});
+    EXPECT_EQ(m.T().shape(), (Shape{3, 2}));
+    auto v = iota_shaped({3});
+    EXPECT_TRUE(v.T().is_same(v));
+    auto s = kael::scalar(1);
+    EXPECT_TRUE(s.T().is_same(s));
+    EXPECT_THROW((void)iota_shaped({2, 3, 4}).T(), kael::Error);
+}
+
+TEST(MatrixTranspose, MT) {
+    EXPECT_EQ(iota_shaped({5, 2, 3}).mT().shape(), (Shape{5, 3, 2}));
+    EXPECT_THROW((void)iota_shaped({3}).mT(), kael::Error);
+}
+
+TEST(Squeeze, DimOfSizeOneIsRemoved) {
+    auto t = iota_shaped({2, 1, 3});
+    auto s = t.squeeze(1);
+    EXPECT_EQ(s.shape(), (Shape{2, 3}));
+    EXPECT_EQ(s.strides(), (Strides{3, 1}));
+    EXPECT_TRUE(s.shares_storage(t));
+}
+
+TEST(Squeeze, DimOfOtherSizeIsUnchanged) {
+    auto t = iota_shaped({2, 3});
+    EXPECT_TRUE(t.squeeze(0).is_same(t));
+}
+
+TEST(Squeeze, AllSizeOneDims) {
+    EXPECT_EQ(iota_shaped({1, 2, 1, 3, 1}).squeeze().shape(), (Shape{2, 3}));
+    EXPECT_EQ(iota_shaped({1, 1}).squeeze().dim(), 0);
+}
+
+TEST(Unsqueeze, Example) {
+    auto u = iota_shaped({2, 3}).unsqueeze(1);
+    EXPECT_EQ(u.shape(), (Shape{2, 1, 3}));
+    EXPECT_EQ(u.strides(), (Strides{3, 3, 1}));
+    EXPECT_TRUE(u.is_contiguous());
+}
+
+TEST(Unsqueeze, AtTheEnds) {
+    auto t = iota_shaped({2, 3});
+    EXPECT_EQ(t.unsqueeze(0).shape(), (Shape{1, 2, 3}));
+    EXPECT_EQ(t.unsqueeze(2).shape(), (Shape{2, 3, 1}));
+    EXPECT_EQ(t.unsqueeze(-1).shape(), (Shape{2, 3, 1}));
+    EXPECT_THROW((void)t.unsqueeze(3), kael::Error);
+    EXPECT_EQ(kael::scalar(1).unsqueeze(0).shape(), (Shape{1}));
+}
+
+TEST(Unsqueeze, SqueezeRecoversOriginal) {
+    auto t = iota_shaped({2, 3});
+    for (std::int64_t d : {0, 1, 2}) {
+        auto round_trip = t.unsqueeze(d).squeeze(d);
+        EXPECT_EQ(round_trip.shape(), t.shape());
+        EXPECT_EQ(round_trip.strides(), t.strides());
+    }
+}

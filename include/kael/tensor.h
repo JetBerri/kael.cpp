@@ -6,6 +6,7 @@
 #include <iosfwd>
 #include <memory>
 #include <span>
+#include <vector>
 
 #include "kael/dtype.h"
 #include "kael/error.h"
@@ -82,6 +83,13 @@ public:
     [[nodiscard]] Tensor view(const Shape& shape) const;
     // Shares memory with this tensor only if it is contiguous; otherwise it copies.
     [[nodiscard]] Tensor reshape(const Shape& shape) const;
+    [[nodiscard]] Tensor transpose(std::int64_t dim0, std::int64_t dim1) const;
+    [[nodiscard]] Tensor permute(const std::vector<std::int64_t>& dims) const;
+    [[nodiscard]] Tensor T() const;
+    [[nodiscard]] Tensor mT() const;
+    [[nodiscard]] Tensor squeeze() const;
+    [[nodiscard]] Tensor squeeze(std::int64_t dim) const;
+    [[nodiscard]] Tensor unsqueeze(std::int64_t dim) const;
 
     [[nodiscard]] bool is_same(const Tensor& other) const noexcept {
         return impl_ == other.impl_;
