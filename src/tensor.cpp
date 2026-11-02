@@ -4,6 +4,8 @@
 #include <utility>
 #include <vector>
 
+#include "kael/factory.h"
+
 namespace kael {
 
 Tensor::Tensor(std::shared_ptr<TensorImpl> impl) : impl_(std::move(impl)) {
@@ -86,6 +88,27 @@ std::int64_t Tensor::element_offset(std::span<const std::int64_t> index) const {
     }
     // Validates the range, so an index that is still negative here throws.
     return offset_from_index(shape(), strides(), offset(), wrapped);
+}
+
+Tensor Tensor::to(DType target) const {
+    if (target == dtype()) {
+        return *this;
+    }
+    // First version: contiguous tensors only. Generalized in phase 4.
+    KAEL_CHECK(is_contiguous(), "to(dtype) of a non-contiguous tensor is not implemented yet");
+
+    Tensor out = empty(shape(), target);
+    const std::int64_t n = numel();
+    dispatch(dtype(), [&]<typename From>() {
+        const From* src = reinterpret_cast<const From*>(data_ptr_raw());
+        dispatch(target, [&]<typename To>() {
+            To* dst = out.data_ptr<To>();
+            for (std::int64_t i = 0; i < n; ++i) {
+                dst[i] = convert_value<To>(src[i]);
+            }
+        });
+    });
+    return out;
 }
 
 } // namespace kael

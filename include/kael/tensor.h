@@ -114,6 +114,15 @@ public:
         return at<T>(std::span<const std::int64_t>(index.begin(), index.size()));
     }
 
+    // ---- conversion ------------------------------------------------------------
+
+    // The same values in another dtype. If the dtype already matches, returns
+    // this very tensor (no copy), as PyTorch does.
+    //   float -> int: truncates towards 0 (NaN and infinity are unspecified).
+    //   anything -> bool: non-zero is true (NaN is true).
+    //   bool -> anything: true is 1.
+    [[nodiscard]] Tensor to(DType dtype) const;
+
     // ---- copies and identity --------------------------------------------------
 
     // A new, contiguous tensor with the same values that shares nothing.

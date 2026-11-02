@@ -1,3 +1,4 @@
+#include <cmath>
 #include <cstdint>
 #include <memory>
 #include <sstream>
@@ -265,4 +266,53 @@ TEST(TensorPrint, LeavesStreamFlagsUntouched) {
     std::ostringstream os;
     os << kael::scalar(1.0) << " " << 2.5;
     EXPECT_EQ(os.str(), "tensor([1.0000], shape=[], dtype=float32) 2.5");
+}
+
+// ---- to ----------------------------------------------------------------------
+
+TEST(TensorTo, SameDtypeReturnsSameImpl) {
+    auto t = kael::zeros({2});
+    EXPECT_TRUE(t.to(kael::DType::F32).is_same(t));
+}
+
+TEST(TensorTo, F32ToF64IsExact) {
+    auto t = kael::from_vector({0.1f, 2.5f});
+    auto d = t.to(kael::DType::F64);
+    EXPECT_EQ(d.dtype(), kael::DType::F64);
+    EXPECT_EQ(d.data_ptr<double>()[0], static_cast<double>(0.1f));
+    EXPECT_FALSE(d.shares_storage(t));
+}
+
+TEST(TensorTo, F64ToF32Rounds) {
+    auto t = kael::from_vector({0.1});
+    EXPECT_EQ(t.to(kael::DType::F32).data_ptr<float>()[0], 0.1f);
+}
+
+TEST(TensorTo, FloatToIntTruncatesTowardsZero) {
+    auto t = kael::from_vector({2.7, -2.7});
+    auto i = t.to(kael::DType::I64);
+    EXPECT_EQ(i.data_ptr<std::int64_t>()[0], 2);
+    EXPECT_EQ(i.data_ptr<std::int64_t>()[1], -2);
+}
+
+TEST(TensorTo, AnythingToBool) {
+    auto i = kael::from_vector(std::vector<std::int64_t>{0, 5, -1}).to(kael::DType::Bool);
+    EXPECT_EQ(i.data_ptr<std::uint8_t>()[0], 0);
+    EXPECT_EQ(i.data_ptr<std::uint8_t>()[1], 1);
+    EXPECT_EQ(i.data_ptr<std::uint8_t>()[2], 1);
+    auto nan = kael::from_vector({std::nan(""), 0.0}).to(kael::DType::Bool);
+    EXPECT_EQ(nan.data_ptr<std::uint8_t>()[0], 1);
+    EXPECT_EQ(nan.data_ptr<std::uint8_t>()[1], 0);
+}
+
+TEST(TensorTo, BoolToFloat) {
+    auto t = kael::from_vector({true, false}).to(kael::DType::F32);
+    EXPECT_EQ(t.data_ptr<float>()[0], 1.0f);
+    EXPECT_EQ(t.data_ptr<float>()[1], 0.0f);
+}
+
+TEST(TensorTo, EmptyAndShapeKept) {
+    auto t = kael::zeros({0, 2}).to(kael::DType::I64);
+    EXPECT_EQ(t.shape(), (kael::Shape{0, 2}));
+    EXPECT_EQ(t.dtype(), kael::DType::I64);
 }
