@@ -343,6 +343,9 @@ template <typename T>
 void blas([[maybe_unused]] const T* a, [[maybe_unused]] const T* b, [[maybe_unused]] T* out,
           [[maybe_unused]] const Sizes& sizes) {
 #if defined(KAEL_USE_ACCELERATE) || defined(KAEL_USE_CBLAS)
+    if (sizes.rows == 0 || sizes.inner == 0 || sizes.columns == 0) {
+        return;
+    }
     const auto rows = static_cast<int>(sizes.rows);
     const auto inner = static_cast<int>(sizes.inner);
     const auto columns = static_cast<int>(sizes.columns);

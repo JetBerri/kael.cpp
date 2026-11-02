@@ -142,6 +142,9 @@ void cublas_multiply(Gemm gemm, const T* a, const T* b, T* out, const MatmulSize
 void matmul(DType dtype, const std::byte* a, const std::byte* b, std::byte* out,
             const MatmulSizes& sizes) {
 #if defined(KAEL_USE_CUBLAS)
+    if (sizes.rows == 0 || sizes.inner == 0 || sizes.columns == 0) {
+        return;
+    }
     if (dtype == DType::F32) {
         cublas_multiply<float>(cublasSgemm, reinterpret_cast<const float*>(a),
                                reinterpret_cast<const float*>(b), reinterpret_cast<float*>(out),
