@@ -157,4 +157,22 @@ void record_log_softmax(const Tensor& out, const Tensor& x, std::int64_t dim) {
     }
 }
 
+void record_standardize(const Tensor& out, const Tensor& x, std::int64_t normalized_dims,
+                        double eps) {
+    if (should_record(out, {&x})) {
+        set_history(
+            out, "StandardizeBackward", {x},
+            {[saved = SavedTensor(x), y = SavedTensor(out), normalized_dims, eps](const Tensor& g) {
+                Dims dims;
+                for (std::int64_t i = 1; i <= normalized_dims; ++i) {
+                    dims.push_back(-i);
+                }
+                const Tensor scale = kael::sqrt(kael::var(saved.get(), dims, true, 0) + eps);
+                return (g - kael::mean(g, dims, true) -
+                        y.get() * kael::mean(g * y.get(), dims, true)) /
+                       scale;
+            }});
+    }
+}
+
 } // namespace kael::autograd

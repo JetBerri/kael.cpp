@@ -29,12 +29,6 @@ Tensor default_linear_bias(std::int64_t in_features, std::int64_t out_features, 
     return init::uniform_(bias, -limit, limit);
 }
 
-Dims last_dims(std::size_t count) {
-    Dims dims(count);
-    std::iota(dims.begin(), dims.end(), -static_cast<std::int64_t>(count));
-    return dims;
-}
-
 } // namespace
 
 Linear::Linear(std::int64_t in_features, std::int64_t out_features, bool bias, DType dtype)
@@ -70,10 +64,7 @@ Tensor LayerNorm::forward(const Tensor& input) {
                          input.shape().end()) == normalized_shape_,
                "LayerNorm over " << to_string(normalized_shape_) << " got input shape "
                                  << to_string(input.shape()));
-    const Dims dims = last_dims(count);
-    const Tensor centered = input - kael::mean(input, dims, true);
-    const Tensor variance = kael::var(input, dims, true, 0);
-    return centered / kael::sqrt(variance + eps_) * weight_ + bias_;
+    return kael::standardize(input, static_cast<std::int64_t>(count), eps_) * weight_ + bias_;
 }
 
 Embedding::Embedding(std::int64_t count, std::int64_t dimension, DType dtype)

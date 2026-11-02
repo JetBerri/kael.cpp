@@ -80,6 +80,7 @@ Tensor gather(const Tensor& t, std::int64_t dim, const Tensor& indices);
 Tensor logsumexp(const Tensor& t, std::int64_t dim, bool keepdim = false);
 Tensor softmax(const Tensor& t, std::int64_t dim);
 Tensor log_softmax(const Tensor& t, std::int64_t dim);
+Tensor standardize(const Tensor& t, std::int64_t normalized_dims, double eps);
 
 Tensor operator-(const Tensor& t);
 Tensor operator+(const Operand& a, const Operand& b);

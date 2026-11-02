@@ -44,6 +44,8 @@ void record_norm(const Tensor& out, const Tensor& x, const Dims& dims, bool keep
 void record_logsumexp(const Tensor& out, const Tensor& x, std::int64_t dim, bool keepdim);
 void record_softmax(const Tensor& out, const Tensor& x, std::int64_t dim);
 void record_log_softmax(const Tensor& out, const Tensor& x, std::int64_t dim);
+void record_standardize(const Tensor& out, const Tensor& x, std::int64_t normalized_dims,
+                        double eps);
 
 void record_view(const Tensor& out, const Tensor& x);
 void record_transpose(const Tensor& out, const Tensor& x, std::int64_t dim0, std::int64_t dim1);
