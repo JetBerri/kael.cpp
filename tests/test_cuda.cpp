@@ -574,3 +574,13 @@ TEST_F(Cuda, GptMatchesCpuIncludingTheCacheAndGeneration) {
     kael::sum(model(tokens.cuda())).backward();
     EXPECT_EQ(model.parameters()[0].grad()->device(), Device::CUDA);
 }
+
+TEST_F(Cuda, SteppedIndicesWorkOnTheDevice) {
+    const Tensor x = kael::randn({4, 2}, DType::F64);
+    const Tensor device_x = x.clone().cuda().requires_grad_();
+    const Tensor every_other = kael::from_vector<std::int64_t>({3, 0, 1, 0}).slice(0, 0, 4, 2);
+    const Tensor selected = kael::index_select(device_x, 0, every_other.cuda());
+    expect_matches_cpu(selected.detach(), kael::index_select(x, 0, every_other), "forward");
+    kael::sum(selected).backward();
+    EXPECT_EQ(device_x.grad()->device(), Device::CUDA);
+}

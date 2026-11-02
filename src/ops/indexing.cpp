@@ -110,7 +110,7 @@ Tensor index_select(const Tensor& t, std::int64_t dim, const Tensor& indices) {
         Tensor selected = autograd::without_grad([&] {
             Shape along_dim(t.shape().size(), 1);
             along_dim[position] = indices.numel();
-            return gather(t, dim, indices.view(along_dim).expand(out_shape));
+            return gather(t, dim, indices.reshape(along_dim).expand(out_shape));
         });
         autograd::record_index_select(selected, t, dim, indices);
         return selected;

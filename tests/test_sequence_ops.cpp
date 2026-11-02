@@ -236,3 +236,14 @@ TEST(FastIndexing, GatherAndScatterMatchByHand) {
     EXPECT_THROW((void)kael::gather(x, 1, kael::full({1, 1}, 9, DType::I64)), kael::IndexError);
     EXPECT_THROW((void)kael::gather(x, 1, kael::full({1, 1}, -1, DType::I64)), kael::IndexError);
 }
+
+TEST(FastIndexing, BackwardAcceptsSteppedIndices) {
+    Tensor x = kael::full({4, 2}, 1.0, DType::F64);
+    x.requires_grad_();
+    const Tensor every_other = integers({3, 0, 1, 0}, {4}).slice(0, 0, 4, 2);
+    EXPECT_FALSE(every_other.is_contiguous());
+    kael::sum(kael::index_select(x, 0, every_other)).backward();
+    EXPECT_EQ(x.grad()->at<double>({3, 0}), 1.0);
+    EXPECT_EQ(x.grad()->at<double>({1, 1}), 1.0);
+    EXPECT_EQ(x.grad()->at<double>({0, 0}), 0.0);
+}
