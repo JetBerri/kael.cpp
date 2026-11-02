@@ -91,6 +91,7 @@ Tensor triu(const Tensor& t, std::int64_t diagonal = 0);
 Tensor logsumexp(const Tensor& t, std::int64_t dim, bool keepdim = false);
 Tensor softmax(const Tensor& t, std::int64_t dim);
 Tensor log_softmax(const Tensor& t, std::int64_t dim);
+Tensor cross_entropy_losses(const Tensor& logits, const Tensor& targets);
 Tensor standardize(const Tensor& t, std::int64_t normalized_dims, double eps);
 
 Tensor operator-(const Tensor& t);

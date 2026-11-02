@@ -7,6 +7,12 @@
 #include "record.h"
 #include "recording.h"
 
+namespace kael::detail {
+
+Tensor cross_entropy_gradient(const Tensor& logits, const Tensor& targets, const Tensor& scale);
+
+} // namespace kael::detail
+
 namespace kael::autograd {
 
 namespace {
@@ -153,6 +159,15 @@ void record_log_softmax(const Tensor& out, const Tensor& x, std::int64_t dim) {
     if (should_record(out, {&x})) {
         set_history(out, "LogSoftmaxBackward", {x}, {[y = SavedTensor(out), dim](const Tensor& g) {
                         return g - kael::exp(y.get()) * kael::sum(g, {dim}, true);
+                    }});
+    }
+}
+
+void record_cross_entropy(const Tensor& out, const Tensor& logits, const Tensor& targets) {
+    if (should_record(out, {&logits})) {
+        set_history(out, "CrossEntropyBackward", {logits},
+                    {[saved = SavedTensor(logits), classes = SavedTensor(targets)](const Tensor& g) {
+                        return kael::detail::cross_entropy_gradient(saved.get(), classes.get(), g);
                     }});
     }
 }

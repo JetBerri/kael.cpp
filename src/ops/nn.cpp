@@ -83,6 +83,34 @@ template <typename T> void log_softmax_row(const T* row, T* out, std::int64_t si
     }
 }
 
+void check_class_problem(const Tensor& scores, const Tensor& targets) {
+    KAEL_CHECK_VALUE(scores.dim() == 2, "cross_entropy needs logits of shape [N, C], got "
+                                            << to_string(scores.shape()));
+    KAEL_CHECK_VALUE(targets.dim() == 1 && targets.size(0) == scores.size(0),
+                     "cross_entropy needs targets of shape [" << scores.size(0) << "], got "
+                                                              << to_string(targets.shape()));
+    KAEL_CHECK_TYPE(targets.dtype() == DType::I64,
+                    "class targets must have dtype i64, got " << targets.dtype());
+    if (targets.numel() == 0) {
+        return;
+    }
+    const auto largest = max(targets).item<std::int64_t>();
+    const auto smallest = min(targets).item<std::int64_t>();
+    KAEL_CHECK_INDEX(largest < scores.size(1), "target " << largest << " is out of bounds for "
+                                                         << scores.size(1) << " classes");
+    KAEL_CHECK_INDEX(smallest >= 0, "target " << smallest << " is out of bounds for "
+                                              << scores.size(1) << " classes");
+}
+
+template <typename T> T cross_entropy_row(const T* row, std::int64_t target, std::int64_t size) {
+    const T largest = row_maximum(row, size);
+    double total = 0.0;
+    for (std::int64_t i = 0; i < size; ++i) {
+        total += static_cast<double>(std::exp(row[i] - largest));
+    }
+    return std::log(static_cast<T>(total)) - (row[target] - largest);
+}
+
 template <typename T> void standardize_row(const T* row, T* out, std::int64_t size, double eps) {
     double total = 0.0;
     for (std::int64_t i = 0; i < size; ++i) {
@@ -151,6 +179,67 @@ Tensor log_softmax(const Tensor& t, std::int64_t dim) {
     autograd::record_log_softmax(out, t, dim);
     return out;
 }
+
+Tensor cross_entropy_losses(const Tensor& logits, const Tensor& targets) {
+    check_class_problem(logits, targets);
+    if (logits.device() != Device::CPU) {
+        return -gather(log_softmax(logits, 1), 1, targets.unsqueeze(1)).squeeze(1);
+    }
+    Tensor out = autograd::without_grad([&] {
+        const Tensor x = as_floating(logits).contiguous();
+        const Tensor classes = targets.contiguous();
+        const std::int64_t rows = x.size(0);
+        const std::int64_t row_size = x.size(1);
+        return dispatch_floating(x.dtype(), "cross_entropy", [&]<typename T>() {
+            Tensor losses = empty({rows}, x.dtype());
+            const T* in = x.data_ptr<T>();
+            const auto* target = classes.data_ptr<std::int64_t>();
+            T* results = losses.data_ptr<T>();
+            const std::int64_t grain =
+                std::max<std::int64_t>(1, kElementGrain / (kExponentialCost * std::max<std::int64_t>(1, row_size)));
+            parallel_for(0, rows, grain, [&](std::int64_t first, std::int64_t last) {
+                for (std::int64_t row = first; row < last; ++row) {
+                    results[row] = cross_entropy_row(in + row * row_size, target[row], row_size);
+                }
+            });
+            return losses;
+        });
+    });
+    autograd::record_cross_entropy(out, logits, targets);
+    return out;
+}
+
+namespace detail {
+
+Tensor cross_entropy_gradient(const Tensor& logits, const Tensor& targets, const Tensor& scale) {
+    const Tensor x = logits.contiguous();
+    const Tensor classes = targets.contiguous();
+    const Tensor weights = scale.contiguous();
+    const std::int64_t rows = x.size(0);
+    const std::int64_t row_size = x.size(1);
+    return dispatch_floating(x.dtype(), "cross_entropy", [&]<typename T>() {
+        Tensor out = empty(x.shape(), x.dtype());
+        const T* in = x.data_ptr<T>();
+        const auto* target = classes.data_ptr<std::int64_t>();
+        const T* weight = weights.data_ptr<T>();
+        T* results = out.data_ptr<T>();
+        const std::int64_t grain =
+            std::max<std::int64_t>(1, kElementGrain / (kExponentialCost * std::max<std::int64_t>(1, row_size)));
+        parallel_for(0, rows, grain, [&](std::int64_t first, std::int64_t last) {
+            for (std::int64_t row = first; row < last; ++row) {
+                T* result = results + row * row_size;
+                softmax_row(in + row * row_size, result, row_size);
+                for (std::int64_t i = 0; i < row_size; ++i) {
+                    result[i] *= weight[row];
+                }
+                result[target[row]] -= weight[row];
+            }
+        });
+        return out;
+    });
+}
+
+} // namespace detail
 
 Tensor standardize(const Tensor& t, std::int64_t normalized_dims, double eps) {
     KAEL_CHECK_VALUE(normalized_dims > 0 && normalized_dims <= t.dim(),

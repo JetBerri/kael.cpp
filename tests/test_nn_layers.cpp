@@ -341,3 +341,91 @@ TEST(NnLoss, Gradcheck) {
         EXPECT_TRUE(result.passed) << result.report;
     }
 }
+
+namespace {
+
+Tensor composed_cross_entropy(const Tensor& logits, const Tensor& targets,
+                              kael::nn::Reduction reduction) {
+    return kael::nn::nll_loss(kael::log_softmax(logits, 1), targets, reduction);
+}
+
+class CrossEntropyFused : public testing::TestWithParam<kael::DType> {};
+
+} // namespace
+
+TEST_P(CrossEntropyFused, ValueIsExactlyTheComposedValue) {
+    kael::manual_seed(31);
+    const Tensor logits = kael::randn({40, 13}, GetParam());
+    const Tensor targets = kael::randint(0, 13, {40});
+    for (const auto reduction : {kael::nn::Reduction::None, kael::nn::Reduction::Sum}) {
+        EXPECT_TRUE(kael::equal(kael::nn::cross_entropy(logits, targets, reduction),
+                                composed_cross_entropy(logits, targets, reduction)));
+    }
+}
+
+TEST_P(CrossEntropyFused, GradientMatchesTheComposedGradient) {
+    kael::manual_seed(32);
+    const Tensor values = kael::randn({40, 13}, GetParam());
+    const Tensor targets = kael::randint(0, 13, {40});
+    Tensor fused = values.clone().requires_grad_();
+    Tensor composed = values.clone().requires_grad_();
+
+    kael::nn::cross_entropy(fused, targets).backward();
+    composed_cross_entropy(composed, targets, kael::nn::Reduction::Mean).backward();
+
+    const auto tolerance = GetParam() == kael::DType::F32 ? kael::test::Tolerance{1e-5, 1e-5}
+                                                          : kael::test::Tolerance{1e-13, 1e-13};
+    EXPECT_TRUE(kael::test::allclose(*fused.grad(), *composed.grad(), {.tolerance = tolerance}));
+}
+
+INSTANTIATE_TEST_SUITE_P(Floating, CrossEntropyFused,
+                         testing::Values(kael::DType::F32, kael::DType::F64));
+
+TEST(CrossEntropyFusedGraph, RecordsItsOwnNode) {
+    Tensor logits = kael::zeros({2, 3}).requires_grad_();
+    const Tensor targets = kael::from_vector<std::int64_t>({0, 2}, {2});
+    const Tensor losses = kael::nn::cross_entropy(logits, targets, kael::nn::Reduction::None);
+    ASSERT_NE(losses.grad_fn(), nullptr);
+    EXPECT_EQ(losses.grad_fn()->name(), "CrossEntropyBackward");
+}
+
+TEST(CrossEntropyFusedGraph, RejectsTargetsOutOfRange) {
+    const Tensor logits = kael::zeros({2, 3});
+    const Tensor targets = kael::from_vector<std::int64_t>({0, 3}, {2});
+    EXPECT_THROW((void)kael::nn::cross_entropy(logits, targets), kael::Error);
+}
+
+TEST(CrossEntropyFusedGraph, GradientOfAnEmptyBatchIsEmpty) {
+    Tensor logits = kael::zeros({0, 3}).requires_grad_();
+    const Tensor targets = kael::zeros({0}, kael::DType::I64);
+    const Tensor losses = kael::nn::cross_entropy(logits, targets, kael::nn::Reduction::Sum);
+    losses.backward();
+    EXPECT_EQ(logits.grad()->numel(), 0);
+}
+
+TEST(CrossEntropyFusedGraph, ThePublicOpRejectsInvalidClasses) {
+    const Tensor logits = kael::zeros({2, 3});
+    EXPECT_THROW((void)kael::cross_entropy_losses(
+                     logits, kael::from_vector<std::int64_t>({0, 1000000}, {2})),
+                 kael::IndexError);
+    EXPECT_THROW((void)kael::cross_entropy_losses(
+                     logits, kael::from_vector<std::int64_t>({-1, 0}, {2})),
+                 kael::IndexError);
+    EXPECT_THROW((void)kael::cross_entropy_losses(logits, kael::zeros({2})), kael::TypeError);
+    EXPECT_THROW((void)kael::cross_entropy_losses(
+                     kael::zeros({3}), kael::from_vector<std::int64_t>({0}, {1})),
+                 kael::ValueError);
+}
+
+TEST(CrossEntropyFusedGraph, GradientOfANonContiguousViewMatchesACopy) {
+    kael::manual_seed(35);
+    const Tensor values = kael::randn({6, 4});
+    const Tensor targets = kael::randint(0, 6, {4});
+    Tensor leaf = values.clone().requires_grad_();
+    kael::nn::cross_entropy(leaf.T(), targets).backward();
+
+    Tensor copied = values.T().contiguous().requires_grad_();
+    kael::nn::cross_entropy(copied, targets).backward();
+
+    EXPECT_TRUE(kael::test::allclose(leaf.grad()->T(), *copied.grad()));
+}

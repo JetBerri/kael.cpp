@@ -192,6 +192,7 @@ void bind_ops(nb::module_& m) {
     m.def("softmax", softmax, nb::arg("input"), nb::arg("dim"));
     tensor.def("softmax", softmax, nb::arg("dim"));
     m.def("log_softmax", log_softmax, nb::arg("input"), nb::arg("dim"));
+    m.def("cross_entropy_losses", &kael::cross_entropy_losses, nb::arg("logits"), nb::arg("targets"));
     tensor.def("log_softmax", log_softmax, nb::arg("dim"));
     m.def("standardize", &kael::standardize);
     m.def("clamp", [](const Tensor& t, nb::handle low, nb::handle high) {

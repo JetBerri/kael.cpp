@@ -66,7 +66,7 @@ def nll_loss(log_probabilities, targets, reduction="mean"):
 
 
 def cross_entropy(logits, targets, reduction="mean"):
-    return nll_loss(kael.log_softmax(logits, 1), targets, reduction)
+    return _reduce(kael.cross_entropy_losses(logits, targets), reduction)
 
 
 def binary_cross_entropy_with_logits(logits, targets, reduction="mean"):

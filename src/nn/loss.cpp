@@ -1,6 +1,5 @@
 #include "kael/nn/loss.h"
 
-#include "kael/nn/functional.h"
 #include "kael/ops.h"
 
 namespace kael::nn {
@@ -53,7 +52,7 @@ Tensor nll_loss(const Tensor& log_probabilities, const Tensor& targets, Reductio
 }
 
 Tensor cross_entropy(const Tensor& logits, const Tensor& targets, Reduction reduction) {
-    return nll_loss(functional::log_softmax(logits, 1), targets, reduction);
+    return reduce(cross_entropy_losses(logits, targets), reduction);
 }
 
 Tensor binary_cross_entropy_with_logits(const Tensor& logits, const Tensor& targets,

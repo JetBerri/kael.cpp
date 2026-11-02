@@ -45,6 +45,7 @@ void record_logsumexp(const Tensor& out, const Tensor& x, std::int64_t dim, bool
 void record_softmax(const Tensor& out, const Tensor& x, std::int64_t dim);
 void record_log_softmax(const Tensor& out, const Tensor& x, std::int64_t dim);
 void record_cumsum(const Tensor& out, const Tensor& x, std::int64_t dim);
+void record_cross_entropy(const Tensor& out, const Tensor& logits, const Tensor& targets);
 void record_standardize(const Tensor& out, const Tensor& x, std::int64_t normalized_dims,
                         double eps);
 
