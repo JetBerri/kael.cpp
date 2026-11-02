@@ -37,6 +37,7 @@ add_library(kael
     src/ops/reduce.cpp
     src/ops/linalg.cpp
     src/ops/indexing.cpp
+    src/ops/nn.cpp
 )
 
 add_library(kael::kael ALIAS kael)

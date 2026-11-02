@@ -17,6 +17,7 @@ add_executable(kael_tests
     test_ops_reduce.cpp
     test_ops_linalg.cpp
     test_ops_indexing.cpp
+    test_ops_nn.cpp
     support/npy.cpp
 )
 

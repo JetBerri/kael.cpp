@@ -688,3 +688,36 @@ op=gather case=i64 inputs=x,i view_x=none view_i=none args=dim:1
 op=scatter_add_ case=dim1_repeated inputs=x,i,s view_x=none view_i=none view_s=none args=dim:1
 op=scatter_add_ case=dim0 inputs=x,i,s view_x=none view_i=none view_s=none args=dim:0
 op=scatter_add_ case=larger_source inputs=x,i,s view_x=none view_i=none view_s=none args=dim:1
+op=logsumexp case=dim0 inputs=x view_x=none args=dim:0
+op=logsumexp case=dim1 inputs=x view_x=none args=dim:1
+op=logsumexp case=negative inputs=x view_x=none args=dim:-1
+op=logsumexp case=transposed inputs=x view_x=transpose:0:1 args=dim:1
+op=logsumexp case=stepped inputs=x view_x=slice:1:0:8:2 args=dim:1
+op=logsumexp case=large_values inputs=x view_x=none args=dim:0
+op=logsumexp case=some_minus_infinity inputs=x view_x=none args=dim:0
+op=logsumexp case=empty inputs=x view_x=none args=dim:1
+op=logsumexp case=scalar inputs=x view_x=none args=dim:0
+op=logsumexp case=f64 inputs=x view_x=none args=dim:1
+op=logsumexp case=all_minus_infinity inputs=x view_x=none args=dim:0
+op=logsumexp case=plus_infinity inputs=x view_x=none args=dim:0
+op=logsumexp case=keepdim inputs=x view_x=none args=dim:1,keepdim:1
+op=softmax case=dim0 inputs=x view_x=none args=dim:0
+op=softmax case=dim1 inputs=x view_x=none args=dim:1
+op=softmax case=negative inputs=x view_x=none args=dim:-1
+op=softmax case=transposed inputs=x view_x=transpose:0:1 args=dim:1
+op=softmax case=stepped inputs=x view_x=slice:1:0:8:2 args=dim:1
+op=softmax case=large_values inputs=x view_x=none args=dim:0
+op=softmax case=some_minus_infinity inputs=x view_x=none args=dim:0
+op=softmax case=empty inputs=x view_x=none args=dim:1
+op=softmax case=scalar inputs=x view_x=none args=dim:0
+op=softmax case=f64 inputs=x view_x=none args=dim:1
+op=log_softmax case=dim0 inputs=x view_x=none args=dim:0
+op=log_softmax case=dim1 inputs=x view_x=none args=dim:1
+op=log_softmax case=negative inputs=x view_x=none args=dim:-1
+op=log_softmax case=transposed inputs=x view_x=transpose:0:1 args=dim:1
+op=log_softmax case=stepped inputs=x view_x=slice:1:0:8:2 args=dim:1
+op=log_softmax case=large_values inputs=x view_x=none args=dim:0
+op=log_softmax case=some_minus_infinity inputs=x view_x=none args=dim:0
+op=log_softmax case=empty inputs=x view_x=none args=dim:1
+op=log_softmax case=scalar inputs=x view_x=none args=dim:0
+op=log_softmax case=f64 inputs=x view_x=none args=dim:1

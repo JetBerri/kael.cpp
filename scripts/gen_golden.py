@@ -424,6 +424,29 @@ add_cases(
     ],
 )
 
+NN_PATTERNS = [
+    ("dim0", {"x": spec((3, 4))}, {"dim": 0}),
+    ("dim1", {"x": spec((3, 4))}, {"dim": 1}),
+    ("negative", {"x": spec((2, 3, 4))}, {"dim": -1}),
+    ("transposed", {"x": spec((4, 3), view="transpose:0:1")}, {"dim": 1}),
+    ("stepped", {"x": spec((3, 8), view="slice:1:0:8:2")}, {"dim": 1}),
+    ("large_values", {"x": spec((4,), values=[1000.0, 1000.0, -1000.0, 999.0])}, {"dim": 0}),
+    ("some_minus_infinity", {"x": spec((3,), values=[-float("inf"), 0.0, 1.0])}, {"dim": 0}),
+    ("empty", {"x": spec((0, 3))}, {"dim": 1}),
+    ("scalar", {"x": spec(())}, {"dim": 0}),
+    ("f64", {"x": spec((3, 4), "f64")}, {"dim": 1}),
+]
+ALL_MINUS_INFINITY = ("all_minus_infinity", {"x": spec((2,), values=[-float("inf"), -float("inf")])}, {"dim": 0})
+PLUS_INFINITY = ("plus_infinity", {"x": spec((2,), values=[float("inf"), 1.0])}, {"dim": 0})
+add_cases(
+    "logsumexp",
+    torch.logsumexp,
+    NN_PATTERNS
+    + [ALL_MINUS_INFINITY, PLUS_INFINITY, ("keepdim", {"x": spec((3, 4))}, {"dim": 1, "keepdim": True})],
+)
+add_cases("softmax", torch.softmax, NN_PATTERNS)
+add_cases("log_softmax", torch.log_softmax, NN_PATTERNS)
+
 
 def main():
     if GOLDEN_DIR.exists():

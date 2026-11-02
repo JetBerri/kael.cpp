@@ -221,6 +221,18 @@ const std::map<std::string, GoldenOp>& golden_ops() {
              Tensor self = inputs[0];
              return self.scatter_add_(args.integer("dim"), inputs[1], inputs[2]);
          }},
+        {"logsumexp",
+         [](const Inputs& inputs, const Args& args) {
+             return kael::logsumexp(inputs[0], args.integer("dim"), args.flag("keepdim"));
+         }},
+        {"softmax",
+         [](const Inputs& inputs, const Args& args) {
+             return kael::softmax(inputs[0], args.integer("dim"));
+         }},
+        {"log_softmax",
+         [](const Inputs& inputs, const Args& args) {
+             return kael::log_softmax(inputs[0], args.integer("dim"));
+         }},
         {"clamp",
          [](const Inputs& inputs, const Args& args) {
              return kael::clamp(inputs[0], args.real("min"), args.real("max"));
