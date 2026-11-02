@@ -225,3 +225,24 @@ def test_shape_arguments_accept_both_forms():
 def test_split_and_chunk():
     assert [p.shape for p in kael.zeros(5).split(2)] == [(2,), (2,), (1,)]
     assert [p.shape for p in kael.zeros(4).chunk(2)] == [(2,), (2,)]
+
+
+def test_tensor_rejects_mixed_depth_in_any_order():
+    for data in ([1, [2]], [[1], 2], [[1, 2], [3, [4]]], [[[1]], [2]]):
+        with pytest.raises(ValueError):
+            kael.tensor(data)
+
+
+def test_tensor_rejects_self_referencing_lists():
+    loop = []
+    loop.append(loop)
+    with pytest.raises(ValueError):
+        kael.tensor(loop)
+
+
+def test_tensor_rejects_absurd_nesting():
+    deep = 1.0
+    for _ in range(100000):
+        deep = [deep]
+    with pytest.raises(ValueError):
+        kael.tensor(deep)

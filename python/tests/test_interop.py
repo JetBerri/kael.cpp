@@ -224,3 +224,26 @@ def test_gil_is_released_during_backward():
     worker.join()
     assert x.grad is not None
     assert ticks[0] > 10
+
+
+def test_fork_keeps_parallel_work_running():
+    import multiprocessing
+
+    if "fork" not in multiprocessing.get_all_start_methods():
+        pytest.skip("no fork on this platform")
+    a = kael.rand(300, 300)
+    kael.matmul(a, a)
+    context = multiprocessing.get_context("fork")
+    queue = context.Queue()
+
+    def child():
+        queue.put(kael.matmul(a, a).sum().item())
+
+    process = context.Process(target=child)
+    process.start()
+    process.join(30)
+    stuck = process.is_alive()
+    if stuck:
+        process.kill()
+    assert not stuck
+    assert queue.get(timeout=5) == pytest.approx(kael.matmul(a, a).sum().item())

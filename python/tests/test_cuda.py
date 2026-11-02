@@ -64,3 +64,14 @@ def test_module_to_and_training_match_cpu():
 
 def test_dropout_on_device():
     assert F.dropout(kael.ones(8, device="cuda"), 0.5).device == "cuda"
+
+
+def test_numpy_view_survives_moving_the_tensor():
+    p = kael.ones(100000, dtype=kael.float64)
+    array = p.numpy()
+    p._move_to_("cuda")
+    kael.empty_cache()
+    other = kael.full((100000,), 7.0, dtype=kael.float64)
+    assert array[0] == 1
+    array[1] = 3
+    assert other[1].item() == 7

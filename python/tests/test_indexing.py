@@ -179,3 +179,41 @@ def test_random_keys_match_numpy(case):
     actual = kael.tensor(array)[key]
     assert actual.shape == expected.shape
     assert actual.tolist() == expected.tolist()
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        lambda: (0, kael.tensor([1])),
+        lambda: (kael.tensor([1]),),
+        lambda: (kael.tensor([0]), 0),
+        lambda: (slice(None), kael.tensor([1])),
+    ],
+)
+def test_assigning_through_a_copying_key_is_rejected(key):
+    t = kael.zeros(3, 3)
+    with pytest.raises(TypeError):
+        t[key()] = 1
+    assert t.sum().item() == 0
+
+
+def test_assigning_through_a_scalar_tensor_key_writes():
+    t = kael.zeros(3)
+    t[kael.tensor(1)] = 5
+    assert t.tolist() == [0.0, 5.0, 0.0]
+
+
+def test_mask_in_a_one_element_tuple_assigns():
+    t = kael.tensor([1.0, 2.0])
+    t[(t > 1,)] = 5
+    assert t.tolist() == [1.0, 5.0]
+
+
+@pytest.mark.parametrize("key", [True, False, (0, True)], ids=repr)
+def test_bool_keys_are_rejected(key):
+    t = kael.tensor([[1.0, 2.0], [3.0, 4.0]])
+    with pytest.raises(IndexError):
+        t[key]
+    with pytest.raises(IndexError):
+        t[key] = 9
+    assert t.tolist() == [[1.0, 2.0], [3.0, 4.0]]

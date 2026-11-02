@@ -108,6 +108,8 @@ Tensor apply_key(const Tensor& t, nb::handle key) {
                 view = kael::index_select(view, dim, indices);
                 ++dim;
             }
+        } else if (PyBool_Check(item.ptr()) != 0) {
+            throw IndexError("a bool is not a valid index; use a bool tensor as a mask");
         } else if (is_integer_key(item)) {
             view = view.select(dim, nb::cast<std::int64_t>(nb::int_(item)));
         } else {
@@ -211,8 +213,9 @@ template <typename Framework> nb::ndarray<Framework> as_ndarray(const Tensor& t)
                                               << t.device() << " with numpy; call .cpu() first");
     KAEL_CHECK(!t.requires_grad(),
                "cannot share a tensor that requires grad; call .detach() first");
-    const nb::capsule owner(new Tensor(t),
-                            [](void* held) noexcept { delete static_cast<Tensor*>(held); });
+    const nb::capsule owner(
+        new std::shared_ptr<Storage>(t.impl()->storage),
+        [](void* held) noexcept { delete static_cast<std::shared_ptr<Storage>*>(held); });
     std::vector<std::size_t> shape(t.shape().begin(), t.shape().end());
     std::vector<std::int64_t> strides(t.strides().begin(), t.strides().end());
     return nb::ndarray<Framework>(t.device_data(), shape.size(), shape.data(), owner,
@@ -226,15 +229,18 @@ Tensor index_tensor(const Tensor& t, nb::handle key) {
 }
 
 void assign_index(Tensor& t, nb::handle key, nb::handle value) {
-    if (nb::isinstance<Tensor>(key) && nb::cast<const Tensor&>(key).dtype() == DType::Bool) {
+    const ParsedKey parsed = parse_key(key);
+    if (parsed.items.size() == 1 && nb::isinstance<Tensor>(parsed.items.front()) &&
+        nb::cast<const Tensor&>(parsed.items.front()).dtype() == DType::Bool) {
         KAEL_CHECK_TYPE(!nb::isinstance<Tensor>(value),
                         "assigning through a bool mask needs a number");
-        t.masked_fill_(nb::cast<const Tensor&>(key), scalar_from(value));
+        t.masked_fill_(nb::cast<const Tensor&>(parsed.items.front()), scalar_from(value));
         return;
     }
-    const nb::handle items = key;
-    if (nb::isinstance<Tensor>(items)) {
-        throw TypeError("assigning through an int64 tensor index is not supported");
+    for (const nb::object& item : parsed.items) {
+        if (nb::isinstance<Tensor>(item) && nb::cast<const Tensor&>(item).dim() > 0) {
+            throw TypeError("assigning through a tensor index is not supported: it selects a copy");
+        }
     }
     Tensor view = apply_key(t, key);
     if (nb::isinstance<Tensor>(value)) {
@@ -246,8 +252,11 @@ void assign_index(Tensor& t, nb::handle key, nb::handle value) {
 
 namespace {
 
+constexpr std::size_t kMaxNesting = 32;
+
 struct Flattened {
     Shape shape;
+    std::optional<std::size_t> leaf_depth;
     std::vector<double> reals;
     std::vector<std::int64_t> integers;
     bool has_float = false;
@@ -257,6 +266,10 @@ struct Flattened {
 
 void flatten_python(nb::handle data, Flattened& out, std::size_t depth) {
     if (nb::isinstance<nb::list>(data) || nb::isinstance<nb::tuple>(data)) {
+        KAEL_CHECK_VALUE(depth < kMaxNesting,
+                         "sequences nested deeper than " << kMaxNesting << " levels");
+        KAEL_CHECK_VALUE(!out.leaf_depth || depth < *out.leaf_depth,
+                         "nested sequences have inconsistent depth");
         const auto length = static_cast<std::int64_t>(nb::len(data));
         if (depth == out.shape.size()) {
             out.shape.push_back(length);
@@ -270,7 +283,9 @@ void flatten_python(nb::handle data, Flattened& out, std::size_t depth) {
         }
         return;
     }
-    KAEL_CHECK_VALUE(depth == out.shape.size(), "nested sequences have inconsistent depth");
+    KAEL_CHECK_VALUE(depth == out.shape.size() && (!out.leaf_depth || depth == *out.leaf_depth),
+                     "nested sequences have inconsistent depth");
+    out.leaf_depth = depth;
     if (nb::isinstance<Tensor>(data)) {
         const Tensor& t = nb::cast<const Tensor&>(data);
         KAEL_CHECK_VALUE(t.dim() == 0, "only 0-d tensors can be elements of a nested sequence");
