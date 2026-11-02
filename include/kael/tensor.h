@@ -123,6 +123,21 @@ public:
     //   bool -> anything: true is 1.
     [[nodiscard]] Tensor to(DType dtype) const;
 
+    // ---- views ------------------------------------------------------------------
+    //
+    // A view is a new impl over the same storage: nothing is copied, and
+    // writing through a view changes the original. Negative dims count from
+    // the end. See docs/03-views.md.
+
+    // Another shape with the same elements; one size may be -1 (inferred).
+    // Needs a contiguous tensor and always shares memory.
+    [[nodiscard]] Tensor view(const Shape& shape) const;
+
+    // Like view, but works on any tensor. WARNING: it shares memory if the
+    // tensor is contiguous and COPIES if it is not, so never rely on writes
+    // to the result reaching the original (or on them not reaching it).
+    [[nodiscard]] Tensor reshape(const Shape& shape) const;
+
     // ---- copies and identity --------------------------------------------------
 
     // A new, contiguous tensor with the same values that shares nothing.

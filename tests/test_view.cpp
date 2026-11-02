@@ -121,3 +121,77 @@ TEST(To, WorksOnNonContiguous) {
     EXPECT_EQ(f.at<double>({0, 1}), 3.0);
     EXPECT_EQ(f.at<double>({2, 1}), 5.0);
 }
+
+// ---- view --------------------------------------------------------------------
+
+TEST(InferShape, ResolvesMinusOne) {
+    EXPECT_EQ(kael::infer_shape({4, -1}, 12), (Shape{4, 3}));
+    EXPECT_EQ(kael::infer_shape({-1}, 12), (Shape{12}));
+    EXPECT_EQ(kael::infer_shape({2, 3}, 6), (Shape{2, 3}));
+    EXPECT_EQ(kael::infer_shape({}, 1), (Shape{}));
+    EXPECT_EQ(kael::infer_shape({-1, 3}, 0), (Shape{0, 3}));
+}
+
+TEST(InferShape, Errors) {
+    EXPECT_THROW(kael::infer_shape({-1, -1}, 12), kael::Error);
+    EXPECT_THROW(kael::infer_shape({-2, 6}, 12), kael::Error);
+    EXPECT_THROW(kael::infer_shape({5, -1}, 12), kael::Error);
+    EXPECT_THROW(kael::infer_shape({2, 3}, 12), kael::Error);
+    EXPECT_THROW(kael::infer_shape({-1, 0}, 0), kael::Error);
+}
+
+TEST(View, ChangesShapeAndSharesStorage) {
+    auto t = iota_shaped({2, 3});
+    for (const Shape& s : {Shape{3, 2}, Shape{6}, Shape{1, 6}}) {
+        auto v = t.view(s);
+        EXPECT_EQ(v.shape(), s);
+        EXPECT_EQ(v.strides(), kael::contiguous_strides(s));
+        EXPECT_TRUE(v.shares_storage(t));
+        EXPECT_EQ(logical_values(v), (std::vector<std::int64_t>{0, 1, 2, 3, 4, 5}));
+    }
+    EXPECT_EQ(t.view({-1}).shape(), (Shape{6}));
+    EXPECT_EQ(t.view({3, -1}).shape(), (Shape{3, 2}));
+}
+
+TEST(View, WritesReachTheOriginal) {
+    auto t = iota_shaped({2, 3});
+    t.view({6}).at<std::int64_t>({5}) = 100;
+    EXPECT_EQ(t.at<std::int64_t>({1, 2}), 100);
+}
+
+TEST(View, KeepsOffset) {
+    auto base = iota_shaped({6});
+    auto tail = manual_view(base, {4}, {1}, 2);
+    auto v = tail.view({2, 2});
+    EXPECT_EQ(v.offset(), 2);
+    EXPECT_EQ(logical_values(v), (std::vector<std::int64_t>{2, 3, 4, 5}));
+}
+
+TEST(View, Scalar) {
+    auto s = kael::scalar(4, DType::I64);
+    EXPECT_EQ(s.view({1}).shape(), (Shape{1}));
+    EXPECT_EQ(s.view({1, 1}).view({}).dim(), 0);
+}
+
+TEST(View, Errors) {
+    auto t = iota_shaped({2, 3});
+    EXPECT_THROW((void)t.view({4}), kael::Error);
+    EXPECT_THROW((void)t.view({-1, -1}), kael::Error);
+    EXPECT_THROW((void)manual_view(t, {3, 2}, {1, 3}).view({6}), kael::Error);
+}
+
+// ---- reshape -------------------------------------------------------------------
+
+TEST(Reshape, ContiguousShares) {
+    auto t = iota_shaped({2, 3});
+    auto r = t.reshape({3, 2});
+    EXPECT_TRUE(r.shares_storage(t));
+}
+
+TEST(Reshape, NonContiguousCopiesInLogicalOrder) {
+    auto t = iota_shaped({2, 3});
+    auto tr = manual_view(t, {3, 2}, {1, 3});
+    auto r = tr.reshape({6});
+    EXPECT_FALSE(r.shares_storage(t));
+    EXPECT_EQ(logical_values(r), (std::vector<std::int64_t>{0, 3, 1, 4, 2, 5}));
+}

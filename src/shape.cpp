@@ -202,4 +202,38 @@ namespace kael{
 
     }
 
+    Shape infer_shape(const Shape& requested, std::int64_t n){
+
+        std::int64_t inferred = -1; // position of the -1, if any
+        Shape known; // the sizes without the -1, to compute their product safely
+
+        for (std::size_t i = 0; i < requested.size(); i++){
+            if (requested[i] == -1){
+                KAEL_CHECK(inferred == -1, "only one dimension can be -1 in shape " << to_string(requested));
+                inferred = static_cast<std::int64_t>(i);
+            } else {
+                KAEL_CHECK(requested[i] >= 0, "invalid dimension " << requested[i] << " in shape " << to_string(requested));
+                known.push_back(requested[i]);
+            }
+        }
+
+        const std::int64_t product = kael::numel(known);
+
+        if (inferred == -1){
+            KAEL_CHECK(product == n, "shape " << to_string(requested) << " has " << product
+                                     << " elements but the tensor has " << n);
+            return requested;
+        }
+
+        KAEL_CHECK(product != 0, "cannot infer the -1 in shape " << to_string(requested)
+                                 << ": a dimension of size 0 makes it ambiguous");
+        KAEL_CHECK(n % product == 0, "shape " << to_string(requested) << " does not fit "
+                                     << n << " elements");
+
+        Shape result = requested;
+        result[static_cast<std::size_t>(inferred)] = n / product;
+        return result;
+
+    }
+
 }

@@ -50,4 +50,10 @@ namespace kael{
     // [-ndim, ndim), including any dim when ndim is 0
     std::int64_t wrap_dim(std::int64_t dim, std::int64_t ndim);
 
+    // resolves the -1 in a requested shape so that it has `n` elements, e.g.
+    // {4, -1} with n = 12 : [4, 3]; throws on more than one -1, on any other
+    // negative value, if the sizes do not fit n, and on the ambiguous case of
+    // a -1 next to a 0
+    Shape infer_shape(const Shape& requested, std::int64_t n);
+
 }
