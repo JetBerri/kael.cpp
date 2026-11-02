@@ -29,7 +29,7 @@ public:
 
 private:
     struct BlockDeleter {
-        std::int64_t capacity = 0;
+        std::int64_t capacity;
         void operator()(std::byte* ptr) const noexcept;
     };
 
