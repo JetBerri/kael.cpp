@@ -44,6 +44,7 @@ void record_norm(const Tensor& out, const Tensor& x, const Dims& dims, bool keep
 void record_logsumexp(const Tensor& out, const Tensor& x, std::int64_t dim, bool keepdim);
 void record_softmax(const Tensor& out, const Tensor& x, std::int64_t dim);
 void record_log_softmax(const Tensor& out, const Tensor& x, std::int64_t dim);
+void record_cumsum(const Tensor& out, const Tensor& x, std::int64_t dim);
 void record_standardize(const Tensor& out, const Tensor& x, std::int64_t normalized_dims,
                         double eps);
 

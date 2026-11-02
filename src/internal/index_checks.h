@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
 
 #include "kael/device_kernels.h"
 #include "kael/ops.h"
@@ -57,6 +58,52 @@ inline device::IndexLayout index_layout(const Tensor& data, const Tensor& indice
     }
     return layout;
 }
+
+class IndexWalker {
+public:
+    IndexWalker(const Tensor& target, const Tensor& indices, const Strides& source_strides,
+                std::size_t axis)
+        : shape_(indices.shape()), target_strides_(target.strides()),
+          index_strides_(indices.strides()), source_strides_(source_strides), axis_(axis),
+          counter_(shape_.size(), 0) {}
+
+    [[nodiscard]] std::int64_t target_offset(std::int64_t index) const {
+        return target_ + index * target_strides_[axis_];
+    }
+    [[nodiscard]] std::int64_t index_offset() const noexcept { return index_; }
+    [[nodiscard]] std::int64_t source_offset() const noexcept { return source_; }
+
+    void advance() noexcept {
+        for (std::size_t dim = shape_.size(); dim-- > 0;) {
+            ++counter_[dim];
+            move(dim, 1);
+            if (counter_[dim] < shape_[dim]) {
+                return;
+            }
+            move(dim, -shape_[dim]);
+            counter_[dim] = 0;
+        }
+    }
+
+private:
+    void move(std::size_t dim, std::int64_t steps) noexcept {
+        index_ += steps * index_strides_[dim];
+        source_ += steps * source_strides_[dim];
+        if (dim != axis_) {
+            target_ += steps * target_strides_[dim];
+        }
+    }
+
+    const Shape& shape_;
+    const Strides& target_strides_;
+    const Strides& index_strides_;
+    const Strides& source_strides_;
+    std::size_t axis_;
+    std::vector<std::int64_t> counter_;
+    std::int64_t target_ = 0;
+    std::int64_t index_ = 0;
+    std::int64_t source_ = 0;
+};
 
 template <typename Visit> void for_each_index(const Shape& shape, Visit visit) {
     const std::int64_t count = numel(shape);

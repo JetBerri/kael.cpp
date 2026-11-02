@@ -78,6 +78,7 @@ add_library(kael
     src/ops/linalg.cpp
     src/ops/indexing.cpp
     src/ops/nn.cpp
+    src/ops/sequence.cpp
     src/autograd/grad_mode.cpp
     src/autograd/tensor_autograd.cpp
     src/autograd/node.cpp
@@ -106,6 +107,7 @@ target_include_directories(kael PUBLIC include PRIVATE src)
 target_compile_features(kael PUBLIC cxx_std_20)
 target_compile_definitions(kael PRIVATE KAEL_VERSION="${PROJECT_VERSION}")
 kael_configure_target(kael)
+
 if (KAEL_BUILD_PYTHON)
     set_target_properties(kael PROPERTIES POSITION_INDEPENDENT_CODE ON)
 endif ()

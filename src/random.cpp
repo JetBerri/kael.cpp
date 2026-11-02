@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numeric>
+#include <vector>
 
 #include "kael/factory.h"
 #include "kael/ops.h"
@@ -69,6 +71,57 @@ Tensor bernoulli(const Shape& shape, double probability, DType dtype) {
     KAEL_CHECK_VALUE(probability >= 0.0 && probability <= 1.0,
                      "bernoulli probability must be in [0, 1], got " << probability);
     return (rand(shape, DType::F64) < probability).to(dtype);
+}
+
+Tensor multinomial(const Tensor& weights, std::int64_t samples, bool replacement) {
+    KAEL_CHECK_TYPE(is_floating_point(weights.dtype()),
+                    "multinomial needs floating point weights, got " << weights.dtype());
+    KAEL_CHECK_VALUE(weights.dim() == 1 || weights.dim() == 2,
+                     "multinomial needs weights of shape [K] or [B, K], got "
+                         << to_string(weights.shape()));
+    KAEL_CHECK_VALUE(samples > 0, "multinomial needs a positive sample count, got " << samples);
+
+    const Tensor rows = weights.detach().cpu().to(DType::F64).contiguous();
+    const std::int64_t classes = rows.size(-1);
+    const std::int64_t row_count = classes > 0 ? rows.numel() / classes : 0;
+    Shape out_shape = weights.shape();
+    out_shape.back() = samples;
+    Tensor out = empty(out_shape, DType::I64);
+    auto* results = out.data_ptr<std::int64_t>();
+    const double* data = rows.data_ptr<double>();
+
+    std::uniform_real_distribution<double> uniform(0.0, 1.0);
+    std::vector<double> remaining(static_cast<std::size_t>(classes));
+    std::vector<double> cumulative(static_cast<std::size_t>(classes));
+    for (std::int64_t row = 0; row < row_count; ++row) {
+        const double* row_weights = data + row * classes;
+        std::copy_n(row_weights, classes, remaining.begin());
+        std::int64_t positive = 0;
+        for (const double weight : remaining) {
+            KAEL_CHECK_VALUE(std::isfinite(weight) && weight >= 0.0,
+                             "multinomial weights must be finite and non-negative, got " << weight);
+            positive += weight > 0.0 ? 1 : 0;
+        }
+        KAEL_CHECK_VALUE(positive > 0, "multinomial needs at least one positive weight");
+        KAEL_CHECK_VALUE(replacement || samples <= positive,
+                         "cannot draw " << samples << " samples without replacement from "
+                                        << positive << " positive weights");
+        for (std::int64_t sample = 0; sample < samples; ++sample) {
+            std::partial_sum(remaining.begin(), remaining.end(), cumulative.begin());
+            const double point = uniform(global_generator()) * cumulative.back();
+            auto found = std::upper_bound(cumulative.begin(), cumulative.end(), point);
+            found = found == cumulative.end() ? found - 1 : found;
+            auto picked = found - cumulative.begin();
+            while (remaining[static_cast<std::size_t>(picked)] <= 0.0 && picked > 0) {
+                --picked;
+            }
+            results[row * samples + sample] = picked;
+            if (!replacement) {
+                remaining[static_cast<std::size_t>(picked)] = 0.0;
+            }
+        }
+    }
+    return out.to(weights.device());
 }
 
 } // namespace kael

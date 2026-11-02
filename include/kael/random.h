@@ -17,5 +17,6 @@ Tensor randn(const Shape& shape, DType dtype = DType::F32);
 Tensor randint(std::int64_t low, std::int64_t high, const Shape& shape);
 Tensor randperm(std::int64_t n);
 Tensor bernoulli(const Shape& shape, double probability, DType dtype = DType::F32);
+Tensor multinomial(const Tensor& weights, std::int64_t samples, bool replacement = false);
 
 } // namespace kael

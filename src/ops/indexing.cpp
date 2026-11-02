@@ -1,3 +1,4 @@
+#include <cstring>
 #include <utility>
 
 #include "kael/autograd/grad_mode.h"
@@ -115,6 +116,18 @@ Tensor index_select(const Tensor& t, std::int64_t dim, const Tensor& indices) {
         return selected;
     }
     Tensor out = empty(out_shape, t.dtype());
+    if (position == 0 && t.is_contiguous() && indices.is_contiguous() && t.numel() > 0) {
+        const auto* positions = indices.data_ptr<std::int64_t>();
+        const std::int64_t row_bytes = t.nbytes() / t.shape()[0];
+        for (std::int64_t i = 0; i < indices.numel(); ++i) {
+            const std::int64_t source =
+                detail::checked_index(positions[i], t.shape()[0], "index_select");
+            std::memcpy(out.data_ptr_raw() + i * row_bytes, t.data_ptr_raw() + source * row_bytes,
+                        static_cast<std::size_t>(row_bytes));
+        }
+        autograd::record_index_select(out, t, dim, indices);
+        return out;
+    }
     {
         const autograd::NoGradGuard guard;
         for (std::int64_t i = 0; i < indices.numel(); ++i) {
@@ -145,12 +158,17 @@ Tensor gather(const Tensor& t, std::int64_t dim, const Tensor& indices) {
     }
     Tensor out = empty(indices.shape(), t.dtype());
     dispatch(t.dtype(), [&]<typename T>() {
-        detail::for_each_index(indices.shape(), [&](const Shape& index) {
-            Shape source = index;
-            source[position] = detail::checked_index(indices.at<std::int64_t>(index),
-                                                     t.shape()[position], "gather");
-            out.at<T>(index) = t.at<T>(source);
-        });
+        const T* data = t.data_ptr<T>();
+        const auto* positions = indices.data_ptr<std::int64_t>();
+        T* results = out.data_ptr<T>();
+        const std::int64_t size = t.shape()[position];
+        detail::IndexWalker walker(t, indices, indices.strides(), position);
+        for (std::int64_t i = 0; i < out.numel(); ++i) {
+            const std::int64_t index =
+                detail::checked_index(positions[walker.index_offset()], size, "gather");
+            results[i] = data[walker.target_offset(index)];
+            walker.advance();
+        }
     });
     autograd::record_gather(out, t, dim, indices);
     return out;

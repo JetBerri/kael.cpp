@@ -77,6 +77,17 @@ Tensor masked_fill(const Tensor& t, const Tensor& mask, Scalar value);
 Tensor index_select(const Tensor& t, std::int64_t dim, const Tensor& indices);
 Tensor gather(const Tensor& t, std::int64_t dim, const Tensor& indices);
 
+struct SortResult {
+    Tensor values;
+    Tensor indices;
+};
+
+Tensor cumsum(const Tensor& t, std::int64_t dim);
+SortResult sort(const Tensor& t, std::int64_t dim = -1, bool descending = false);
+SortResult topk(const Tensor& t, std::int64_t k, std::int64_t dim = -1, bool largest = true);
+Tensor tril(const Tensor& t, std::int64_t diagonal = 0);
+Tensor triu(const Tensor& t, std::int64_t diagonal = 0);
+
 Tensor logsumexp(const Tensor& t, std::int64_t dim, bool keepdim = false);
 Tensor softmax(const Tensor& t, std::int64_t dim);
 Tensor log_softmax(const Tensor& t, std::int64_t dim);

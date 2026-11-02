@@ -36,6 +36,7 @@ add_executable(kael_tests
     test_errors.cpp
     test_cuda.cpp
     test_cuda_absent.cpp
+    test_sequence_ops.cpp
     support/npy.cpp
 )
 

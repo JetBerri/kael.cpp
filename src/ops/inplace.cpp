@@ -179,13 +179,18 @@ Tensor& Tensor::scatter_add_(std::int64_t dim, const Tensor& indices, const Tens
     }
 
     dispatch(dtype(), [&]<typename T>() {
-        detail::for_each_index(indices.shape(), [&](const Shape& index) {
-            Shape target = index;
-            target[position] = detail::checked_index(indices.at<std::int64_t>(index),
-                                                     shape()[position], "scatter_add_");
-            T& element = at<T>(target);
-            element = convert_value<T>(element + source.at<T>(index));
-        });
+        T* data = data_ptr<T>();
+        const T* values = source.data_ptr<T>();
+        const auto* positions = indices.data_ptr<std::int64_t>();
+        const std::int64_t size = shape()[position];
+        detail::IndexWalker walker(*this, indices, source.strides(), position);
+        for (std::int64_t i = 0; i < indices.numel(); ++i) {
+            const std::int64_t index =
+                detail::checked_index(positions[walker.index_offset()], size, "scatter_add_");
+            T& element = data[walker.target_offset(index)];
+            element = convert_value<T>(element + values[walker.source_offset()]);
+            walker.advance();
+        }
     });
     impl_->storage->bump_version();
     return *this;

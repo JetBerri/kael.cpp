@@ -175,4 +175,12 @@ void record_standardize(const Tensor& out, const Tensor& x, std::int64_t normali
     }
 }
 
+void record_cumsum(const Tensor& out, const Tensor& x, std::int64_t dim) {
+    if (should_record(out, {&x})) {
+        set_history(out, "CumsumBackward", {x}, {[dim](const Tensor& g) {
+                        return kael::sum(g, {dim}, true) - kael::cumsum(g, dim) + g;
+                    }});
+    }
+}
+
 } // namespace kael::autograd
