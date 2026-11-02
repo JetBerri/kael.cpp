@@ -9,9 +9,14 @@ add_executable(kael_tests
     test_view.cpp
     test_iterator.cpp
     test_kernels.cpp
+    test_golden_support.cpp
+    test_golden.cpp
+    support/npy.cpp
 )
 
 target_link_libraries(kael_tests PRIVATE kael::kael GTest::gtest_main)
+target_include_directories(kael_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_definitions(kael_tests PRIVATE KAEL_GOLDEN_DIR="${CMAKE_CURRENT_SOURCE_DIR}/golden")
 
 include(GoogleTest)
 gtest_discover_tests(kael_tests)
