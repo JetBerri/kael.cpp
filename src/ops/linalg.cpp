@@ -1,6 +1,11 @@
+#include <algorithm>
+#include <type_traits>
+
 #include "kael/autograd/grad_mode.h"
 #include "kael/factory.h"
+#include "kael/matmul_versions.h"
 #include "kael/ops.h"
+#include "kael/parallel.h"
 
 #include "autograd/record.h"
 
@@ -8,14 +13,10 @@ namespace kael {
 
 namespace {
 
-struct MatrixSizes {
-    std::int64_t rows;
-    std::int64_t inner;
-    std::int64_t columns;
-};
+constexpr std::int64_t kWorkPerParallelTask = std::int64_t{1} << 21;
 
 template <typename T>
-void multiply_matrices(const T* a, const T* b, T* out, const MatrixSizes& sizes) {
+void multiply_exact(const T* a, const T* b, T* out, const matmul_versions::Sizes& sizes) {
     const auto [rows, inner, columns] = sizes;
     for (std::int64_t i = 0; i < rows; ++i) {
         T* out_row = out + i * columns;
@@ -26,6 +27,15 @@ void multiply_matrices(const T* a, const T* b, T* out, const MatrixSizes& sizes)
                 out_row[j] = static_cast<T>(out_row[j] + a_ik * b_row[j]);
             }
         }
+    }
+}
+
+template <typename T>
+void multiply_matrices(const T* a, const T* b, T* out, const matmul_versions::Sizes& sizes) {
+    if constexpr (std::is_floating_point_v<T>) {
+        matmul_versions::multiply(a, b, out, sizes);
+    } else {
+        multiply_exact(a, b, out, sizes);
     }
 }
 
@@ -46,7 +56,7 @@ Tensor as_batch_of_matrices(const Tensor& matrix, const Shape& batch, std::int64
 }
 
 Tensor multiply_batches(const Tensor& a, const Tensor& b, const Shape& batch,
-                        const MatrixSizes& sizes) {
+                        const matmul_versions::Sizes& sizes) {
     const DType dtype = promote_types(a.dtype(), b.dtype());
     const auto [rows, inner, columns] = sizes;
     const Tensor flat_a = as_batch_of_matrices(a.to(dtype), batch, rows, inner);
@@ -58,10 +68,15 @@ Tensor multiply_batches(const Tensor& a, const Tensor& b, const Shape& batch,
         const T* data_a = flat_a.data_ptr<T>();
         const T* data_b = flat_b.data_ptr<T>();
         T* data_out = out.data_ptr<T>();
-        for (std::int64_t i = 0; i < batch_count; ++i) {
-            multiply_matrices(data_a + i * rows * inner, data_b + i * inner * columns,
-                              data_out + i * rows * columns, sizes);
-        }
+        const std::int64_t work = std::max<std::int64_t>(1, rows * inner * columns);
+        parallel_for(0, batch_count, std::max<std::int64_t>(1, kWorkPerParallelTask / work),
+                     [&](std::int64_t first, std::int64_t last) {
+                         for (std::int64_t i = first; i < last; ++i) {
+                             multiply_matrices(data_a + i * rows * inner,
+                                               data_b + i * inner * columns,
+                                               data_out + i * rows * columns, sizes);
+                         }
+                     });
     });
     return out;
 }

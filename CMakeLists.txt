@@ -6,6 +6,8 @@ option(KAEL_ENABLE_SANITIZERS "Build with AddressSanitizer and UndefinedBehavior
 option(KAEL_ENABLE_TSAN "Build with ThreadSanitizer" OFF)
 option(KAEL_BUILD_BENCHMARKS "Build the benchmarks (use a Release build)" OFF)
 option(KAEL_BUILD_EXAMPLES "Build the examples" OFF)
+option(KAEL_USE_BLAS "Multiply matrices with the system BLAS" OFF)
+option(KAEL_NATIVE "Optimize for the CPU of the build machine" OFF)
 
 if (KAEL_ENABLE_SANITIZERS AND KAEL_ENABLE_TSAN)
     message(FATAL_ERROR "ThreadSanitizer cannot be combined with AddressSanitizer")
@@ -43,6 +45,7 @@ add_library(kael
     src/view.cpp
     src/iterator.cpp
     src/parallel.cpp
+    src/linalg/matmul_versions.cpp
     src/ops/binary.cpp
     src/ops/unary.cpp
     src/ops/inplace.cpp
@@ -81,6 +84,29 @@ kael_configure_target(kael)
 
 find_package(Threads REQUIRED)
 target_link_libraries(kael PUBLIC Threads::Threads)
+
+if (KAEL_USE_BLAS)
+    if (APPLE)
+        find_library(ACCELERATE_FRAMEWORK Accelerate REQUIRED)
+        target_link_libraries(kael PRIVATE ${ACCELERATE_FRAMEWORK})
+        target_compile_definitions(kael PRIVATE KAEL_USE_ACCELERATE ACCELERATE_NEW_LAPACK)
+    else ()
+        find_package(BLAS REQUIRED)
+        target_link_libraries(kael PRIVATE BLAS::BLAS)
+        target_compile_definitions(kael PRIVATE KAEL_USE_CBLAS)
+    endif ()
+endif ()
+
+if (KAEL_NATIVE)
+    include(CheckCXXCompilerFlag)
+    check_cxx_compiler_flag(-march=native KAEL_HAS_MARCH_NATIVE)
+    check_cxx_compiler_flag(-mcpu=native KAEL_HAS_MCPU_NATIVE)
+    if (KAEL_HAS_MARCH_NATIVE)
+        target_compile_options(kael PRIVATE -march=native)
+    elseif (KAEL_HAS_MCPU_NATIVE)
+        target_compile_options(kael PRIVATE -mcpu=native)
+    endif ()
+endif ()
 
 include(FetchContent)
 FetchContent_Declare(

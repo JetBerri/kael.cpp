@@ -30,6 +30,7 @@ add_executable(kael_tests
     test_data.cpp
     test_training.cpp
     test_parallel.cpp
+    test_matmul_versions.cpp
     support/npy.cpp
 )
 
