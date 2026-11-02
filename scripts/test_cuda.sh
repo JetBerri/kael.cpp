@@ -135,6 +135,12 @@ else
     skip char-gpt-cuda "data/shakespeare is missing: run scripts/download_shakespeare.sh"
 fi
 
+if [[ -f data/gpt2/vocab.json && -f data/gpt2/merges.txt && -f data/gpt2/model.safetensors ]]; then
+    step gpt2-cpp-cuda "$build/examples/gpt2_generate" --tokens 40 --device cuda
+else
+    skip gpt2-cpp-cuda "GPT-2 files are missing: run scripts/download_gpt2.sh"
+fi
+
 if step python-build build_python; then
     step python-sees-gpu python_tool -c 'import kael; assert kael.cuda_is_available()'
     step python-tests python_tool -m pytest python/tests -q
