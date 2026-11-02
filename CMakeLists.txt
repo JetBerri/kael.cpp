@@ -24,11 +24,12 @@ endfunction()
 add_library(kael
     src/shape.cpp
     src/storage.cpp
+    src/tensor_impl.cpp
 )
 
 add_library(kael::kael ALIAS kael)
 
-target_include_directories(kael PUBLIC include)
+target_include_directories(kael PUBLIC include PRIVATE src)
 target_compile_features(kael PUBLIC cxx_std_20)
 kael_configure_target(kael)
 
