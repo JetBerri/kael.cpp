@@ -276,7 +276,7 @@ Tensor generate(GPT& model, const Tensor& prompt, const GenerateOptions& options
 }
 
 void load_gpt2_weights(GPT& model, const std::filesystem::path& path) {
-    const io::TensorMap stored = io::load_safetensors(path);
+    const io::TensorMap stored = io::load_safetensors(path, io::LoadMode::Mapped);
     const StateDict expected = model.state_dict();
     StateDict translated;
     for (const auto& [stored_name, tensor] : stored) {

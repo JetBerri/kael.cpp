@@ -165,3 +165,15 @@ def test_real_gpt2_logits_match_huggingface():
     difference = np.abs(actual[0, -1].detach().numpy() - expected[0, -1].numpy()).max()
     print("max logit difference", difference)
     assert difference < 1e-3, difference
+
+
+def test_mapped_safetensors_match_and_stay_private(tmp_path):
+    path = tmp_path / "weights.safetensors"
+    values = kael.arange(0.0, 12.0).reshape(3, 4)
+    kael.save_safetensors(str(path), {"values": values})
+
+    mapped = kael.load_safetensors(str(path), mmap=True)["values"]
+    assert mapped.tolist() == values.tolist()
+
+    mapped.fill_(5.0)
+    assert kael.load_safetensors(str(path))["values"].tolist() == values.tolist()

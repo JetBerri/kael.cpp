@@ -13,17 +13,19 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
         std::filesystem::temp_directory_path() / ("kael_fuzz_st_" + std::to_string(getpid()));
     std::ofstream(path, std::ios::binary)
         .write(reinterpret_cast<const char*>(data), static_cast<std::streamsize>(size));
-    try {
-        const auto loaded = kael::io::read_safetensors(path);
-        for (const auto& [name, tensor] : loaded.tensors) {
-            if (tensor.nbytes() > 0) {
-                volatile auto first = *tensor.data_ptr_raw();
-                volatile auto last = tensor.data_ptr_raw()[tensor.nbytes() - 1];
-                (void)first;
-                (void)last;
+    for (const auto mode : {kael::io::LoadMode::Copy, kael::io::LoadMode::Mapped}) {
+        try {
+            const auto loaded = kael::io::read_safetensors(path, mode);
+            for (const auto& [name, tensor] : loaded.tensors) {
+                if (tensor.nbytes() > 0) {
+                    volatile auto first = *tensor.data_ptr_raw();
+                    volatile auto last = tensor.data_ptr_raw()[tensor.nbytes() - 1];
+                    (void)first;
+                    (void)last;
+                }
             }
+        } catch (const kael::Error&) {
         }
-    } catch (const kael::Error&) {
     }
     return 0;
 }

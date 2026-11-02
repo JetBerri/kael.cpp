@@ -14,6 +14,7 @@
 
 using kael::DType;
 using kael::Tensor;
+using kael::io::TensorMap;
 namespace io = kael::io;
 
 namespace {
@@ -173,4 +174,70 @@ TEST_F(Safetensors, UnsupportedDtypeIsATypeError) {
 TEST_F(Safetensors, NamesCannotBeTheMetadataKey) {
     EXPECT_THROW(io::save_safetensors(path_, {{"__metadata__", kael::ones({1})}}),
                  kael::ValueError);
+}
+
+TEST_F(Safetensors, MappedLoadMatchesTheCopyingLoad) {
+    kael::manual_seed(7);
+    const TensorMap tensors = {{"a", kael::randn({20, 30})},
+                               {"b", kael::randn({5}, DType::F64)},
+                               {"c", kael::randint(0, 9, {4, 2})},
+                               {"d", kael::from_vector<std::uint8_t>({1, 0, 1}, {3}).to(DType::Bool)},
+                               {"empty", kael::zeros({0, 3})}};
+    kael::io::save_safetensors(path_, tensors);
+
+    const TensorMap copied = kael::io::load_safetensors(path_);
+    const TensorMap mapped = kael::io::load_safetensors(path_, kael::io::LoadMode::Mapped);
+    ASSERT_EQ(mapped.size(), copied.size());
+    for (const auto& [name, tensor] : copied) {
+        EXPECT_EQ(mapped.at(name).dtype(), tensor.dtype()) << name;
+        EXPECT_EQ(mapped.at(name).shape(), tensor.shape()) << name;
+        EXPECT_TRUE(kael::equal(mapped.at(name), tensor)) << name;
+    }
+}
+
+TEST_F(Safetensors, MappedTensorsOutliveTheMap) {
+    kael::io::save_safetensors(path_, {{"a", kael::full({64, 64}, 3.0)}, {"b", kael::zeros({2})}});
+    kael::Tensor kept = kael::zeros({1});
+    {
+        const TensorMap mapped = kael::io::load_safetensors(path_, kael::io::LoadMode::Mapped);
+        kept = mapped.at("a");
+    }
+    std::filesystem::remove(path_);
+    EXPECT_EQ(kael::sum(kept).item<float>(), 3.0f * 64.0f * 64.0f);
+}
+
+TEST_F(Safetensors, WritingToAMappedTensorDoesNotChangeTheFile) {
+    kael::io::save_safetensors(path_, {{"a", kael::full({4}, 1.0)}});
+    {
+        kael::Tensor mapped = kael::io::load_safetensors(path_, kael::io::LoadMode::Mapped).at("a");
+        mapped.fill_(9.0);
+        EXPECT_EQ(mapped.at<float>({0}), 9.0f);
+    }
+    EXPECT_EQ(kael::io::load_safetensors(path_).at("a").at<float>({0}), 1.0f);
+}
+
+TEST_F(Safetensors, MappedLoadSharesTheFilePagesWhenAligned) {
+    kael::io::save_safetensors(path_, {{"a", kael::full({4}, 1.0)}, {"b", kael::full({4}, 2.0)}});
+    const TensorMap mapped = kael::io::load_safetensors(path_, kael::io::LoadMode::Mapped);
+    const auto gap = mapped.at("b").data_ptr<float>() - mapped.at("a").data_ptr<float>();
+    EXPECT_EQ(gap, 4);
+}
+
+TEST_F(Safetensors, MappedLoadCopiesMisalignedTensors) {
+    const std::string text =
+        R"({"pad":{"dtype":"BOOL","shape":[1],"data_offsets":[0,1]},"a":{"dtype":"F64","shape":[1],"data_offsets":[1,9]}})";
+    const std::string header = text + std::string((8 - text.size() % 8) % 8, ' ');
+    const double value = 2.5;
+    std::string data(1, '\1');
+    data.append(reinterpret_cast<const char*>(&value), sizeof(value));
+    write_raw(header, data);
+    const TensorMap mapped = kael::io::load_safetensors(path_, kael::io::LoadMode::Mapped);
+    const kael::Tensor a = mapped.at("a");
+    EXPECT_EQ(reinterpret_cast<std::uintptr_t>(a.data_ptr<double>()) % alignof(double), 0u);
+    EXPECT_EQ(a.item<double>(), 2.5);
+}
+
+TEST_F(Safetensors, MappedLoadRejectsCorruptFilesLikeTheCopyingLoad) {
+    write_raw("nope");
+    EXPECT_THROW((void)kael::io::load_safetensors(path_, kael::io::LoadMode::Mapped), kael::Error);
 }

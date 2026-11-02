@@ -20,8 +20,13 @@ void bind_models(nb::module_& m) {
         nb::arg("path"), nb::arg("tensors"), nb::arg("metadata") = io::Metadata{},
         "Write tensors to a safetensors file.");
     m.def(
-        "load_safetensors", [](const std::string& path) { return io::load_safetensors(path); },
-        nb::arg("path"), "Read every tensor of a safetensors file, validating its layout.");
+        "load_safetensors",
+        [](const std::string& path, bool mapped) {
+            return io::load_safetensors(path, mapped ? io::LoadMode::Mapped : io::LoadMode::Copy);
+        },
+        nb::arg("path"), nb::arg("mmap") = false,
+        "Read every tensor of a safetensors file, validating its layout. With mmap the tensors "
+        "share the pages of the file, and the file must not be truncated while they are alive.");
     m.def("read_safetensors_metadata",
           [](const std::string& path) { return io::read_safetensors(path).metadata; });
 

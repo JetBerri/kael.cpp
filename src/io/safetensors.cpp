@@ -6,9 +6,19 @@
 #include <fstream>
 #include <limits>
 #include <nlohmann/json.hpp>
+#include <memory>
 #include <vector>
 
+#if !defined(_WIN32)
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
+
 #include "kael/factory.h"
+#include "kael/storage.h"
+#include "kael/tensor_impl.h"
 
 #include "internal/checked_math.h"
 
@@ -120,6 +130,44 @@ void check_bools(const Tensor& t, const std::string& name) {
     }
 }
 
+// Private pages: writing to a mapped tensor copies the page and never reaches the file.
+std::shared_ptr<void> map_file(const std::filesystem::path& path, std::uint64_t expected_size) {
+#if defined(_WIN32)
+    (void)path;
+    (void)expected_size;
+    return nullptr;
+#else
+    const int descriptor = ::open(path.c_str(), O_RDONLY | O_CLOEXEC);
+    KAEL_CHECK(descriptor >= 0, "cannot open safetensors file " << path);
+    struct stat status {};
+    const bool same_size = ::fstat(descriptor, &status) == 0 &&
+                           static_cast<std::uint64_t>(status.st_size) == expected_size;
+    void* address = same_size ? ::mmap(nullptr, static_cast<std::size_t>(expected_size),
+                                       PROT_READ | PROT_WRITE, MAP_PRIVATE, descriptor, 0)
+                              : MAP_FAILED;
+    ::close(descriptor);
+    KAEL_CHECK(same_size, "safetensors file " << path << " changed while it was being read");
+    if (address == MAP_FAILED) {
+        return nullptr;
+    }
+    return {address, [expected_size](void* mapped) {
+                ::munmap(mapped, static_cast<std::size_t>(expected_size));
+            }};
+#endif
+}
+
+Tensor tensor_over_mapping(const std::shared_ptr<void>& mapping, std::uint64_t position,
+                           const Entry& entry) {
+    auto impl = std::make_shared<TensorImpl>();
+    auto* first = static_cast<std::byte*>(mapping.get()) + position;
+    impl->storage = std::make_shared<Storage>(
+        Storage::external(first, entry.end - entry.begin, mapping));
+    impl->shape = entry.shape;
+    impl->strides = contiguous_strides(entry.shape);
+    impl->dtype = entry.dtype;
+    return Tensor::from_impl(std::move(impl));
+}
+
 } // namespace
 
 void save_safetensors(const std::filesystem::path& path, const TensorMap& tensors,
@@ -158,7 +206,7 @@ void save_safetensors(const std::filesystem::path& path, const TensorMap& tensor
     KAEL_CHECK(file.good(), "failed writing safetensors file " << path);
 }
 
-SafetensorsFile read_safetensors(const std::filesystem::path& path) {
+SafetensorsFile read_safetensors(const std::filesystem::path& path, LoadMode mode) {
     std::ifstream file(path, std::ios::binary | std::ios::ate);
     KAEL_CHECK(file.is_open(), "cannot open safetensors file " << path);
     const auto file_size = static_cast<std::uint64_t>(file.tellg());
@@ -198,9 +246,15 @@ SafetensorsFile read_safetensors(const std::filesystem::path& path) {
     const std::uint64_t data_size = file_size - sizeof(header_size) - header_size;
     check_layout(entries, static_cast<std::int64_t>(data_size));
     const auto data_start = static_cast<std::streamoff>(sizeof(header_size) + header_size);
+    const std::shared_ptr<void> mapping =
+        mode == LoadMode::Mapped ? map_file(path, file_size) : nullptr;
     for (const Entry& entry : entries) {
-        Tensor tensor = empty(entry.shape, entry.dtype);
-        if (tensor.nbytes() > 0) {
+        const auto position = static_cast<std::uint64_t>(data_start + entry.begin);
+        const auto alignment = static_cast<std::uint64_t>(element_size(entry.dtype));
+        const bool over_mapping = mapping && entry.end > entry.begin && position % alignment == 0;
+        Tensor tensor =
+            over_mapping ? tensor_over_mapping(mapping, position, entry) : empty(entry.shape, entry.dtype);
+        if (!over_mapping && tensor.nbytes() > 0) {
             file.seekg(data_start + entry.begin);
             file.read(reinterpret_cast<char*>(tensor.data_ptr_raw()),
                       static_cast<std::streamsize>(tensor.nbytes()));
@@ -214,8 +268,8 @@ SafetensorsFile read_safetensors(const std::filesystem::path& path) {
     return result;
 }
 
-TensorMap load_safetensors(const std::filesystem::path& path) {
-    return read_safetensors(path).tensors;
+TensorMap load_safetensors(const std::filesystem::path& path, LoadMode mode) {
+    return read_safetensors(path, mode).tensors;
 }
 
 } // namespace kael::io
