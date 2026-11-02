@@ -188,7 +188,15 @@ TEST(ParallelConfig, SingleThreadRunsWholeRangeOnce) {
     kael::set_num_threads(previous);
 }
 
-#if !defined(_WIN32) && !(defined(__has_feature) && __has_feature(thread_sanitizer))
+#if defined(__SANITIZE_THREAD__)
+#define KAEL_UNDER_TSAN
+#elif defined(__has_feature)
+#if __has_feature(thread_sanitizer)
+#define KAEL_UNDER_TSAN
+#endif
+#endif
+
+#if !defined(_WIN32) && !defined(KAEL_UNDER_TSAN)
 TEST(ParallelFork, ChildCanStillRunParallelWork) {
     kael::set_num_threads(4);
     std::atomic<std::int64_t> parent_visited{0};
