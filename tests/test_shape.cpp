@@ -380,3 +380,25 @@ TEST(BroadcastShapes, GeneratedCases) {
         ++i;
     }
 }
+TEST(WrapDim, PositiveAndNegative) {
+    EXPECT_EQ(kael::wrap_dim(0, 2), 0);
+    EXPECT_EQ(kael::wrap_dim(1, 2), 1);
+    EXPECT_EQ(kael::wrap_dim(-1, 2), 1);
+    EXPECT_EQ(kael::wrap_dim(-2, 2), 0);
+}
+
+TEST(WrapDim, OutOfRangeThrowsWithRange) {
+    EXPECT_THROW(kael::wrap_dim(2, 2), kael::Error);
+    EXPECT_THROW(kael::wrap_dim(-3, 2), kael::Error);
+    try {
+        kael::wrap_dim(3, 2);
+        FAIL();
+    } catch (const kael::Error& e) {
+        EXPECT_NE(std::string(e.what()).find("dimension 3 out of range [-2, 1]"), std::string::npos);
+    }
+}
+
+TEST(WrapDim, ZeroDimensionalThrows) {
+    EXPECT_THROW(kael::wrap_dim(0, 0), kael::Error);
+    EXPECT_THROW(kael::wrap_dim(-1, 0), kael::Error);
+}

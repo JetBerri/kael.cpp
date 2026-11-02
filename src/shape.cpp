@@ -190,4 +190,16 @@ namespace kael{
 
     }
 
+    std::int64_t wrap_dim(std::int64_t dim, std::int64_t ndim){
+
+        KAEL_CHECK(ndim > 0, "dimension " << dim << " specified but tensor has no dimensions");
+
+        KAEL_CHECK(dim >= -ndim && dim < ndim, "dimension " << dim
+                                               << " out of range [" << -ndim
+                                               << ", " << ndim - 1 << "]");
+
+        return dim < 0 ? dim + ndim : dim;
+
+    }
+
 }

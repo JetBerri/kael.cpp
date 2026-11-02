@@ -45,4 +45,9 @@ namespace kael{
                               const Strides& strides,
                               const Shape& target);
 
+    // normalizes a Python-style dimension: -1 is the last one, -ndim the
+    // first; throws "dimension 3 out of range [-2, 1]" if outside
+    // [-ndim, ndim), including any dim when ndim is 0
+    std::int64_t wrap_dim(std::int64_t dim, std::int64_t ndim);
+
 }

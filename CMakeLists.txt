@@ -25,6 +25,7 @@ add_library(kael
     src/shape.cpp
     src/storage.cpp
     src/tensor_impl.cpp
+    src/tensor.cpp
 )
 
 add_library(kael::kael ALIAS kael)
