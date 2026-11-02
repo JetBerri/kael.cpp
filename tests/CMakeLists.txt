@@ -28,6 +28,7 @@ add_executable(kael_tests
     test_nn_layers.cpp
     test_optim.cpp
     test_data.cpp
+    test_training.cpp
     support/npy.cpp
 )
 

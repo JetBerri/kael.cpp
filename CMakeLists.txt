@@ -4,6 +4,7 @@ project(kael VERSION 0.1.0 LANGUAGES CXX)
 option(KAEL_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 option(KAEL_ENABLE_SANITIZERS "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(KAEL_BUILD_BENCHMARKS "Build the benchmarks (use a Release build)" OFF)
+option(KAEL_BUILD_EXAMPLES "Build the examples" OFF)
 
 function(kael_configure_target target)
     set(gcc_like "$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>")
@@ -76,6 +77,10 @@ FetchContent_MakeAvailable(googletest)
 
 enable_testing()
 add_subdirectory(tests)
+
+if (KAEL_BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif ()
 
 if (KAEL_BUILD_BENCHMARKS)
     if (KAEL_ENABLE_SANITIZERS)

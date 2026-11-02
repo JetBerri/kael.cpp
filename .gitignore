@@ -1,4 +1,5 @@
 notes
+/data/
 build/
 build-*/
 cmake-build-*/
