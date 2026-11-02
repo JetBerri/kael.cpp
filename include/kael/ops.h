@@ -28,6 +28,24 @@ Tensor logical_not(const Tensor& t);
 
 [[nodiscard]] bool equal(const Tensor& a, const Tensor& b);
 
+Tensor neg(const Tensor& t);
+Tensor abs(const Tensor& t);
+Tensor sign(const Tensor& t);
+Tensor exp(const Tensor& t);
+Tensor log(const Tensor& t);
+Tensor log1p(const Tensor& t);
+Tensor expm1(const Tensor& t);
+Tensor sqrt(const Tensor& t);
+Tensor rsqrt(const Tensor& t);
+Tensor sin(const Tensor& t);
+Tensor cos(const Tensor& t);
+Tensor tanh(const Tensor& t);
+Tensor sigmoid(const Tensor& t);
+Tensor relu(const Tensor& t);
+Tensor gelu(const Tensor& t);
+Tensor clamp(const Tensor& t, Scalar min, Scalar max);
+
+Tensor operator-(const Tensor& t);
 Tensor operator+(const Operand& a, const Operand& b);
 Tensor operator-(const Operand& a, const Operand& b);
 Tensor operator*(const Operand& a, const Operand& b);

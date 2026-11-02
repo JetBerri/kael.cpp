@@ -91,6 +91,10 @@ GoldenOp binary(Tensor (*op)(const kael::Operand&, const kael::Operand&)) {
     return [op](const Inputs& inputs, const Args&) { return op(inputs[0], inputs[1]); };
 }
 
+GoldenOp unary(Tensor (*op)(const Tensor&)) {
+    return [op](const Inputs& inputs, const Args&) { return op(inputs[0]); };
+}
+
 const std::map<std::string, GoldenOp>& golden_ops() {
     static const std::map<std::string, GoldenOp> ops = {
         {"add", binary(kael::add)},
@@ -110,6 +114,25 @@ const std::map<std::string, GoldenOp>& golden_ops() {
         {"logical_and", binary(kael::logical_and)},
         {"logical_or", binary(kael::logical_or)},
         {"logical_xor", binary(kael::logical_xor)},
+        {"neg", unary(kael::neg)},
+        {"abs", unary(kael::abs)},
+        {"sign", unary(kael::sign)},
+        {"exp", unary(kael::exp)},
+        {"log", unary(kael::log)},
+        {"log1p", unary(kael::log1p)},
+        {"expm1", unary(kael::expm1)},
+        {"sqrt", unary(kael::sqrt)},
+        {"rsqrt", unary(kael::rsqrt)},
+        {"sin", unary(kael::sin)},
+        {"cos", unary(kael::cos)},
+        {"tanh", unary(kael::tanh)},
+        {"sigmoid", unary(kael::sigmoid)},
+        {"relu", unary(kael::relu)},
+        {"gelu", unary(kael::gelu)},
+        {"clamp",
+         [](const Inputs& inputs, const Args& args) {
+             return kael::clamp(inputs[0], args.real("min"), args.real("max"));
+         }},
     };
     return ops;
 }

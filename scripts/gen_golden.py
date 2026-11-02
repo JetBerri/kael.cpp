@@ -175,6 +175,42 @@ for comparison in [torch.eq, torch.ne, torch.lt, torch.le, torch.gt, torch.ge]:
 for logical in [torch.logical_and, torch.logical_or, torch.logical_xor]:
     add_cases(logical.__name__, logical, ALL_BINARY + BOOL_PATTERNS)
 
+SPECIAL_UNARY = ("special", {"x": spec((10,), values=SPECIAL_VALUES)}, {})
+UNARY_PATTERNS = [
+    ("matrix", {"x": spec((3, 4))}, {}),
+    ("transposed", {"x": spec((4, 3), view="transpose:0:1")}, {}),
+    ("stepped", {"x": spec((6,), view="slice:0:0:6:2")}, {}),
+    ("expanded", {"x": spec((3,), view="expand:2:3")}, {}),
+    ("scalar", {"x": spec(())}, {}),
+    ("empty", {"x": spec((0, 2))}, {}),
+    ("f64", {"x": spec((3, 2), "f64")}, {}),
+    SPECIAL_UNARY,
+]
+POSITIVE_PATTERNS = [
+    ("matrix", {"x": spec((3, 4), kind="positive")}, {}),
+    ("transposed", {"x": spec((4, 3), kind="positive", view="transpose:0:1")}, {}),
+    ("f64", {"x": spec((3, 2), "f64", kind="positive")}, {}),
+    SPECIAL_UNARY,
+]
+INTEGER_INPUT = ("i64", {"x": spec((5,), "i64", values=[1, 2, 3, 4, 5])}, {})
+
+for function in [torch.neg, torch.abs, torch.sign]:
+    add_cases(function.__name__, function, UNARY_PATTERNS + [INTEGER_INPUT])
+for function in [torch.exp, torch.expm1, torch.sin, torch.cos, torch.tanh, torch.sigmoid]:
+    add_cases(function.__name__, function, UNARY_PATTERNS + [INTEGER_INPUT])
+for function in [torch.log, torch.log1p, torch.sqrt, torch.rsqrt]:
+    add_cases(function.__name__, function, POSITIVE_PATTERNS + [INTEGER_INPUT])
+add_cases("relu", torch.relu, UNARY_PATTERNS)
+add_cases("gelu", torch.nn.functional.gelu, UNARY_PATTERNS)
+add_cases(
+    "clamp",
+    torch.clamp,
+    [
+        (name, inputs, {"min": -0.5, "max": 0.5})
+        for name, inputs, _ in UNARY_PATTERNS + [INTEGER_INPUT]
+    ],
+)
+
 
 def main():
     if GOLDEN_DIR.exists():

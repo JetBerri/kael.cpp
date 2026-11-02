@@ -66,6 +66,15 @@ Tensor unary_kernel(const Tensor& input, F f) {
 }
 
 template <typename F>
+Tensor floating_unary_kernel(const Tensor& input, const char* op, F f) {
+    const DType dtype = is_floating_point(input.dtype()) ? input.dtype() : DType::F32;
+    TensorIterator iterator;
+    iterator.allocate_output(dtype).add_input(input.to(dtype)).build();
+    dispatch_floating(dtype, op, [&]<typename T>() { detail::run_typed<T, T, 1>(iterator, f); });
+    return iterator.output();
+}
+
+template <typename F>
 void unary_kernel_out(Tensor& out, const Tensor& input, F f) {
     detail::same_dtype_kernel_out(out, f, input);
 }

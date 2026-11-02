@@ -12,6 +12,7 @@ add_executable(kael_tests
     test_golden_support.cpp
     test_golden.cpp
     test_ops_binary.cpp
+    test_ops_unary.cpp
     support/npy.cpp
 )
 
