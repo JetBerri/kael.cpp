@@ -1,0 +1,90 @@
+#include <memory>
+#include <nanobind/stl/map.h>
+#include <nanobind/stl/optional.h>
+#include <nanobind/stl/string.h>
+#include <nanobind/stl/vector.h>
+
+#include "kael/io/safetensors.h"
+#include "kael/nn/transformer.h"
+
+#include "bind.h"
+
+namespace kael::python {
+
+void bind_models(nb::module_& m) {
+    m.def(
+        "save_safetensors",
+        [](const std::string& path, const io::TensorMap& tensors, const io::Metadata& metadata) {
+            io::save_safetensors(path, tensors, metadata);
+        },
+        nb::arg("path"), nb::arg("tensors"), nb::arg("metadata") = io::Metadata{},
+        "Write tensors to a safetensors file.");
+    m.def(
+        "load_safetensors", [](const std::string& path) { return io::load_safetensors(path); },
+        nb::arg("path"), "Read every tensor of a safetensors file, validating its layout.");
+    m.def("read_safetensors_metadata",
+          [](const std::string& path) { return io::read_safetensors(path).metadata; });
+
+    const auto as_tuple = [](const SortResult& result) {
+        return nb::make_tuple(result.values, result.indices);
+    };
+    m.def("cumsum", &kael::cumsum, nb::arg("input"), nb::arg("dim"));
+    m.def(
+        "sort",
+        [as_tuple](const Tensor& t, std::int64_t dim, bool descending) {
+            return as_tuple(kael::sort(t, dim, descending));
+        },
+        nb::arg("input"), nb::arg("dim") = -1, nb::arg("descending") = false);
+    m.def(
+        "topk",
+        [as_tuple](const Tensor& t, std::int64_t k, std::int64_t dim, bool largest) {
+            return as_tuple(kael::topk(t, k, dim, largest));
+        },
+        nb::arg("input"), nb::arg("k"), nb::arg("dim") = -1, nb::arg("largest") = true);
+    m.def("tril", &kael::tril, nb::arg("input"), nb::arg("diagonal") = 0);
+    m.def("triu", &kael::triu, nb::arg("input"), nb::arg("diagonal") = 0);
+    m.def("multinomial", &kael::multinomial, nb::arg("weights"), nb::arg("samples"),
+          nb::arg("replacement") = false);
+
+    nb::class_<nn::GPT>(m, "GPT", "A GPT-2 style transformer implemented in C++.")
+        .def(
+            "__init__",
+            [](nn::GPT* self, std::int64_t vocab_size, std::int64_t max_positions,
+               std::int64_t layers, std::int64_t heads, std::int64_t dimension, double dropout,
+               bool tanh_gelu, DType dtype) {
+                new (self) nn::GPT(nn::GptConfig{vocab_size, max_positions, layers, heads,
+                                                 dimension, dropout, tanh_gelu, dtype});
+            },
+            nb::arg("vocab_size") = 50257, nb::arg("max_positions") = 1024, nb::arg("layers") = 12,
+            nb::arg("heads") = 12, nb::arg("dimension") = 768, nb::arg("dropout") = 0.0,
+            nb::arg("tanh_gelu") = true, nb::arg("dtype") = DType::F32)
+        .def(
+            "__call__",
+            [](nn::GPT& model, const Tensor& indices) { return model.forward(indices); },
+            nb::call_guard<nb::gil_scoped_release>())
+        .def("parameters", &nn::Module::parameters)
+        .def("named_parameters", &nn::Module::named_parameters)
+        .def("num_parameters", &nn::Module::num_parameters)
+        .def("train", &nn::Module::train, nb::arg("training") = true)
+        .def("eval", &nn::Module::eval)
+        .def("zero_grad", &nn::Module::zero_grad)
+        .def("to",
+             [](nn::GPT& model, const std::string& device) { model.to(parse_device(device)); })
+        .def("state_dict", &nn::Module::state_dict)
+        .def("load_state_dict", &nn::Module::load_state_dict)
+        .def(
+            "load_gpt2",
+            [](nn::GPT& model, const std::string& path) { nn::load_gpt2_weights(model, path); },
+            "Load GPT-2 weights from a HuggingFace safetensors file.")
+        .def(
+            "generate",
+            [](nn::GPT& model, const Tensor& prompt, std::int64_t max_new_tokens,
+               double temperature, std::int64_t top_k, bool use_cache) {
+                return nn::generate(model, prompt, {max_new_tokens, temperature, top_k, use_cache});
+            },
+            nb::arg("prompt"), nb::arg("max_new_tokens") = 16, nb::arg("temperature") = 1.0,
+            nb::arg("top_k") = 0, nb::arg("use_cache") = true,
+            nb::call_guard<nb::gil_scoped_release>());
+}
+
+} // namespace kael::python

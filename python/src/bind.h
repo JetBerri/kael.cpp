@@ -29,5 +29,6 @@ void bind_tensor(nb::module_& m);
 void bind_ops(nb::module_& m);
 void bind_autograd(nb::module_& m);
 void bind_interop(nb::module_& m);
+void bind_models(nb::module_& m);
 
 } // namespace kael::python

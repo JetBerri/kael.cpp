@@ -7,6 +7,7 @@ nanobind_add_module(_C NB_STATIC
     src/ops_bind.cpp
     src/autograd_bind.cpp
     src/interop_bind.cpp
+    src/models_bind.cpp
 )
 target_link_libraries(_C PRIVATE kael::kael)
 target_compile_features(_C PRIVATE cxx_std_20)

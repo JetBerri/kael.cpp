@@ -112,4 +112,5 @@ NB_MODULE(_C, m) {
     kp::bind_ops(m);
     kp::bind_autograd(m);
     kp::bind_interop(m);
+    kp::bind_models(m);
 }
