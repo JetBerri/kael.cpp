@@ -30,7 +30,7 @@ void BM_Matmul(benchmark::State& state) {
     }
     report_flops(state, n);
 }
-BENCHMARK(BM_Matmul)->Arg(128)->Arg(256)->Arg(512)->Unit(benchmark::kMillisecond);
+BENCHMARK(BM_Matmul)->Arg(128)->Arg(256)->Arg(512)->Unit(benchmark::kMillisecond)->UseRealTime();
 
 template <Version<float> Multiply> void BM_MatmulVersion(benchmark::State& state) {
     const std::int64_t n = state.range(0);
@@ -45,7 +45,7 @@ template <Version<float> Multiply> void BM_MatmulVersion(benchmark::State& state
 }
 
 void version_sizes(benchmark::internal::Benchmark* bench) {
-    bench->Arg(256)->Arg(512)->Arg(1024)->Arg(2048)->Unit(benchmark::kMillisecond)->MinTime(0.1);
+    bench->Arg(256)->Arg(512)->Arg(1024)->Arg(2048)->Unit(benchmark::kMillisecond)->MinTime(0.1)->UseRealTime();
 }
 
 using namespace kael::matmul_versions;

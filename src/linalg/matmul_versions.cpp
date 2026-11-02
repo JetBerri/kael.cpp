@@ -181,15 +181,17 @@ void pack_rows(const T* a, std::int64_t stride, std::int64_t rows, std::int64_t 
 }
 
 template <typename T, typename Kernel>
-void pack_columns(const T* b, std::int64_t stride, std::int64_t inner, std::int64_t columns,
-                  T* packed) {
-    for (std::int64_t left = 0; left < columns; left += Kernel::kColumns) {
+void pack_column_panels(const T* b, std::int64_t stride, std::int64_t inner, std::int64_t columns,
+                        std::int64_t first_panel, std::int64_t last_panel, T* packed) {
+    T* cursor = packed + first_panel * inner * Kernel::kColumns;
+    for (std::int64_t panel = first_panel; panel < last_panel; ++panel) {
+        const std::int64_t left = panel * Kernel::kColumns;
         const std::int64_t width = std::min(Kernel::kColumns, columns - left);
         for (std::int64_t k = 0; k < inner; ++k) {
             const T* row = b + k * stride + left;
-            std::copy(row, row + width, packed);
-            std::fill(packed + width, packed + Kernel::kColumns, T{0});
-            packed += Kernel::kColumns;
+            std::copy(row, row + width, cursor);
+            std::fill(cursor + width, cursor + Kernel::kColumns, T{0});
+            cursor += Kernel::kColumns;
         }
     }
 }
@@ -222,6 +224,25 @@ template <std::int64_t Unit> std::int64_t rounded_up(std::int64_t value) {
     return (value + Unit - 1) / Unit * Unit;
 }
 
+template <typename Kernel, bool Threaded>
+std::int64_t row_block_for(std::int64_t rows, std::int64_t largest) {
+    if constexpr (Threaded) {
+        const std::int64_t threads = get_num_threads();
+        return std::min(largest, rounded_up<Kernel::kRows>((rows + threads - 1) / threads));
+    } else {
+        return largest;
+    }
+}
+
+template <bool Threaded, typename Body>
+void run_blocks(std::int64_t count, std::int64_t grain, Body body) {
+    if constexpr (Threaded) {
+        parallel_for(0, count, grain, body);
+    } else {
+        body(0, count);
+    }
+}
+
 template <typename T, typename Kernel, bool Threaded>
 void multiply_packed(const T* a, const T* b, T* out, const Sizes& sizes) {
     const auto [rows, inner, columns] = sizes;
@@ -230,36 +251,40 @@ void multiply_packed(const T* a, const T* b, T* out, const Sizes& sizes) {
     }
     const BlockSizes blocks{rounded_up<Kernel::kRows>(kPackedBlocks.rows), kPackedBlocks.inner,
                             rounded_up<Kernel::kColumns>(kPackedBlocks.columns)};
+    const std::int64_t row_block = row_block_for<Kernel, Threaded>(rows, blocks.rows);
     const std::int64_t column_block = std::min(blocks.columns, columns);
     const std::int64_t inner_block = std::min(blocks.inner, inner);
     const std::int64_t packed_b_size = rounded_up<Kernel::kColumns>(column_block) * inner_block;
-    const std::int64_t packed_a_size =
-        rounded_up<Kernel::kRows>(std::min(blocks.rows, rows)) * inner_block;
+    const std::int64_t packed_a_size = rounded_up<Kernel::kRows>(std::min(row_block, rows)) * inner_block;
     const PackBuffer<T> packed_b = allocate_pack<T>(packed_b_size);
 
     for (std::int64_t jc = 0; jc < columns; jc += blocks.columns) {
         const std::int64_t nc = std::min(blocks.columns, columns - jc);
         for (std::int64_t pc = 0; pc < inner; pc += blocks.inner) {
             const std::int64_t kc = std::min(blocks.inner, inner - pc);
-            pack_columns<T, Kernel>(b + pc * columns + jc, columns, kc, nc, packed_b.get());
+            const bool worthwhile = rows * kc * nc >= kThreadedProblem;
 
-            const auto multiply_blocks = [&](std::int64_t first, std::int64_t last) {
-                const PackBuffer<T> packed_a = allocate_pack<T>(packed_a_size);
-                for (std::int64_t block = first; block < last; ++block) {
-                    const std::int64_t ic = block * blocks.rows;
-                    const std::int64_t mc = std::min(blocks.rows, rows - ic);
-                    multiply_row_block<T, Kernel>(a + ic * inner + pc, inner, packed_b.get(),
-                                                  out + ic * columns + jc, columns, mc, kc, nc,
-                                                  packed_a.get());
-                }
-            };
-            const std::int64_t block_count = (rows + blocks.rows - 1) / blocks.rows;
-            if constexpr (Threaded) {
-                const bool worthwhile = rows * kc * nc >= kThreadedProblem;
-                parallel_for(0, block_count, worthwhile ? 1 : block_count, multiply_blocks);
-            } else {
-                multiply_blocks(0, block_count);
-            }
+            const std::int64_t panel_count = rounded_up<Kernel::kColumns>(nc) / Kernel::kColumns;
+            const std::int64_t panel_elements = kc * Kernel::kColumns;
+            run_blocks<Threaded>(panel_count, std::max<std::int64_t>(1, kElementGrain / panel_elements),
+                                 [&](std::int64_t first, std::int64_t last) {
+                                     pack_column_panels<T, Kernel>(b + pc * columns + jc, columns, kc,
+                                                                   nc, first, last, packed_b.get());
+                                 });
+
+            const std::int64_t block_count = (rows + row_block - 1) / row_block;
+            run_blocks<Threaded>(block_count, worthwhile ? 1 : block_count,
+                                 [&](std::int64_t first, std::int64_t last) {
+                                     const PackBuffer<T> packed_a = allocate_pack<T>(packed_a_size);
+                                     for (std::int64_t block = first; block < last; ++block) {
+                                         const std::int64_t ic = block * row_block;
+                                         const std::int64_t mc = std::min(row_block, rows - ic);
+                                         multiply_row_block<T, Kernel>(
+                                             a + ic * inner + pc, inner, packed_b.get(),
+                                             out + ic * columns + jc, columns, mc, kc, nc,
+                                             packed_a.get());
+                                     }
+                                 });
         }
     }
 }

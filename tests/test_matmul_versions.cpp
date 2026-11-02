@@ -92,6 +92,35 @@ TEST(MatmulVersionsThreads, ResultDoesNotDependOnThreadCount) {
     EXPECT_TRUE(kael::equal(single, several));
 }
 
+class MatmulThreadPartition : public testing::TestWithParam<std::tuple<int, int, int, int>> {};
+
+TEST_P(MatmulThreadPartition, MatchesTheSingleThreadResultExactly) {
+    const auto [rows, inner, columns, threads] = GetParam();
+    const std::int64_t previous = kael::get_num_threads();
+    kael::manual_seed(91);
+    const Tensor a = kael::randn({rows, inner});
+    const Tensor b = kael::randn({inner, columns});
+    Tensor single = kael::zeros({rows, columns});
+    Tensor several = kael::zeros({rows, columns});
+    const Sizes sizes{rows, inner, columns};
+
+    kael::set_num_threads(1);
+    kael::matmul_versions::v6_threaded<float>(a.data_ptr<float>(), b.data_ptr<float>(),
+                                              single.data_ptr<float>(), sizes);
+    kael::set_num_threads(threads);
+    kael::matmul_versions::v6_threaded<float>(a.data_ptr<float>(), b.data_ptr<float>(),
+                                              several.data_ptr<float>(), sizes);
+    kael::set_num_threads(previous);
+
+    EXPECT_TRUE(kael::equal(single, several));
+}
+
+INSTANTIATE_TEST_SUITE_P(Partitions, MatmulThreadPartition,
+                         testing::Values(std::tuple{5, 600, 700, 16}, std::tuple{129, 300, 301, 2},
+                                         std::tuple{130, 300, 301, 3}, std::tuple{1025, 64, 65, 5},
+                                         std::tuple{1000, 100, 100, 7},
+                                         std::tuple{387, 513, 4100, 4}));
+
 TEST(MatmulDispatch, LargeIntegerMatrixStillUsesExactArithmetic) {
     const Tensor a = kael::full({50, 50}, 3, kael::DType::I64);
     const Tensor b = kael::full({50, 50}, 2, kael::DType::I64);
