@@ -56,5 +56,9 @@ Tensor operator<(const Operand& a, const Operand& b);
 Tensor operator<=(const Operand& a, const Operand& b);
 Tensor operator>(const Operand& a, const Operand& b);
 Tensor operator>=(const Operand& a, const Operand& b);
+Tensor& operator+=(Tensor& t, const Operand& other);
+Tensor& operator-=(Tensor& t, const Operand& other);
+Tensor& operator*=(Tensor& t, const Operand& other);
+Tensor& operator/=(Tensor& t, const Operand& other);
 
 } // namespace kael

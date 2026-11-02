@@ -2,6 +2,7 @@
 #include <cmath>
 #include <type_traits>
 
+#include "internal/arithmetic.h"
 #include "internal/nan_aware.h"
 #include "internal/operands.h"
 #include "kael/factory.h"
@@ -34,25 +35,6 @@ T floor_division(T a, T b) {
     }
 }
 
-template <typename T>
-T integer_power(T base, T exponent) {
-    KAEL_CHECK(exponent >= 0, "integers to negative integer powers are not allowed");
-    T result = 1;
-    while (exponent > 0) {
-        if (exponent % 2 == 1) {
-            result *= base;
-        }
-        base *= base;
-        exponent /= 2;
-    }
-    return result;
-}
-
-void check_no_bool(const Tensor& a, const Tensor& b, const char* op) {
-    KAEL_CHECK(a.dtype() != DType::Bool && b.dtype() != DType::Bool,
-               op << " does not support dtype bool");
-}
-
 template <typename F>
 Tensor compare(const Operand& a, const Operand& b, F f) {
     const auto [x, y] = detail::resolve_operands(a, b);
@@ -83,47 +65,37 @@ std::pair<Tensor, Tensor> resolve_operands(const Operand& a, const Operand& b) {
 
 Tensor add(const Operand& a, const Operand& b) {
     const auto [x, y] = detail::resolve_operands(a, b);
-    constexpr auto plus = [](auto p, auto q) { return p + q; };
-    if (x.dtype() == DType::Bool && y.dtype() == DType::Bool) {
-        return binary_kernel(x.to(DType::I64), y.to(DType::I64), plus);
-    }
-    return binary_kernel(x, y, plus);
+    const DType dtype = detail::add_dtype(x.dtype(), y.dtype());
+    return binary_kernel(x.to(dtype), y.to(dtype), detail::kPlus);
 }
 
 Tensor sub(const Operand& a, const Operand& b) {
     const auto [x, y] = detail::resolve_operands(a, b);
-    check_no_bool(x, y, "sub");
-    return binary_kernel(x, y, [](auto p, auto q) { return p - q; });
+    detail::check_no_bool(x, y, "sub");
+    return binary_kernel(x, y, detail::kMinus);
 }
 
 Tensor mul(const Operand& a, const Operand& b) {
     const auto [x, y] = detail::resolve_operands(a, b);
-    return binary_kernel(x, y, [](auto p, auto q) { return p * q; });
+    return binary_kernel(x, y, detail::kTimes);
 }
 
 Tensor div(const Operand& a, const Operand& b) {
     const auto [x, y] = detail::resolve_operands(a, b);
-    const DType promoted = promote_types(x.dtype(), y.dtype());
-    const DType dtype = is_floating_point(promoted) ? promoted : DType::F32;
-    return binary_kernel(x.to(dtype), y.to(dtype), [](auto p, auto q) { return p / q; });
+    const DType dtype = detail::div_dtype(x.dtype(), y.dtype());
+    return binary_kernel(x.to(dtype), y.to(dtype), detail::kDivides);
 }
 
 Tensor floor_divide(const Operand& a, const Operand& b) {
     const auto [x, y] = detail::resolve_operands(a, b);
-    check_no_bool(x, y, "floor_divide");
+    detail::check_no_bool(x, y, "floor_divide");
     return binary_kernel(x, y, [](auto p, auto q) { return floor_division(p, q); });
 }
 
 Tensor pow(const Operand& base, const Operand& exponent) {
     const auto [x, y] = detail::resolve_operands(base, exponent);
-    check_no_bool(x, y, "pow");
-    return binary_kernel(x, y, []<typename T>(T p, T q) -> T {
-        if constexpr (std::is_floating_point_v<T>) {
-            return std::pow(p, q);
-        } else {
-            return integer_power(p, q);
-        }
-    });
+    detail::check_no_bool(x, y, "pow");
+    return binary_kernel(x, y, detail::kPower);
 }
 
 Tensor maximum(const Operand& a, const Operand& b) {

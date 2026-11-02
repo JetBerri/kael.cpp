@@ -10,10 +10,13 @@
 
 #include "kael/dtype.h"
 #include "kael/error.h"
+#include "kael/scalar.h"
 #include "kael/shape.h"
 #include "kael/tensor_impl.h"
 
 namespace kael {
+
+class Operand;
 
 class Tensor {
 public:
@@ -101,6 +104,16 @@ public:
     [[nodiscard]] Tensor unflatten(std::int64_t dim, const Shape& sizes) const;
     [[nodiscard]] std::vector<Tensor> split(std::int64_t chunk_size, std::int64_t dim = 0) const;
     [[nodiscard]] std::vector<Tensor> chunk(std::int64_t chunks, std::int64_t dim = 0) const;
+
+    Tensor& add_(const Operand& other);
+    Tensor& sub_(const Operand& other);
+    Tensor& mul_(const Operand& other);
+    Tensor& div_(const Operand& other);
+    Tensor& pow_(const Operand& exponent);
+    Tensor& clamp_(Scalar min, Scalar max);
+    Tensor& copy_(const Tensor& source);
+    Tensor& fill_(Scalar value);
+    Tensor& zero_();
 
     [[nodiscard]] bool is_same(const Tensor& other) const noexcept {
         return impl_ == other.impl_;

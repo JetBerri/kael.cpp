@@ -91,6 +91,13 @@ GoldenOp binary(Tensor (*op)(const kael::Operand&, const kael::Operand&)) {
     return [op](const Inputs& inputs, const Args&) { return op(inputs[0], inputs[1]); };
 }
 
+GoldenOp inplace(Tensor& (Tensor::*op)(const kael::Operand&)) {
+    return [op](const Inputs& inputs, const Args&) {
+        Tensor self = inputs[0];
+        return (self.*op)(inputs[1]);
+    };
+}
+
 GoldenOp unary(Tensor (*op)(const Tensor&)) {
     return [op](const Inputs& inputs, const Args&) { return op(inputs[0]); };
 }
@@ -129,6 +136,21 @@ const std::map<std::string, GoldenOp>& golden_ops() {
         {"sigmoid", unary(kael::sigmoid)},
         {"relu", unary(kael::relu)},
         {"gelu", unary(kael::gelu)},
+        {"add_", inplace(&Tensor::add_)},
+        {"sub_", inplace(&Tensor::sub_)},
+        {"mul_", inplace(&Tensor::mul_)},
+        {"div_", inplace(&Tensor::div_)},
+        {"pow_", inplace(&Tensor::pow_)},
+        {"copy_",
+         [](const Inputs& inputs, const Args&) {
+             Tensor self = inputs[0];
+             return self.copy_(inputs[1]);
+         }},
+        {"clamp_",
+         [](const Inputs& inputs, const Args& args) {
+             Tensor self = inputs[0];
+             return self.clamp_(args.real("min"), args.real("max"));
+         }},
         {"clamp",
          [](const Inputs& inputs, const Args& args) {
              return kael::clamp(inputs[0], args.real("min"), args.real("max"));

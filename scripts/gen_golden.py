@@ -211,6 +211,36 @@ add_cases(
     ],
 )
 
+INPLACE_PATTERNS = [
+    ("same", {"a": spec((3, 4)), "b": spec((3, 4))}, {}),
+    ("broadcast_other", {"a": spec((2, 3)), "b": spec((3,))}, {}),
+    ("transposed_self", {"a": spec((4, 3), view="transpose:0:1"), "b": spec((3, 4))}, {}),
+    ("stepped_self", {"a": spec((3, 8), view="slice:1:0:8:2"), "b": spec((4,))}, {}),
+    ("f32_i64", {"a": spec((5,)), "b": spec((5,), "i64")}, {}),
+    ("f64", {"a": spec((3,), "f64"), "b": spec((3,), "f64")}, {}),
+]
+add_cases("add_", lambda a, b: a.add_(b), INPLACE_PATTERNS)
+add_cases("sub_", lambda a, b: a.sub_(b), INPLACE_PATTERNS)
+add_cases("mul_", lambda a, b: a.mul_(b), INPLACE_PATTERNS)
+add_cases("div_", lambda a, b: a.div_(b), INPLACE_PATTERNS)
+add_cases("copy_", lambda a, b: a.copy_(b), INPLACE_PATTERNS)
+add_cases(
+    "pow_",
+    lambda a, b: a.pow_(b),
+    [
+        ("same", {"a": spec((3, 4), kind="positive"), "b": spec((3, 4))}, {}),
+        ("transposed_self", {"a": spec((4, 3), kind="positive", view="transpose:0:1"), "b": spec((3, 4))}, {}),
+    ],
+)
+add_cases(
+    "clamp_",
+    lambda a, min, max: a.clamp_(min, max),
+    [
+        ("transposed", {"a": spec((4, 3), view="transpose:0:1")}, {"min": -0.5, "max": 0.5}),
+        ("stepped", {"a": spec((6,), view="slice:0:0:6:2")}, {"min": -0.5, "max": 0.5}),
+    ],
+)
+
 
 def main():
     if GOLDEN_DIR.exists():

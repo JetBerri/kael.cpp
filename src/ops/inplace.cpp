@@ -1,0 +1,120 @@
+#include "internal/arithmetic.h"
+#include "internal/copy.h"
+#include "internal/operands.h"
+#include "kael/factory.h"
+#include "kael/kernels.h"
+#include "kael/ops.h"
+
+namespace kael {
+
+namespace {
+
+int category(DType dtype) {
+    if (dtype == DType::Bool) {
+        return 0;
+    }
+    return dtype == DType::I64 ? 1 : 2;
+}
+
+void check_writable(const Tensor& self, const char* op) {
+    KAEL_CHECK(!self.has_internal_overlap(),
+               op << " cannot write to shape " << to_string(self.shape()) << " with strides "
+                  << to_string(self.strides())
+                  << " because several positions share one element; call clone() first");
+}
+
+void check_result_fits(DType result, DType self, const char* op) {
+    KAEL_CHECK(category(result) <= category(self),
+               op << " result of dtype " << result << " cannot be stored in a tensor of dtype "
+                  << self);
+}
+
+bool same_layout(const Tensor& a, const Tensor& b) {
+    return a.shape() == b.shape() && a.strides() == b.strides() && a.offset() == b.offset();
+}
+
+Tensor without_partial_aliasing(const Tensor& self, const Tensor& input) {
+    return input.shares_storage(self) && !same_layout(input, self) ? input.clone() : input;
+}
+
+template <typename F>
+Tensor& binary_inplace(Tensor& self, const Tensor& other, DType result, const char* op, F f) {
+    check_writable(self, op);
+    check_result_fits(result, self.dtype(), op);
+    binary_kernel_out(self, self, without_partial_aliasing(self, other), f);
+    return self;
+}
+
+} // namespace
+
+Tensor& Tensor::add_(const Operand& other) {
+    const auto [self, rhs] = detail::resolve_operands(*this, other);
+    return binary_inplace(*this, rhs, detail::add_dtype(self.dtype(), rhs.dtype()), "add_",
+                          detail::kPlus);
+}
+
+Tensor& Tensor::sub_(const Operand& other) {
+    const auto [self, rhs] = detail::resolve_operands(*this, other);
+    detail::check_no_bool(self, rhs, "sub_");
+    return binary_inplace(*this, rhs, promote_types(self.dtype(), rhs.dtype()), "sub_",
+                          detail::kMinus);
+}
+
+Tensor& Tensor::mul_(const Operand& other) {
+    const auto [self, rhs] = detail::resolve_operands(*this, other);
+    return binary_inplace(*this, rhs, promote_types(self.dtype(), rhs.dtype()), "mul_",
+                          detail::kTimes);
+}
+
+Tensor& Tensor::div_(const Operand& other) {
+    const auto [self, rhs] = detail::resolve_operands(*this, other);
+    return binary_inplace(*this, rhs, detail::div_dtype(self.dtype(), rhs.dtype()), "div_",
+                          detail::kDivides);
+}
+
+Tensor& Tensor::pow_(const Operand& exponent) {
+    const auto [self, rhs] = detail::resolve_operands(*this, exponent);
+    detail::check_no_bool(self, rhs, "pow_");
+    return binary_inplace(*this, rhs, promote_types(self.dtype(), rhs.dtype()), "pow_",
+                          detail::kPower);
+}
+
+Tensor& Tensor::clamp_(Scalar min, Scalar max) {
+    check_writable(*this, "clamp_");
+    check_result_fits(promote_with_scalar(promote_with_scalar(dtype(), min), max), dtype(),
+                      "clamp_");
+    unary_kernel_out(*this, *this, detail::Clamper{min.value(), max.value()});
+    return *this;
+}
+
+Tensor& Tensor::copy_(const Tensor& source) {
+    check_writable(*this, "copy_");
+    detail::convert_strided(*this, without_partial_aliasing(*this, source).expand(shape()));
+    return *this;
+}
+
+Tensor& Tensor::fill_(Scalar value) {
+    return copy_(scalar(value.value(), dtype()));
+}
+
+Tensor& Tensor::zero_() {
+    return fill_(0);
+}
+
+Tensor& operator+=(Tensor& t, const Operand& other) {
+    return t.add_(other);
+}
+
+Tensor& operator-=(Tensor& t, const Operand& other) {
+    return t.sub_(other);
+}
+
+Tensor& operator*=(Tensor& t, const Operand& other) {
+    return t.mul_(other);
+}
+
+Tensor& operator/=(Tensor& t, const Operand& other) {
+    return t.div_(other);
+}
+
+} // namespace kael

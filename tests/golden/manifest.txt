@@ -388,3 +388,37 @@ op=clamp case=empty inputs=x view_x=none args=min:-0.5,max:0.5
 op=clamp case=f64 inputs=x view_x=none args=min:-0.5,max:0.5
 op=clamp case=special inputs=x view_x=none args=min:-0.5,max:0.5
 op=clamp case=i64 inputs=x view_x=none args=min:-0.5,max:0.5
+op=add_ case=same inputs=a,b view_a=none view_b=none args=
+op=add_ case=broadcast_other inputs=a,b view_a=none view_b=none args=
+op=add_ case=transposed_self inputs=a,b view_a=transpose:0:1 view_b=none args=
+op=add_ case=stepped_self inputs=a,b view_a=slice:1:0:8:2 view_b=none args=
+op=add_ case=f32_i64 inputs=a,b view_a=none view_b=none args=
+op=add_ case=f64 inputs=a,b view_a=none view_b=none args=
+op=sub_ case=same inputs=a,b view_a=none view_b=none args=
+op=sub_ case=broadcast_other inputs=a,b view_a=none view_b=none args=
+op=sub_ case=transposed_self inputs=a,b view_a=transpose:0:1 view_b=none args=
+op=sub_ case=stepped_self inputs=a,b view_a=slice:1:0:8:2 view_b=none args=
+op=sub_ case=f32_i64 inputs=a,b view_a=none view_b=none args=
+op=sub_ case=f64 inputs=a,b view_a=none view_b=none args=
+op=mul_ case=same inputs=a,b view_a=none view_b=none args=
+op=mul_ case=broadcast_other inputs=a,b view_a=none view_b=none args=
+op=mul_ case=transposed_self inputs=a,b view_a=transpose:0:1 view_b=none args=
+op=mul_ case=stepped_self inputs=a,b view_a=slice:1:0:8:2 view_b=none args=
+op=mul_ case=f32_i64 inputs=a,b view_a=none view_b=none args=
+op=mul_ case=f64 inputs=a,b view_a=none view_b=none args=
+op=div_ case=same inputs=a,b view_a=none view_b=none args=
+op=div_ case=broadcast_other inputs=a,b view_a=none view_b=none args=
+op=div_ case=transposed_self inputs=a,b view_a=transpose:0:1 view_b=none args=
+op=div_ case=stepped_self inputs=a,b view_a=slice:1:0:8:2 view_b=none args=
+op=div_ case=f32_i64 inputs=a,b view_a=none view_b=none args=
+op=div_ case=f64 inputs=a,b view_a=none view_b=none args=
+op=copy_ case=same inputs=a,b view_a=none view_b=none args=
+op=copy_ case=broadcast_other inputs=a,b view_a=none view_b=none args=
+op=copy_ case=transposed_self inputs=a,b view_a=transpose:0:1 view_b=none args=
+op=copy_ case=stepped_self inputs=a,b view_a=slice:1:0:8:2 view_b=none args=
+op=copy_ case=f32_i64 inputs=a,b view_a=none view_b=none args=
+op=copy_ case=f64 inputs=a,b view_a=none view_b=none args=
+op=pow_ case=same inputs=a,b view_a=none view_b=none args=
+op=pow_ case=transposed_self inputs=a,b view_a=transpose:0:1 view_b=none args=
+op=clamp_ case=transposed inputs=a view_a=transpose:0:1 args=min:-0.5,max:0.5
+op=clamp_ case=stepped inputs=a view_a=slice:0:0:6:2 args=min:-0.5,max:0.5

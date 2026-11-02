@@ -33,6 +33,7 @@ add_library(kael
     src/iterator.cpp
     src/ops/binary.cpp
     src/ops/unary.cpp
+    src/ops/inplace.cpp
 )
 
 add_library(kael::kael ALIAS kael)
