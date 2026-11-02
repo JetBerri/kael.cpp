@@ -7,6 +7,7 @@ add_executable(kael_tests
     test_factory.cpp
     test_random.cpp
     test_view.cpp
+    test_iterator.cpp
 )
 
 target_link_libraries(kael_tests PRIVATE kael::kael GTest::gtest_main)
