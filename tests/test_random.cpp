@@ -1,11 +1,13 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <thread>
 #include <vector>
 
 #include <gtest/gtest.h>
 
 #include "kael/error.h"
+#include "kael/factory.h"
 #include "kael/ops.h"
 #include "kael/random.h"
 
@@ -111,4 +113,25 @@ TEST(Random, BernoulliMatchesProbability) {
 TEST(Random, BernoulliRejectsInvalidProbability) {
     EXPECT_THROW((void)kael::bernoulli({1}, 1.5), kael::Error);
     EXPECT_THROW((void)kael::bernoulli({1}, -0.5), kael::Error);
+}
+
+TEST(RandomThreads, ConcurrentSamplingDoesNotRace) {
+    const kael::Tensor weights = kael::ones({8});
+    std::vector<std::thread> workers;
+    for (int worker = 0; worker < 4; ++worker) {
+        workers.emplace_back([&] {
+            for (int round = 0; round < 50; ++round) {
+                (void)kael::rand({16});
+                (void)kael::randn({16});
+                (void)kael::randint(0, 10, {16});
+                (void)kael::randperm(16);
+                (void)kael::multinomial(weights, 3);
+                kael::manual_seed(static_cast<std::uint64_t>(round));
+            }
+        });
+    }
+    for (std::thread& worker : workers) {
+        worker.join();
+    }
+    SUCCEED();
 }

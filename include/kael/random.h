@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <random>
 
 #include "kael/dtype.h"
 #include "kael/shape.h"
@@ -10,7 +9,6 @@
 namespace kael {
 
 void manual_seed(std::uint64_t seed);
-std::mt19937_64& global_generator();
 
 Tensor rand(const Shape& shape, DType dtype = DType::F32);
 Tensor randn(const Shape& shape, DType dtype = DType::F32);

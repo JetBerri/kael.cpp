@@ -2,8 +2,14 @@
 
 #include <algorithm>
 #include <cmath>
+#include <mutex>
 #include <numeric>
+#include <random>
 #include <vector>
+
+#if !defined(_WIN32)
+#include <pthread.h>
+#endif
 
 #include "kael/factory.h"
 #include "kael/ops.h"
@@ -14,10 +20,36 @@ namespace {
 
 constexpr std::uint64_t kDefaultSeed = 0;
 
+std::mt19937_64& global_generator() {
+    static std::mt19937_64 generator(kDefaultSeed);
+    return generator;
+}
+
+std::mutex& generator_mutex() {
+    static std::mutex mutex;
+    return mutex;
+}
+
+// A thread sampling during fork would leave the generator locked forever in the child.
+void install_fork_handlers() {
+#if !defined(_WIN32)
+    static const int installed =
+        pthread_atfork([] { generator_mutex().lock(); }, [] { generator_mutex().unlock(); },
+                       [] { generator_mutex().unlock(); });
+    (void)installed;
+#endif
+}
+
+std::unique_lock<std::mutex> lock_generator() {
+    install_fork_handlers();
+    return std::unique_lock(generator_mutex());
+}
+
 template <typename Distribution>
 Tensor sample_floating(const Shape& shape, DType dtype, const char* op, Distribution distribution) {
     Tensor t = empty(shape, dtype);
     dispatch_floating(dtype, op, [&]<typename T>() {
+        const auto lock = lock_generator();
         std::generate_n(t.data_ptr<T>(), t.numel(),
                         [&] { return static_cast<T>(distribution(global_generator())); });
     });
@@ -26,12 +58,8 @@ Tensor sample_floating(const Shape& shape, DType dtype, const char* op, Distribu
 
 } // namespace
 
-std::mt19937_64& global_generator() {
-    static std::mt19937_64 generator(kDefaultSeed);
-    return generator;
-}
-
 void manual_seed(std::uint64_t seed) {
+    const auto lock = lock_generator();
     global_generator().seed(seed);
 }
 
@@ -54,6 +82,7 @@ Tensor randint(std::int64_t low, std::int64_t high, const Shape& shape) {
     KAEL_CHECK_VALUE(low < high, "randint needs low < high, got [" << low << ", " << high << ")");
     Tensor t = empty(shape, DType::I64);
     std::uniform_int_distribution<std::int64_t> distribution(low, high - 1);
+    const auto lock = lock_generator();
     std::generate_n(t.data_ptr<std::int64_t>(), t.numel(),
                     [&] { return distribution(global_generator()); });
     return t;
@@ -63,6 +92,7 @@ Tensor randperm(std::int64_t n) {
     KAEL_CHECK_VALUE(n >= 0, "randperm size must be non-negative, got " << n);
     Tensor t = arange(0.0, static_cast<double>(n), 1.0, DType::I64);
     std::int64_t* values = t.data_ptr<std::int64_t>();
+    const auto lock = lock_generator();
     std::shuffle(values, values + n, global_generator());
     return t;
 }
@@ -111,7 +141,10 @@ Tensor multinomial(const Tensor& weights, std::int64_t samples, bool replacement
                                         << positive << " positive weights");
         for (std::int64_t sample = 0; sample < samples; ++sample) {
             std::partial_sum(remaining.begin(), remaining.end(), cumulative.begin());
-            const double point = uniform(global_generator()) * cumulative.back();
+            const double point = [&] {
+                const auto lock = lock_generator();
+                return uniform(global_generator()) * cumulative.back();
+            }();
             auto found = std::upper_bound(cumulative.begin(), cumulative.end(), point);
             found = found == cumulative.end() ? found - 1 : found;
             auto picked = found - cumulative.begin();
