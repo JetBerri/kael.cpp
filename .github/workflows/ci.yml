@@ -89,3 +89,20 @@ jobs:
         run: pip install ".[test]"
       - name: Test
         run: pytest python/tests -q
+
+  fuzz:
+    runs-on: ubuntu-latest
+    env:
+      CC: clang
+      CXX: clang++
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DKAEL_BUILD_FUZZERS=ON -DKAEL_BUILD_TESTS=OFF -DKAEL_ENABLE_SANITIZERS=ON
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Run
+        run: |
+          for target in fuzz_safetensors fuzz_idx; do
+            build/fuzz/$target -max_total_time=60 -malloc_limit_mb=2048 fuzz/corpus/$target
+          done

@@ -11,6 +11,7 @@ option(KAEL_ENABLE_CUDA "Build the CUDA backend" OFF)
 option(KAEL_FAKE_CUDA "Run the CUDA kernels on the host, to test them without a GPU" OFF)
 option(KAEL_USE_CUBLAS "Multiply matrices on the device with cuBLAS" OFF)
 option(KAEL_BUILD_TESTS "Build the C++ tests" ON)
+option(KAEL_BUILD_FUZZERS "Build the libFuzzer targets (needs Clang)" OFF)
 option(KAEL_BUILD_PYTHON "Build the Python extension module" OFF)
 option(KAEL_NATIVE "Optimize for the CPU of the build machine" OFF)
 
@@ -174,6 +175,10 @@ endif ()
 
 if (KAEL_BUILD_PYTHON)
     add_subdirectory(python)
+endif ()
+
+if (KAEL_BUILD_FUZZERS)
+    add_subdirectory(fuzz)
 endif ()
 
 if (KAEL_BUILD_EXAMPLES)
