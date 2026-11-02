@@ -4,11 +4,17 @@
 #include <thread>
 #include <vector>
 
+#if !defined(_WIN32)
+#include <sys/wait.h>
+#include <unistd.h>
+#endif
+
 #include <gtest/gtest.h>
 
 #include "kael/autograd/grad_mode.h"
 #include "kael/error.h"
 #include "kael/parallel.h"
+#include "kael/storage.h"
 
 namespace {
 
@@ -181,3 +187,35 @@ TEST(ParallelConfig, SingleThreadRunsWholeRangeOnce) {
     EXPECT_EQ(calls, 1);
     kael::set_num_threads(previous);
 }
+
+#if !defined(_WIN32) && !(defined(__has_feature) && __has_feature(thread_sanitizer))
+TEST(ParallelFork, ChildCanStillRunParallelWork) {
+    kael::set_num_threads(4);
+    std::atomic<std::int64_t> parent_visited{0};
+    kael::parallel_for(0, 1000, 1, [&](std::int64_t first, std::int64_t last) {
+        parent_visited.fetch_add(last - first);
+    });
+    ASSERT_EQ(parent_visited.load(), 1000);
+
+    const pid_t child = fork();
+    ASSERT_GE(child, 0);
+    if (child == 0) {
+        alarm(20);
+        std::atomic<std::int64_t> visited{0};
+        kael::parallel_for(0, 1000, 1, [&](std::int64_t first, std::int64_t last) {
+            visited.fetch_add(last - first);
+        });
+        const kael::Storage block(4096);
+        _exit(visited.load() == 1000 && block.data() != nullptr ? 0 : 1);
+    }
+    int status = 0;
+    ASSERT_EQ(waitpid(child, &status, 0), child);
+    EXPECT_TRUE(WIFEXITED(status)) << "child was killed, probably after hanging";
+    EXPECT_EQ(WEXITSTATUS(status), 0);
+
+    std::atomic<std::int64_t> after{0};
+    kael::parallel_for(
+        0, 1000, 1, [&](std::int64_t first, std::int64_t last) { after.fetch_add(last - first); });
+    EXPECT_EQ(after.load(), 1000);
+}
+#endif

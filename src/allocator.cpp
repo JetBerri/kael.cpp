@@ -6,6 +6,10 @@
 #include <unordered_map>
 #include <vector>
 
+#if !defined(_WIN32)
+#include <pthread.h>
+#endif
+
 #include "kael/device_kernels.h"
 #include "kael/error.h"
 #include "kael/storage.h"
@@ -67,6 +71,9 @@ public:
         }
         system_free_(block);
     }
+
+    void lock_for_fork() { mutex_.lock(); }
+    void unlock_after_fork() { mutex_.unlock(); }
 
     void clear() noexcept {
         const std::lock_guard lock(mutex_);
@@ -140,7 +147,28 @@ BlockCache& device_cache() {
     return *cache;
 }
 
+// A thread holding a lock during fork would leave it locked forever in the child.
+void install_fork_handlers() {
+#if !defined(_WIN32)
+    static const int installed = pthread_atfork(
+        [] {
+            host_cache().lock_for_fork();
+            device_cache().lock_for_fork();
+        },
+        [] {
+            device_cache().unlock_after_fork();
+            host_cache().unlock_after_fork();
+        },
+        [] {
+            device_cache().unlock_after_fork();
+            host_cache().unlock_after_fork();
+        });
+    (void)installed;
+#endif
+}
+
 BlockCache& cache_of(Device device) {
+    install_fork_handlers();
     return device == Device::CPU ? host_cache() : device_cache();
 }
 

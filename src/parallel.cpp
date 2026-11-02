@@ -7,6 +7,7 @@
 #include <exception>
 #include <memory>
 #include <mutex>
+#include <new>
 #include <string>
 #include <thread>
 #include <utility>
@@ -14,6 +15,9 @@
 
 #if defined(__APPLE__)
 #include <sys/sysctl.h>
+#endif
+#if !defined(_WIN32)
+#include <pthread.h>
 #endif
 
 #include "kael/autograd/grad_mode.h"
@@ -175,6 +179,12 @@ public:
         return runtime;
     }
 
+#if !defined(_WIN32)
+    ParallelRuntime() {
+        pthread_atfork(nullptr, nullptr, [] { instance().forget_threads_after_fork(); });
+    }
+#endif
+
     [[nodiscard]] std::int64_t thread_count() const noexcept {
         return thread_count_.load(std::memory_order_relaxed);
     }
@@ -201,6 +211,15 @@ public:
     }
 
 private:
+#if !defined(_WIN32)
+    // The workers do not exist in a forked child, so the pool can be neither used nor destroyed.
+    void forget_threads_after_fork() {
+        new (&mutex_) std::mutex;
+        (void)pool_.release();
+        inside_parallel_region = false;
+    }
+#endif
+
     std::mutex mutex_;
     std::atomic<std::int64_t> thread_count_{default_thread_count()};
     std::unique_ptr<ThreadPool> pool_;
