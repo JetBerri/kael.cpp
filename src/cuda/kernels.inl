@@ -158,7 +158,7 @@ template <typename T> struct MatmulTiles {
             for (std::int64_t r = 0; r < row_count; ++r) {
                 const T a_value = batch_a[(first_row + r) * sizes.inner + k];
                 for (std::int64_t c = 0; c < column_count; ++c) {
-                    accumulators[r][c] += a_value * b_row[c];
+                    accumulators[r][c] = static_cast<T>(accumulators[r][c] + a_value * b_row[c]);
                 }
             }
         }
