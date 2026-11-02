@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <ostream>
+#include <type_traits>
 #include <utility>
 
 #include "kael/error.h"
@@ -150,6 +151,26 @@ struct cpp_type<DType::Bool> {
 
 template <DType D>
 using cpp_type_t = typename cpp_type<D>::type;
+
+// ---------------------------------------------------------------------------
+// Value conversion between element types.
+//
+// Same as static_cast, except when converting to Bool (std::uint8_t): any
+// non-zero value becomes 1, so 2.5 -> true and NaN -> true (NaN != 0).
+// Floating point -> integer truncates towards zero (2.7 -> 2, -2.7 -> -2).
+// Converting NaN or infinity to an integer is undefined behaviour in C++;
+// kael does not check it (it would cost a branch per element), so the
+// result is unspecified.
+// ---------------------------------------------------------------------------
+
+template <typename To, typename From>
+constexpr To convert_value(From value) {
+    if constexpr (std::is_same_v<To, std::uint8_t>) {
+        return value != From{0} ? To{1} : To{0};
+    } else {
+        return static_cast<To>(value);
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Dispatch: run code with the C++ type that matches a run-time DType.

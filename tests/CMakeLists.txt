@@ -4,6 +4,7 @@ add_executable(kael_tests
     test_storage.cpp
     test_tensor_impl.cpp
     test_tensor.cpp
+    test_factory.cpp
 )
 
 target_link_libraries(kael_tests PRIVATE kael::kael GTest::gtest_main)
