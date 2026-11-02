@@ -1,0 +1,10 @@
+.git
+build
+build-*
+cuda-report*
+data
+venv
+experiments
+legacy
+notes
+**/__pycache__
