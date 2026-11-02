@@ -81,7 +81,7 @@ Tensor Tensor::transpose(std::int64_t dim0, std::int64_t dim1) const {
     return make_view(*this, std::move(new_shape), std::move(new_strides), offset());
 }
 
-Tensor Tensor::permute(const std::vector<std::int64_t>& dims) const {
+Tensor Tensor::permute(const Dims& dims) const {
     KAEL_CHECK(static_cast<std::int64_t>(dims.size()) == dim(),
                "permute got " << dims.size() << " dimensions for a tensor with " << dim());
 

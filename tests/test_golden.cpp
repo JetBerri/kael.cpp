@@ -46,6 +46,7 @@ public:
         }
     }
 
+    [[nodiscard]] bool has(const std::string& key) const { return values_.contains(key); }
     [[nodiscard]] std::int64_t integer(const std::string& key) const {
         return std::stoll(values_.at(key));
     }
@@ -95,6 +96,26 @@ GoldenOp inplace(Tensor& (Tensor::*op)(const kael::Operand&)) {
     return [op](const Inputs& inputs, const Args&) {
         Tensor self = inputs[0];
         return (self.*op)(inputs[1]);
+    };
+}
+
+GoldenOp reduction(Tensor (*op)(const Tensor&, const kael::Dims&, bool)) {
+    return [op](const Inputs& inputs, const Args& args) {
+        return op(inputs[0], args.ints("dims"), args.flag("keepdim"));
+    };
+}
+
+GoldenOp reduction_with_correction(Tensor (*op)(const Tensor&, const kael::Dims&, bool, std::int64_t),
+                                   std::int64_t correction) {
+    return [op, correction](const Inputs& inputs, const Args& args) {
+        return op(inputs[0], args.ints("dims"), args.flag("keepdim"), correction);
+    };
+}
+
+GoldenOp arg_reduction(Tensor (*flat)(const Tensor&), Tensor (*along)(const Tensor&, std::int64_t, bool)) {
+    return [flat, along](const Inputs& inputs, const Args& args) {
+        return args.has("dim") ? along(inputs[0], args.integer("dim"), args.flag("keepdim"))
+                               : flat(inputs[0]);
     };
 }
 
@@ -151,6 +172,19 @@ const std::map<std::string, GoldenOp>& golden_ops() {
              Tensor self = inputs[0];
              return self.clamp_(args.real("min"), args.real("max"));
          }},
+        {"sum", reduction(kael::sum)},
+        {"prod", reduction(kael::prod)},
+        {"mean", reduction(kael::mean)},
+        {"max", reduction(kael::max)},
+        {"min", reduction(kael::min)},
+        {"all", reduction(kael::all)},
+        {"any", reduction(kael::any)},
+        {"norm", reduction(kael::norm)},
+        {"var", reduction_with_correction(kael::var, 1)},
+        {"std", reduction_with_correction(kael::std, 1)},
+        {"var_correction0", reduction_with_correction(kael::var, 0)},
+        {"argmax", arg_reduction(kael::argmax, kael::argmax)},
+        {"argmin", arg_reduction(kael::argmin, kael::argmin)},
         {"clamp",
          [](const Inputs& inputs, const Args& args) {
              return kael::clamp(inputs[0], args.real("min"), args.real("max"));

@@ -18,6 +18,8 @@ namespace kael {
 
 class Operand;
 
+using Dims = std::vector<std::int64_t>;
+
 class Tensor {
 public:
     static Tensor from_impl(std::shared_ptr<TensorImpl> impl);
@@ -87,7 +89,7 @@ public:
     // Shares memory with this tensor only if it is contiguous; otherwise it copies.
     [[nodiscard]] Tensor reshape(const Shape& shape) const;
     [[nodiscard]] Tensor transpose(std::int64_t dim0, std::int64_t dim1) const;
-    [[nodiscard]] Tensor permute(const std::vector<std::int64_t>& dims) const;
+    [[nodiscard]] Tensor permute(const Dims& dims) const;
     [[nodiscard]] Tensor T() const;
     [[nodiscard]] Tensor mT() const;
     [[nodiscard]] Tensor squeeze() const;
@@ -104,6 +106,9 @@ public:
     [[nodiscard]] Tensor unflatten(std::int64_t dim, const Shape& sizes) const;
     [[nodiscard]] std::vector<Tensor> split(std::int64_t chunk_size, std::int64_t dim = 0) const;
     [[nodiscard]] std::vector<Tensor> chunk(std::int64_t chunks, std::int64_t dim = 0) const;
+
+    [[nodiscard]] Tensor sum(const Dims& dims = {}, bool keepdim = false) const;
+    [[nodiscard]] Tensor mean(const Dims& dims = {}, bool keepdim = false) const;
 
     Tensor& add_(const Operand& other);
     Tensor& sub_(const Operand& other);

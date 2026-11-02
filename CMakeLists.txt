@@ -34,6 +34,7 @@ add_library(kael
     src/ops/binary.cpp
     src/ops/unary.cpp
     src/ops/inplace.cpp
+    src/ops/reduce.cpp
 )
 
 add_library(kael::kael ALIAS kael)

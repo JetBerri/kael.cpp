@@ -241,6 +241,81 @@ add_cases(
     ],
 )
 
+REDUCTION_PATTERNS = [
+    ("all_dims", {"x": spec((2, 3, 4))}, {}),
+    ("dim0", {"x": spec((2, 3, 4))}, {"dims": [0]}),
+    ("dim1", {"x": spec((2, 3, 4))}, {"dims": [1]}),
+    ("dim2", {"x": spec((2, 3, 4))}, {"dims": [2]}),
+    ("negative_dim", {"x": spec((2, 3, 4))}, {"dims": [-2]}),
+    ("two_dims", {"x": spec((2, 3, 4))}, {"dims": [0, 2]}),
+    ("keepdim", {"x": spec((2, 3, 4))}, {"dims": [1], "keepdim": True}),
+    ("keepdim_two", {"x": spec((2, 3, 4))}, {"dims": [1, 2], "keepdim": True}),
+    ("keepdim_all", {"x": spec((2, 3))}, {"keepdim": True}),
+    ("transposed", {"x": spec((4, 3), view="transpose:0:1")}, {"dims": [1]}),
+    ("stepped", {"x": spec((3, 8), view="slice:1:0:8:2")}, {"dims": [0]}),
+    ("expanded", {"x": spec((3,), view="expand:2:3")}, {"dims": [0]}),
+    ("permuted", {"x": spec((2, 3, 4), view="permute:2:0:1")}, {"dims": [1]}),
+    ("scalar", {"x": spec(())}, {}),
+    ("empty_kept", {"x": spec((0, 3))}, {"dims": [1]}),
+    ("f64", {"x": spec((3, 4), "f64")}, {"dims": [1]}),
+    ("nan", {"x": spec((5,), values=[1.0, float("nan"), 3.0, -1.0, 0.5])}, {}),
+]
+INTEGER_REDUCTIONS = [
+    ("i64", {"x": spec((3, 4), "i64")}, {"dims": [0]}),
+    ("i64_all", {"x": spec((3, 4), "i64")}, {}),
+]
+BOOL_REDUCTIONS = [
+    ("bool", {"x": spec((3, 4), "bool")}, {"dims": [1]}),
+    ("bool_all", {"x": spec((3, 4), "bool")}, {}),
+]
+EMPTY_ALL = ("empty_all", {"x": spec((0, 3))}, {})
+
+
+def over_dims(function):
+    def compute(x, dims=None, keepdim=False, **extra):
+        return function(x, dim=list(range(x.dim())) if dims is None else dims, keepdim=keepdim, **extra)
+
+    return compute
+
+
+add_cases("sum", over_dims(torch.sum), REDUCTION_PATTERNS + INTEGER_REDUCTIONS + BOOL_REDUCTIONS + [EMPTY_ALL])
+add_cases(
+    "prod",
+    lambda x, dims=None, keepdim=False: (
+        x.prod() if dims is None else x.prod(dim=dims[0], keepdim=keepdim)
+    ),
+    [p for p in REDUCTION_PATTERNS if len(p[2].get("dims", [])) == 1 or "keepdim" not in p[2] and "dims" not in p[2]],
+)
+add_cases("mean", over_dims(torch.mean), REDUCTION_PATTERNS + [EMPTY_ALL])
+add_cases("max", over_dims(torch.amax), REDUCTION_PATTERNS + INTEGER_REDUCTIONS)
+add_cases("min", over_dims(torch.amin), REDUCTION_PATTERNS + INTEGER_REDUCTIONS)
+add_cases("all", over_dims(torch.all), REDUCTION_PATTERNS + BOOL_REDUCTIONS + [EMPTY_ALL])
+add_cases("any", over_dims(torch.any), REDUCTION_PATTERNS + BOOL_REDUCTIONS + [EMPTY_ALL])
+add_cases("var", over_dims(torch.var), REDUCTION_PATTERNS)
+add_cases("std", over_dims(torch.std), REDUCTION_PATTERNS)
+add_cases(
+    "var_correction0",
+    lambda x, dims=None, keepdim=False: over_dims(torch.var)(x, dims, keepdim, correction=0),
+    REDUCTION_PATTERNS,
+)
+add_cases(
+    "norm",
+    lambda x, dims=None, keepdim=False: torch.linalg.vector_norm(x, dim=dims, keepdim=keepdim),
+    [p for p in REDUCTION_PATTERNS if p[0] not in ("scalar", "keepdim_all", "empty_kept")],
+)
+ARG_PATTERNS = [
+    ("flat", {"x": spec((2, 3, 4))}, {}),
+    ("dim0", {"x": spec((2, 3, 4))}, {"dim": 0}),
+    ("dim_negative", {"x": spec((2, 3, 4))}, {"dim": -1}),
+    ("keepdim", {"x": spec((2, 3, 4))}, {"dim": 1, "keepdim": True}),
+    ("transposed", {"x": spec((4, 3), view="transpose:0:1")}, {"dim": 1}),
+    ("ties", {"x": spec((6,), "i64", values=[1, 3, 3, 0, 0, 3])}, {}),
+    ("nan", {"x": spec((4,), values=[1.0, float("nan"), 3.0, float("nan")])}, {}),
+    ("scalar", {"x": spec(())}, {}),
+]
+add_cases("argmax", lambda x, dim=None, keepdim=False: torch.argmax(x, dim=dim, keepdim=keepdim), ARG_PATTERNS)
+add_cases("argmin", lambda x, dim=None, keepdim=False: torch.argmin(x, dim=dim, keepdim=keepdim), ARG_PATTERNS)
+
 
 def main():
     if GOLDEN_DIR.exists():

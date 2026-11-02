@@ -45,6 +45,23 @@ Tensor relu(const Tensor& t);
 Tensor gelu(const Tensor& t);
 Tensor clamp(const Tensor& t, Scalar min, Scalar max);
 
+Tensor sum(const Tensor& t, const Dims& dims = {}, bool keepdim = false);
+Tensor prod(const Tensor& t, const Dims& dims = {}, bool keepdim = false);
+Tensor mean(const Tensor& t, const Dims& dims = {}, bool keepdim = false);
+Tensor max(const Tensor& t, const Dims& dims = {}, bool keepdim = false);
+Tensor min(const Tensor& t, const Dims& dims = {}, bool keepdim = false);
+Tensor argmax(const Tensor& t);
+Tensor argmax(const Tensor& t, std::int64_t dim, bool keepdim = false);
+Tensor argmin(const Tensor& t);
+Tensor argmin(const Tensor& t, std::int64_t dim, bool keepdim = false);
+Tensor var(const Tensor& t, const Dims& dims = {}, bool keepdim = false,
+           std::int64_t correction = 1);
+Tensor std(const Tensor& t, const Dims& dims = {}, bool keepdim = false,
+           std::int64_t correction = 1);
+Tensor all(const Tensor& t, const Dims& dims = {}, bool keepdim = false);
+Tensor any(const Tensor& t, const Dims& dims = {}, bool keepdim = false);
+Tensor norm(const Tensor& t, const Dims& dims = {}, bool keepdim = false);
+
 Tensor operator-(const Tensor& t);
 Tensor operator+(const Operand& a, const Operand& b);
 Tensor operator-(const Operand& a, const Operand& b);
