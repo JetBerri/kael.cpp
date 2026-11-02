@@ -7,6 +7,7 @@
 #include "kael/autograd/grad_mode.h"
 #include "kael/factory.h"
 #include "kael/ops.h"
+#include "kael/parallel.h"
 
 #include "autograd/record.h"
 #include "internal/nan_aware.h"
@@ -14,6 +15,48 @@
 namespace kael {
 
 namespace {
+
+constexpr std::int64_t kReductionBlock = 16384;
+
+// The blocks do not depend on the thread count, so floating-point results are reproducible.
+template <typename Value, typename Block, typename Combine>
+Value reduce_in_blocks(std::int64_t size, Value initial, Block block, Combine combine) {
+    if (size <= kReductionBlock) {
+        return combine(initial, block(0, size));
+    }
+    const std::int64_t block_count = (size + kReductionBlock - 1) / kReductionBlock;
+    std::vector<Value> partial(static_cast<std::size_t>(block_count));
+    parallel_for(0, block_count, kElementGrain / kReductionBlock,
+                 [&](std::int64_t first, std::int64_t last) {
+                     for (std::int64_t i = first; i < last; ++i) {
+                         const std::int64_t begin = i * kReductionBlock;
+                         partial[static_cast<std::size_t>(i)] =
+                             block(begin, std::min(begin + kReductionBlock, size));
+                     }
+                 });
+    for (std::size_t width = partial.size(); width > 1; width = (width + 1) / 2) {
+        for (std::size_t i = 0; i < width / 2; ++i) {
+            partial[i] = combine(partial[2 * i], partial[2 * i + 1]);
+        }
+        if (width % 2 == 1) {
+            partial[width / 2] = partial[width - 1];
+        }
+    }
+    return combine(initial, partial.front());
+}
+
+template <typename F> double sum_in_blocks(std::int64_t size, F term) {
+    return reduce_in_blocks(
+        size, 0.0,
+        [&](std::int64_t first, std::int64_t last) {
+            double total = 0.0;
+            for (std::int64_t i = first; i < last; ++i) {
+                total += term(i);
+            }
+            return total;
+        },
+        std::plus<>{});
+}
 
 struct Reduction {
     Tensor data;
@@ -78,9 +121,13 @@ Tensor reduce_chunks(const Reduction& reduction, DType dtype, F f) {
     Tensor out = empty(reduction.output_shape, dtype);
     const In* in = reduction.data.data_ptr<In>();
     Out* results = out.data_ptr<Out>();
-    for (std::int64_t i = 0; i < reduction.output_count; ++i) {
-        results[i] = f(in + i * reduction.chunk_size, reduction.chunk_size);
-    }
+    const std::int64_t grain =
+        std::max<std::int64_t>(1, kElementGrain / std::max<std::int64_t>(1, reduction.chunk_size));
+    parallel_for(0, reduction.output_count, grain, [&](std::int64_t first, std::int64_t last) {
+        for (std::int64_t i = first; i < last; ++i) {
+            results[i] = f(in + i * reduction.chunk_size, reduction.chunk_size);
+        }
+    });
     return out;
 }
 
@@ -97,11 +144,17 @@ Tensor accumulate(const Tensor& t, const Dims& dims, bool keepdim, int initial, 
     return dispatch(t.dtype(), [&]<typename In>() {
         using Result = AccumulationResult<In>;
         return reduce_chunks<Result, In>(reduction, dtype, [&](const In* chunk, std::int64_t size) {
-            auto total = static_cast<Accumulator<In>>(initial);
-            for (std::int64_t i = 0; i < size; ++i) {
-                total = combine(total, static_cast<Accumulator<In>>(chunk[i]));
-            }
-            return static_cast<Result>(total);
+            const auto identity = static_cast<Accumulator<In>>(initial);
+            return static_cast<Result>(reduce_in_blocks(
+                size, identity,
+                [&](std::int64_t first, std::int64_t last) {
+                    auto total = identity;
+                    for (std::int64_t i = first; i < last; ++i) {
+                        total = combine(total, static_cast<Accumulator<In>>(chunk[i]));
+                    }
+                    return total;
+                },
+                combine));
         });
     });
 }
@@ -148,10 +201,8 @@ Tensor arg_extreme(const Tensor& t, const Dims& dims, bool keepdim, const char* 
 }
 
 template <typename T> double chunk_mean(const T* chunk, std::int64_t size) {
-    double total = 0.0;
-    for (std::int64_t i = 0; i < size; ++i) {
-        total += static_cast<double>(chunk[i]);
-    }
+    const double total =
+        sum_in_blocks(size, [&](std::int64_t i) { return static_cast<double>(chunk[i]); });
     return total / static_cast<double>(size);
 }
 
@@ -236,11 +287,10 @@ Tensor var(const Tensor& t, const Dims& dims, bool keepdim, std::int64_t correct
     Tensor out =
         reduce_floating(t, dims, keepdim, "var", [&](const auto* chunk, std::int64_t size) {
             const double center = chunk_mean(chunk, size);
-            double squares = 0.0;
-            for (std::int64_t i = 0; i < size; ++i) {
+            const double squares = sum_in_blocks(size, [&](std::int64_t i) {
                 const double deviation = static_cast<double>(chunk[i]) - center;
-                squares += deviation * deviation;
-            }
+                return deviation * deviation;
+            });
             return squares / static_cast<double>(std::max<std::int64_t>(size - correction, 0));
         });
     autograd::record_var(out, t, dims, keepdim, correction);
@@ -266,11 +316,9 @@ Tensor any(const Tensor& t, const Dims& dims, bool keepdim) {
 Tensor norm(const Tensor& t, const Dims& dims, bool keepdim) {
     Tensor out =
         reduce_floating(t, dims, keepdim, "norm", [](const auto* chunk, std::int64_t size) {
-            double squares = 0.0;
-            for (std::int64_t i = 0; i < size; ++i) {
-                squares += static_cast<double>(chunk[i]) * static_cast<double>(chunk[i]);
-            }
-            return std::sqrt(squares);
+            return std::sqrt(sum_in_blocks(size, [&](std::int64_t i) {
+                return static_cast<double>(chunk[i]) * static_cast<double>(chunk[i]);
+            }));
         });
     autograd::record_norm(out, t, dims, keepdim);
     return out;

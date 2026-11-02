@@ -12,6 +12,10 @@
 #include <utility>
 #include <vector>
 
+#if defined(__APPLE__)
+#include <sys/sysctl.h>
+#endif
+
 #include "kael/autograd/grad_mode.h"
 #include "kael/error.h"
 
@@ -140,6 +144,19 @@ private:
     bool stopping_ = false;
 };
 
+// Efficiency cores slow matmul and elementwise kernels down, so Apple Silicon uses only the others.
+std::int64_t hardware_thread_count() {
+#if defined(__APPLE__)
+    int performance_cores = 0;
+    std::size_t size = sizeof(performance_cores);
+    if (sysctlbyname("hw.perflevel0.physicalcpu", &performance_cores, &size, nullptr, 0) == 0 &&
+        performance_cores > 0) {
+        return performance_cores;
+    }
+#endif
+    return std::max<std::int64_t>(1, std::thread::hardware_concurrency());
+}
+
 std::int64_t default_thread_count() {
     if (const char* configured = std::getenv("KAEL_NUM_THREADS")) {
         const std::int64_t parsed = std::atoll(configured);
@@ -147,7 +164,7 @@ std::int64_t default_thread_count() {
             return parsed;
         }
     }
-    return std::max<std::int64_t>(1, std::thread::hardware_concurrency());
+    return hardware_thread_count();
 }
 
 class ParallelRuntime {

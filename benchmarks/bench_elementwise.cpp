@@ -1,6 +1,8 @@
 #include <benchmark/benchmark.h>
 
 #include "kael/kernels.h"
+#include "kael/ops.h"
+#include "kael/parallel.h"
 #include "kael/random.h"
 
 #include "naive_add.h"
@@ -66,5 +68,19 @@ void BM_ContiguousFromTransposed(benchmark::State& state) {
     state.SetItemsProcessed(state.iterations() * kElements);
 }
 BENCHMARK(BM_ContiguousFromTransposed)->Unit(benchmark::kMillisecond);
+
+void BM_AddThreads(benchmark::State& state) {
+    kael::set_num_threads(state.range(1));
+    const kael::Tensor a = kael::rand({state.range(0)});
+    const kael::Tensor b = kael::rand({state.range(0)});
+    for (auto _ : state) {
+        kael::Tensor out = a + b;
+        benchmark::DoNotOptimize(out.data_ptr_raw());
+    }
+    state.SetItemsProcessed(state.iterations() * state.range(0));
+}
+BENCHMARK(BM_AddThreads)
+    ->ArgsProduct({{1 << 13, 1 << 15, 1 << 17, 1 << 19, 1 << 21, 1 << 23}, {1, 4, 15}})
+    ->UseRealTime();
 
 } // namespace

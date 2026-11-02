@@ -5,6 +5,7 @@
 #include "kael/factory.h"
 #include "kael/matmul_versions.h"
 #include "kael/ops.h"
+#include "kael/parallel.h"
 #include "kael/random.h"
 
 namespace {
@@ -58,5 +59,23 @@ BENCHMARK(BM_MatmulVersion<v6_threaded<float>>)->Apply(version_sizes);
 #if defined(KAEL_BENCH_BLAS)
 BENCHMARK(BM_MatmulVersion<blas<float>>)->Apply(version_sizes);
 #endif
+
+void BM_MatmulThreads(benchmark::State& state) {
+    kael::set_num_threads(state.range(1));
+    const std::int64_t n = state.range(0);
+    const kael::Tensor a = kael::rand({n, n});
+    const kael::Tensor b = kael::rand({n, n});
+    kael::Tensor out = kael::zeros({n, n});
+    for (auto _ : state) {
+        v6_threaded<float>(a.data_ptr<float>(), b.data_ptr<float>(), out.data_ptr<float>(),
+                           {n, n, n});
+        benchmark::DoNotOptimize(out.data_ptr_raw());
+    }
+    report_flops(state, n);
+}
+BENCHMARK(BM_MatmulThreads)
+    ->ArgsProduct({{1024}, {1, 2, 4, 5, 8, 15}})
+    ->Unit(benchmark::kMillisecond)
+    ->UseRealTime();
 
 } // namespace
