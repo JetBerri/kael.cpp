@@ -176,6 +176,60 @@ def write_nn_fixtures():
         )
 
 
+def run_optimizer(make_optimizer, start, coefficients, steps):
+    parameter = start.clone().requires_grad_()
+    optimizer = make_optimizer([parameter])
+    snapshots = {}
+    for step in range(1, steps + 1):
+        optimizer.zero_grad()
+        loss = (parameter * coefficients).sum() + 0.5 * (parameter * parameter).sum()
+        loss.backward()
+        optimizer.step()
+        if step in (1, 5):
+            snapshots[step] = parameter.detach().clone()
+    return snapshots
+
+
+def write_optim_fixtures():
+    directory = GOLDEN_DIR / "optim"
+    torch.manual_seed(20262)
+    start = torch.randn(3, 2, dtype=torch.float64)
+    coefficients = torch.randn(3, 2, dtype=torch.float64)
+    save_all(directory, start=start, coefficients=coefficients)
+    optimizers = {
+        "sgd": lambda p: torch.optim.SGD(p, lr=0.1),
+        "sgd_momentum": lambda p: torch.optim.SGD(p, lr=0.1, momentum=0.9),
+        "sgd_nesterov": lambda p: torch.optim.SGD(p, lr=0.1, momentum=0.9, nesterov=True),
+        "sgd_decay": lambda p: torch.optim.SGD(p, lr=0.1, momentum=0.5, weight_decay=0.01),
+        "adam": lambda p: torch.optim.Adam(p, lr=0.01),
+        "adam_decay": lambda p: torch.optim.Adam(p, lr=0.01, weight_decay=0.1),
+        "adamw": lambda p: torch.optim.AdamW(p, lr=0.01),
+    }
+    for name, make_optimizer in optimizers.items():
+        snapshots = run_optimizer(make_optimizer, start, coefficients, 5)
+        save_all(directory, **{f"{name}_{step}": value for step, value in snapshots.items()})
+
+    def learning_rates(make_scheduler, steps):
+        optimizer = torch.optim.SGD([torch.zeros(1, requires_grad=True)], lr=0.1)
+        scheduler = make_scheduler(optimizer)
+        rates = [optimizer.param_groups[0]["lr"]]
+        for _ in range(steps):
+            optimizer.step()
+            scheduler.step()
+            rates.append(optimizer.param_groups[0]["lr"])
+        return np.array(rates, dtype=np.float64)
+
+    schedulers = torch.optim.lr_scheduler
+    save_all(
+        directory,
+        step_lr=learning_rates(lambda o: schedulers.StepLR(o, step_size=3, gamma=0.5), 10),
+        cosine_lr=learning_rates(lambda o: schedulers.CosineAnnealingLR(o, T_max=10, eta_min=0.001), 10),
+    )
+
+
+CASES = []
+
+
 def add_cases(op, compute, patterns):
     for name, inputs, args in patterns:
         CASES.append((op, name, inputs, args, compute))
@@ -547,6 +601,7 @@ def main():
     write_npy_fixtures()
     write_mlp_fixture()
     write_nn_fixtures()
+    write_optim_fixtures()
     manifest = []
     for op, name, inputs, args, compute in CASES:
         write_case(manifest, op, name, inputs, args, compute)
