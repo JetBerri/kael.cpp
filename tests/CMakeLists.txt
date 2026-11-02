@@ -28,3 +28,8 @@ target_compile_definitions(kael_tests PRIVATE KAEL_GOLDEN_DIR="${CMAKE_CURRENT_S
 include(GoogleTest)
 gtest_discover_tests(kael_tests)
 kael_configure_target(kael_tests)
+
+add_executable(micrograd ${PROJECT_SOURCE_DIR}/experiments/micrograd.cpp)
+target_compile_features(micrograd PRIVATE cxx_std_20)
+kael_configure_target(micrograd)
+add_test(NAME micrograd COMMAND micrograd)
