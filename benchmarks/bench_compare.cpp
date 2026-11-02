@@ -36,6 +36,18 @@ void BM_CompareSum(benchmark::State& state) {
 }
 BENCHMARK(BM_CompareSum)->Unit(benchmark::kMicrosecond)->UseRealTime();
 
+void BM_CompareSumFirstDim(benchmark::State& state) {
+    const kael::Tensor a = kael::rand({kSide, kSide});
+    run(state, [&] { return kael::sum(a, {0}); });
+}
+BENCHMARK(BM_CompareSumFirstDim)->Unit(benchmark::kMicrosecond)->UseRealTime();
+
+void BM_CompareSumLastDim(benchmark::State& state) {
+    const kael::Tensor a = kael::rand({kSide, kSide});
+    run(state, [&] { return kael::sum(a, {1}); });
+}
+BENCHMARK(BM_CompareSumLastDim)->Unit(benchmark::kMicrosecond)->UseRealTime();
+
 void BM_CompareSoftmax(benchmark::State& state) {
     const kael::Tensor a = kael::rand({kSide, kSide});
     run(state, [&] { return kael::softmax(a, -1); });

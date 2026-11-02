@@ -8,6 +8,7 @@
 #include "kael/error.h"
 #include "kael/factory.h"
 #include "kael/ops.h"
+#include "kael/random.h"
 
 #include "support/values.h"
 
@@ -152,4 +153,82 @@ TEST(Reduce, NonContiguousInputs) {
     EXPECT_EQ(values<float>(kael::sum(t, {0})), (std::vector<float>{3, 12}));
     auto expanded = kael::arange(0, 3).expand({2, 3});
     EXPECT_EQ(values<float>(kael::sum(expanded, {0})), (std::vector<float>{0, 2, 4}));
+}
+
+namespace {
+
+kael::Tensor materialized(const kael::Tensor& view) {
+    return view.clone();
+}
+
+template <typename Reduce> void expect_view_matches_copy(const kael::Tensor& view, Reduce reduce) {
+    const kael::Tensor from_view = reduce(view);
+    const kael::Tensor from_copy = reduce(materialized(view));
+    EXPECT_EQ(from_view.shape(), from_copy.shape());
+    EXPECT_TRUE(kael::equal(from_view, from_copy));
+}
+
+kael::Tensor sample_for_views() {
+    kael::manual_seed(21);
+    return kael::randn({6, 7, 5});
+}
+
+} // namespace
+
+TEST(ReduceStrided, SingleDimOfNonContiguousViewsMatchesACopy) {
+    const kael::Tensor base = sample_for_views();
+    const std::vector<kael::Tensor> views = {base.permute({2, 0, 1}), base.transpose(0, 1),
+                                             base.select(1, 3)};
+    for (const kael::Tensor& view : views) {
+        for (std::int64_t dim = 0; dim < view.dim(); ++dim) {
+            for (const bool keepdim : {false, true}) {
+                const kael::Dims dims{dim};
+                expect_view_matches_copy(view,
+                                         [&](const kael::Tensor& t) { return kael::sum(t, dims, keepdim); });
+                expect_view_matches_copy(view,
+                                         [&](const kael::Tensor& t) { return kael::mean(t, dims, keepdim); });
+                expect_view_matches_copy(view,
+                                         [&](const kael::Tensor& t) { return kael::max(t, dims, keepdim); });
+                expect_view_matches_copy(view, [&](const kael::Tensor& t) {
+                    return kael::argmin(t, dim, keepdim);
+                });
+                expect_view_matches_copy(view,
+                                         [&](const kael::Tensor& t) { return kael::var(t, dims, keepdim, 1); });
+                expect_view_matches_copy(view,
+                                         [&](const kael::Tensor& t) { return kael::norm(t, dims, keepdim); });
+                expect_view_matches_copy(view, [&](const kael::Tensor& t) {
+                    return kael::any(t > 0.0, dims, keepdim);
+                });
+                expect_view_matches_copy(view, [&](const kael::Tensor& t) {
+                    return kael::all(t > -10.0, dims, keepdim);
+                });
+            }
+        }
+    }
+}
+
+TEST(ReduceStrided, ReducesTheFirstDimensionOfAMatrix) {
+    const kael::Tensor base = kael::arange(0, 12, 1, DType::F64).reshape({3, 4});
+    EXPECT_EQ(values<double>(kael::sum(base, {0})), (std::vector<double>{12, 15, 18, 21}));
+}
+
+TEST(ReduceStrided, ReducesASteppedVector) {
+    const kael::Tensor base = kael::arange(0, 10, 1, DType::F64);
+    const kael::Tensor stepped = base.slice(0, 1, 10, 3);
+    EXPECT_EQ(kael::sum(stepped).item<double>(), 1.0 + 4.0 + 7.0);
+    EXPECT_EQ(kael::max(stepped).item<double>(), 7.0);
+}
+
+TEST(ReduceStrided, KeepsSteppedRowsApart) {
+    const kael::Tensor base = kael::arange(0, 24, 1, DType::F64).reshape({4, 6});
+    const kael::Tensor stepped = base.slice(0, 0, 4, 2);
+    EXPECT_EQ(values<double>(kael::sum(stepped, {1})), (std::vector<double>{15, 87}));
+}
+
+TEST(ReduceStrided, AccumulatesLongChunksWithoutDependingOnTheLaneCount) {
+    const std::int64_t size = 100003;
+    const kael::Tensor values = kael::ones({size}, kael::DType::F32);
+    EXPECT_EQ(kael::sum(values).item<float>(), static_cast<float>(size));
+    const kael::Tensor integers = kael::ones({13}, kael::DType::I64) * 2;
+    EXPECT_EQ(kael::prod(integers).item<std::int64_t>(), std::int64_t{8192});
 }

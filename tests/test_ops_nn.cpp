@@ -96,8 +96,13 @@ TEST_P(FusedKernels, LastDimensionMatchesTheComposedPath) {
     kael::manual_seed(21);
     const kael::Tensor x = kael::randn({40, 33}, GetParam());
     const kael::Tensor x_first = x.T().contiguous();
-    EXPECT_TRUE(kael::equal(kael::softmax(x, -1), kael::softmax(x_first, 0).T()));
-    EXPECT_TRUE(kael::equal(kael::log_softmax(x, 1), kael::log_softmax(x_first, 0).T()));
+    const kael::test::AllcloseOptions rounding_only{
+        .tolerance = GetParam() == kael::DType::F32 ? kael::test::Tolerance{1e-6, 1e-6}
+                                                    : kael::test::Tolerance{1e-14, 1e-14}};
+    EXPECT_TRUE(
+        kael::test::allclose(kael::softmax(x, -1), kael::softmax(x_first, 0).T(), rounding_only));
+    EXPECT_TRUE(kael::test::allclose(kael::log_softmax(x, 1), kael::log_softmax(x_first, 0).T(),
+                                     rounding_only));
 }
 
 TEST_P(FusedKernels, HandlesNonFiniteValuesLikeTheComposedPath) {

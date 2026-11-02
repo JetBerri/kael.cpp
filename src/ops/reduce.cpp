@@ -1,7 +1,7 @@
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <functional>
-#include <numeric>
 #include <type_traits>
 
 #include "kael/autograd/grad_mode.h"
@@ -18,6 +18,37 @@ namespace kael {
 namespace {
 
 constexpr std::int64_t kReductionBlock = 16384;
+constexpr std::int64_t kLanes = 8;
+
+template <typename T> struct StridedChunk {
+    const T* base;
+    std::int64_t stride;
+
+    const T& operator[](std::int64_t i) const { return base[i * stride]; }
+};
+
+// Independent accumulators let the compiler vectorize without reordering a single accumulator.
+template <typename Value, typename Term, typename Combine>
+Value fold_lanes(std::int64_t first, std::int64_t last, Value identity, Term term,
+                 Combine combine) {
+    std::array<Value, kLanes> lanes;
+    lanes.fill(identity);
+    std::int64_t i = first;
+    for (; i + kLanes <= last; i += kLanes) {
+        for (std::int64_t lane = 0; lane < kLanes; ++lane) {
+            auto& accumulator = lanes[static_cast<std::size_t>(lane)];
+            accumulator = combine(accumulator, term(i + lane));
+        }
+    }
+    Value total = identity;
+    for (const Value lane : lanes) {
+        total = combine(total, lane);
+    }
+    for (; i < last; ++i) {
+        total = combine(total, term(i));
+    }
+    return total;
+}
 
 // The blocks do not depend on the thread count, so floating-point results are reproducible.
 template <typename Value, typename Block, typename Combine>
@@ -50,11 +81,7 @@ template <typename F> double sum_in_blocks(std::int64_t size, F term) {
     return reduce_in_blocks(
         size, 0.0,
         [&](std::int64_t first, std::int64_t last) {
-            double total = 0.0;
-            for (std::int64_t i = first; i < last; ++i) {
-                total += term(i);
-            }
-            return total;
+            return fold_lanes(first, last, 0.0, term, std::plus<>{});
         },
         std::plus<>{});
 }
@@ -64,6 +91,9 @@ struct Reduction {
     std::int64_t chunk_size;
     std::int64_t output_count;
     Shape output_shape;
+    std::int64_t chunk_stride = 1;
+    Shape kept_sizes = {};
+    Strides kept_strides = {};
 };
 
 std::vector<bool> reduced_positions(const Tensor& t, const Dims& dims) {
@@ -106,7 +136,15 @@ Reduction plan_reduction(const Tensor& t, const Dims& dims, bool keepdim) {
     }
     kept_first.insert(kept_first.end(), reduced_last.begin(), reduced_last.end());
 
-    return {t.permute(kept_first).contiguous(), numel(reduced_sizes), numel(kept_sizes),
+    Tensor permuted = t.permute(kept_first);
+    if (!permuted.is_contiguous() && reduced_sizes.size() == 1 && t.device() == Device::CPU) {
+        const std::int64_t chunk_stride = permuted.strides().back();
+        Strides kept_strides(permuted.strides().begin(), permuted.strides().end() - 1);
+        return {std::move(permuted), reduced_sizes.front(), numel(kept_sizes),
+                std::move(output_shape), chunk_stride, std::move(kept_sizes),
+                std::move(kept_strides)};
+    }
+    return {permuted.contiguous(), numel(reduced_sizes), numel(kept_sizes),
             std::move(output_shape)};
 }
 
@@ -117,16 +155,33 @@ Reduction plan_nonempty_reduction(const Tensor& t, const Dims& dims, bool keepdi
     return reduction;
 }
 
+std::int64_t kept_offset(const Reduction& reduction, std::int64_t output) {
+    std::int64_t offset = 0;
+    for (std::size_t dim = reduction.kept_sizes.size(); dim-- > 0;) {
+        offset += output % reduction.kept_sizes[dim] * reduction.kept_strides[dim];
+        output /= reduction.kept_sizes[dim];
+    }
+    return offset;
+}
+
 template <typename Out, typename In, typename F>
 Tensor reduce_chunks(const Reduction& reduction, DType dtype, F f) {
     Tensor out = empty(reduction.output_shape, dtype);
     const In* in = reduction.data.data_ptr<In>();
     Out* results = out.data_ptr<Out>();
-    const std::int64_t grain =
-        std::max<std::int64_t>(1, kElementGrain / std::max<std::int64_t>(1, reduction.chunk_size));
+    const std::int64_t size = reduction.chunk_size;
+    const std::int64_t grain = std::max<std::int64_t>(1, kElementGrain / std::max<std::int64_t>(1, size));
+    const bool strided = !reduction.kept_sizes.empty() || reduction.chunk_stride != 1;
     parallel_for(0, reduction.output_count, grain, [&](std::int64_t first, std::int64_t last) {
         for (std::int64_t i = first; i < last; ++i) {
-            results[i] = f(in + i * reduction.chunk_size, reduction.chunk_size);
+            if (!strided) {
+                results[i] = f(in + i * size, size);
+                continue;
+            }
+            const In* base = in + kept_offset(reduction, i);
+            results[i] = reduction.chunk_stride == 1
+                             ? f(base, size)
+                             : f(StridedChunk<In>{base, reduction.chunk_stride}, size);
         }
     });
     return out;
@@ -144,16 +199,15 @@ Tensor accumulate(const Tensor& t, const Dims& dims, bool keepdim, int initial, 
     const DType dtype = is_floating_point(t.dtype()) ? t.dtype() : DType::I64;
     return dispatch(t.dtype(), [&]<typename In>() {
         using Result = AccumulationResult<In>;
-        return reduce_chunks<Result, In>(reduction, dtype, [&](const In* chunk, std::int64_t size) {
+        return reduce_chunks<Result, In>(reduction, dtype, [&](auto chunk, std::int64_t size) {
             const auto identity = static_cast<Accumulator<In>>(initial);
             return static_cast<Result>(reduce_in_blocks(
                 size, identity,
                 [&](std::int64_t first, std::int64_t last) {
-                    auto total = identity;
-                    for (std::int64_t i = first; i < last; ++i) {
-                        total = combine(total, static_cast<Accumulator<In>>(chunk[i]));
-                    }
-                    return total;
+                    return fold_lanes(
+                        first, last, identity,
+                        [&](std::int64_t i) { return static_cast<Accumulator<In>>(chunk[i]); },
+                        combine);
                 },
                 combine));
         });
@@ -164,14 +218,18 @@ template <typename Pick>
 Tensor extreme(const Tensor& t, const Dims& dims, bool keepdim, const char* op, Pick pick) {
     const Reduction reduction = plan_nonempty_reduction(t, dims, keepdim, op);
     return dispatch(t.dtype(), [&]<typename T>() {
-        return reduce_chunks<T, T>(reduction, t.dtype(), [&](const T* chunk, std::int64_t size) {
-            return std::accumulate(chunk + 1, chunk + size, chunk[0], pick);
+        return reduce_chunks<T, T>(reduction, t.dtype(), [&](auto chunk, std::int64_t size) {
+            T best = chunk[0];
+            for (std::int64_t i = 1; i < size; ++i) {
+                best = pick(best, chunk[i]);
+            }
+            return best;
         });
     });
 }
 
-template <typename T, typename Better>
-std::int64_t best_position(const T* chunk, std::int64_t size, Better better) {
+template <typename T, typename Chunk, typename Better>
+std::int64_t best_position(Chunk chunk, std::int64_t size, Better better) {
     std::int64_t best = 0;
     for (std::int64_t i = 1; i < size; ++i) {
         if constexpr (std::is_floating_point_v<T>) {
@@ -195,13 +253,13 @@ Tensor arg_extreme(const Tensor& t, const Dims& dims, bool keepdim, const char* 
     const Reduction reduction = plan_nonempty_reduction(t, dims, keepdim, op);
     return dispatch(t.dtype(), [&]<typename T>() {
         return reduce_chunks<std::int64_t, T>(reduction, DType::I64,
-                                              [](const T* chunk, std::int64_t size) {
-                                                  return best_position(chunk, size, Better<T>{});
+                                              [](auto chunk, std::int64_t size) {
+                                                  return best_position<T>(chunk, size, Better<T>{});
                                               });
     });
 }
 
-template <typename T> double chunk_mean(const T* chunk, std::int64_t size) {
+template <typename Chunk> double chunk_mean(Chunk chunk, std::int64_t size) {
     const double total =
         sum_in_blocks(size, [&](std::int64_t i) { return static_cast<double>(chunk[i]); });
     return total / static_cast<double>(size);
@@ -212,7 +270,7 @@ Tensor reduce_floating(const Tensor& t, const Dims& dims, bool keepdim, const ch
                        F chunk_value) {
     const Reduction reduction = plan_reduction(t, dims, keepdim);
     return dispatch_floating(t.dtype(), op, [&]<typename T>() {
-        return reduce_chunks<T, T>(reduction, t.dtype(), [&](const T* chunk, std::int64_t size) {
+        return reduce_chunks<T, T>(reduction, t.dtype(), [&](auto chunk, std::int64_t size) {
             return static_cast<T>(chunk_value(chunk, size));
         });
     });
@@ -223,8 +281,8 @@ Tensor logical_reduction(const Tensor& t, const Dims& dims, bool keepdim, Predic
     const Reduction reduction = plan_reduction(t, dims, keepdim);
     return dispatch(t.dtype(), [&]<typename T>() {
         return reduce_chunks<std::uint8_t, T>(
-            reduction, DType::Bool, [&](const T* chunk, std::int64_t size) {
-                return predicate(chunk, chunk + size) ? std::uint8_t{1} : std::uint8_t{0};
+            reduction, DType::Bool, [&](auto chunk, std::int64_t size) {
+                return predicate(chunk, size) ? std::uint8_t{1} : std::uint8_t{0};
             });
     });
 }
@@ -305,7 +363,7 @@ Tensor prod(const Tensor& t, const Dims& dims, bool keepdim) {
 Tensor mean(const Tensor& t, const Dims& dims, bool keepdim) {
     Tensor out = on_device(t) ? device_mean(t, dims, keepdim)
                               : reduce_floating(t, dims, keepdim, "mean",
-                                                [](const auto* chunk, std::int64_t size) {
+                                                [](auto chunk, std::int64_t size) {
                                                     return chunk_mean(chunk, size);
                                                 });
     autograd::record_mean(out, t, dims, keepdim);
@@ -361,7 +419,7 @@ Tensor var(const Tensor& t, const Dims& dims, bool keepdim, std::int64_t correct
         return out;
     }
     Tensor out =
-        reduce_floating(t, dims, keepdim, "var", [&](const auto* chunk, std::int64_t size) {
+        reduce_floating(t, dims, keepdim, "var", [&](auto chunk, std::int64_t size) {
             const double center = chunk_mean(chunk, size);
             const double squares = sum_in_blocks(size, [&](std::int64_t i) {
                 const double deviation = static_cast<double>(chunk[i]) - center;
@@ -379,16 +437,26 @@ Tensor std(const Tensor& t, const Dims& dims, bool keepdim, std::int64_t correct
 
 Tensor all(const Tensor& t, const Dims& dims, bool keepdim) {
     return on_host(t, [&](const Tensor& host) {
-        return logical_reduction(host, dims, keepdim, [](auto first, auto last) {
-            return std::all_of(first, last, kIsNonZero);
+        return logical_reduction(host, dims, keepdim, [](auto chunk, std::int64_t size) {
+            for (std::int64_t i = 0; i < size; ++i) {
+                if (!kIsNonZero(chunk[i])) {
+                    return false;
+                }
+            }
+            return true;
         });
     });
 }
 
 Tensor any(const Tensor& t, const Dims& dims, bool keepdim) {
     return on_host(t, [&](const Tensor& host) {
-        return logical_reduction(host, dims, keepdim, [](auto first, auto last) {
-            return std::any_of(first, last, kIsNonZero);
+        return logical_reduction(host, dims, keepdim, [](auto chunk, std::int64_t size) {
+            for (std::int64_t i = 0; i < size; ++i) {
+                if (kIsNonZero(chunk[i])) {
+                    return true;
+                }
+            }
+            return false;
         });
     });
 }
@@ -400,7 +468,7 @@ Tensor norm(const Tensor& t, const Dims& dims, bool keepdim) {
         return out;
     }
     Tensor out =
-        reduce_floating(t, dims, keepdim, "norm", [](const auto* chunk, std::int64_t size) {
+        reduce_floating(t, dims, keepdim, "norm", [](auto chunk, std::int64_t size) {
             return std::sqrt(sum_in_blocks(size, [&](std::int64_t i) {
                 return static_cast<double>(chunk[i]) * static_cast<double>(chunk[i]);
             }));
