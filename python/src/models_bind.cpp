@@ -112,11 +112,22 @@ void bind_models(nb::module_& m) {
         .def(
             "generate",
             [](nn::GPT& model, const Tensor& prompt, std::int64_t max_new_tokens,
-               double temperature, std::int64_t top_k, bool use_cache) {
-                return nn::generate(model, prompt, {max_new_tokens, temperature, top_k, use_cache});
+               double temperature, std::int64_t top_k, bool use_cache,
+               const std::optional<nb::callable>& on_token) {
+                nn::GenerateOptions options{.max_new_tokens = max_new_tokens,
+                                            .temperature = temperature,
+                                            .top_k = top_k,
+                                            .use_cache = use_cache};
+                if (on_token) {
+                    options.on_token = [&on_token](const Tensor& token) {
+                        const nb::gil_scoped_acquire gil;
+                        return nb::cast<bool>((*on_token)(token));
+                    };
+                }
+                return nn::generate(model, prompt, options);
             },
             nb::arg("prompt"), nb::arg("max_new_tokens") = 16, nb::arg("temperature") = 1.0,
-            nb::arg("top_k") = 0, nb::arg("use_cache") = true,
+            nb::arg("top_k") = 0, nb::arg("use_cache") = true, nb::arg("on_token") = nb::none(),
             nb::call_guard<nb::gil_scoped_release>());
 }
 

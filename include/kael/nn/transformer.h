@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -113,6 +114,7 @@ struct GenerateOptions {
     double temperature = 1.0;
     std::int64_t top_k = 0;
     bool use_cache = true;
+    std::function<bool(const Tensor&)> on_token = {};
 };
 
 [[nodiscard]] Tensor generate(GPT& model, const Tensor& prompt, const GenerateOptions& options);

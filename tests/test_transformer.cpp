@@ -339,3 +339,36 @@ TEST(Gpt, RejectsACacheOfAnotherModel) {
     const kael::autograd::NoGradGuard guard;
     EXPECT_THROW((void)model.forward(kael::zeros({1, 2}, DType::I64), &cache), kael::ValueError);
 }
+
+TEST(GptGenerate, ReportsEveryNewTokenInOrder) {
+    kael::manual_seed(61);
+    GPT model(tiny_config());
+    const kael::Tensor prompt = kael::zeros({1, 2}, kael::DType::I64);
+    std::vector<std::int64_t> seen;
+    const kael::Tensor output =
+        kael::nn::generate(model, prompt,
+                           {.max_new_tokens = 5,
+                            .on_token = [&](const kael::Tensor& token) {
+                                seen.push_back(token.item<std::int64_t>());
+                                return true;
+                            }});
+    ASSERT_EQ(seen.size(), 5u);
+    for (std::size_t i = 0; i < seen.size(); ++i) {
+        EXPECT_EQ(output.at<std::int64_t>({0, static_cast<std::int64_t>(i) + 2}), seen[i]);
+    }
+}
+
+TEST(GptGenerate, AReceiverCanStopTheGeneration) {
+    kael::manual_seed(62);
+    GPT model(tiny_config());
+    const kael::Tensor prompt = kael::zeros({1, 2}, kael::DType::I64);
+    int calls = 0;
+    const kael::Tensor output = kael::nn::generate(model, prompt,
+                                                   {.max_new_tokens = 50,
+                                                    .on_token = [&](const kael::Tensor&) {
+                                                        ++calls;
+                                                        return calls < 3;
+                                                    }});
+    EXPECT_EQ(calls, 3);
+    EXPECT_EQ(output.size(1), 5);
+}

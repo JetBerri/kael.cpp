@@ -270,6 +270,9 @@ Tensor generate(GPT& model, const Tensor& prompt, const GenerateOptions& options
         const Tensor logits = run_model();
         const Tensor next = sample_next(logits.select(1, logits.size(1) - 1), options);
         sequence = cat({sequence, next}, 1);
+        if (options.on_token && !options.on_token(next)) {
+            break;
+        }
     }
     model.train(was_training);
     return sequence;
