@@ -225,7 +225,8 @@ std::string print(const kael::Tensor& t) {
 } // namespace
 
 TEST(TensorPrint, Float32) {
-    EXPECT_EQ(print(kael::arange(0, 3, 1)), "tensor([0.0000, 1.0000, 2.0000], shape=[3], dtype=float32)");
+    EXPECT_EQ(print(kael::arange(0, 3, 1)),
+              "tensor([0.0000, 1.0000, 2.0000], shape=[3], dtype=float32)");
 }
 
 TEST(TensorPrint, Matrix) {
@@ -245,7 +246,8 @@ TEST(TensorPrint, Empty) {
 }
 
 TEST(TensorPrint, Scalar) {
-    EXPECT_EQ(print(kael::scalar(1.5, kael::DType::F64)), "tensor([1.5000], shape=[], dtype=float64)");
+    EXPECT_EQ(print(kael::scalar(1.5, kael::DType::F64)),
+              "tensor([1.5000], shape=[], dtype=float64)");
 }
 
 TEST(TensorPrint, LongTensorIsSummarized) {

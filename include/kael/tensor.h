@@ -37,14 +37,12 @@ public:
     [[nodiscard]] std::int64_t nbytes() const;
     [[nodiscard]] const std::shared_ptr<TensorImpl>& impl() const noexcept { return impl_; }
 
-    template <typename T>
-    [[nodiscard]] T* data_ptr() {
+    template <typename T> [[nodiscard]] T* data_ptr() {
         check_dtype<T>();
         return reinterpret_cast<T*>(first_element());
     }
 
-    template <typename T>
-    [[nodiscard]] const T* data_ptr() const {
+    template <typename T> [[nodiscard]] const T* data_ptr() const {
         check_dtype<T>();
         return reinterpret_cast<const T*>(first_element());
     }
@@ -52,8 +50,7 @@ public:
     [[nodiscard]] std::byte* data_ptr_raw() { return first_element(); }
     [[nodiscard]] const std::byte* data_ptr_raw() const { return first_element(); }
 
-    template <typename T>
-    [[nodiscard]] T item() const {
+    template <typename T> [[nodiscard]] T item() const {
         check_dtype<T>();
         check_single_element();
         return *reinterpret_cast<const T*>(first_element());
@@ -61,18 +58,15 @@ public:
 
     [[nodiscard]] double item() const;
 
-    template <typename T>
-    [[nodiscard]] T& at(std::span<const std::int64_t> index) {
+    template <typename T> [[nodiscard]] T& at(std::span<const std::int64_t> index) {
         return *element_ptr<T>(index);
     }
 
-    template <typename T>
-    [[nodiscard]] const T& at(std::span<const std::int64_t> index) const {
+    template <typename T> [[nodiscard]] const T& at(std::span<const std::int64_t> index) const {
         return *element_ptr<T>(index);
     }
 
-    template <typename T>
-    [[nodiscard]] T& at(std::initializer_list<std::int64_t> index) {
+    template <typename T> [[nodiscard]] T& at(std::initializer_list<std::int64_t> index) {
         return *element_ptr<T>({index.begin(), index.size()});
     }
 
@@ -124,9 +118,7 @@ public:
     Tensor& masked_fill_(const Tensor& mask, Scalar value);
     Tensor& scatter_add_(std::int64_t dim, const Tensor& indices, const Tensor& source);
 
-    [[nodiscard]] bool is_same(const Tensor& other) const noexcept {
-        return impl_ == other.impl_;
-    }
+    [[nodiscard]] bool is_same(const Tensor& other) const noexcept { return impl_ == other.impl_; }
 
     [[nodiscard]] bool shares_storage(const Tensor& other) const noexcept {
         return impl_->storage == other.impl_->storage;
@@ -135,14 +127,12 @@ public:
 private:
     explicit Tensor(std::shared_ptr<TensorImpl> impl);
 
-    template <typename T>
-    void check_dtype() const {
+    template <typename T> void check_dtype() const {
         KAEL_CHECK(dtype_of_v<T> == dtype(),
                    "expected dtype " << dtype_of_v<T> << " but tensor has " << dtype());
     }
 
-    template <typename T>
-    [[nodiscard]] T* element_ptr(std::span<const std::int64_t> index) const {
+    template <typename T> [[nodiscard]] T* element_ptr(std::span<const std::int64_t> index) const {
         check_dtype<T>();
         return reinterpret_cast<T*>(impl_->storage->data()) + element_offset(index);
     }

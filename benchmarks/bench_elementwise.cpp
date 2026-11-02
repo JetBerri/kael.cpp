@@ -2,6 +2,7 @@
 
 #include "kael/kernels.h"
 #include "kael/random.h"
+
 #include "naive_add.h"
 
 namespace {

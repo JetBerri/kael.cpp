@@ -12,8 +12,7 @@ class Operand {
 public:
     Operand(const Tensor& tensor) : value_(tensor) {}
 
-    template <std::convertible_to<Scalar> T>
-    Operand(T scalar) : value_(Scalar(scalar)) {}
+    template <std::convertible_to<Scalar> T> Operand(T scalar) : value_(Scalar(scalar)) {}
 
     [[nodiscard]] bool is_tensor() const noexcept { return std::holds_alternative<Tensor>(value_); }
     [[nodiscard]] const Tensor& tensor() const { return std::get<Tensor>(value_); }

@@ -43,7 +43,8 @@ bool values_close(T actual, T expected, const Tolerance& tolerance, bool equal_n
         if (std::isinf(actual) || std::isinf(expected)) {
             return actual == expected;
         }
-        const double difference = std::abs(static_cast<double>(actual) - static_cast<double>(expected));
+        const double difference =
+            std::abs(static_cast<double>(actual) - static_cast<double>(expected));
         return difference <=
                tolerance.absolute + tolerance.relative * std::abs(static_cast<double>(expected));
     } else {
@@ -54,12 +55,12 @@ bool values_close(T actual, T expected, const Tolerance& tolerance, bool equal_n
 inline testing::AssertionResult allclose(const Tensor& actual, const Tensor& expected,
                                          AllcloseOptions options = {}) {
     if (actual.shape() != expected.shape()) {
-        return testing::AssertionFailure() << "shape " << to_string(actual.shape()) << " != "
-                                           << to_string(expected.shape());
+        return testing::AssertionFailure()
+               << "shape " << to_string(actual.shape()) << " != " << to_string(expected.shape());
     }
     if (actual.dtype() != expected.dtype()) {
-        return testing::AssertionFailure() << "dtype " << actual.dtype() << " != "
-                                           << expected.dtype();
+        return testing::AssertionFailure()
+               << "dtype " << actual.dtype() << " != " << expected.dtype();
     }
 
     const Tolerance tolerance = default_tolerance(actual.dtype());

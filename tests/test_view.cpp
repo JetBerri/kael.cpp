@@ -8,6 +8,7 @@
 #include "kael/error.h"
 #include "kael/factory.h"
 #include "kael/tensor.h"
+
 #include "support/values.h"
 
 using kael::DType;
@@ -97,7 +98,8 @@ TEST(Clone, OfContiguousViewWithOffset) {
 TEST(Clone, OfStride0View) {
     auto t = iota_shaped({3});
     auto expanded = manual_view(t, {2, 3}, {0, 1});
-    EXPECT_EQ(values<std::int64_t>(expanded.clone()), (std::vector<std::int64_t>{0, 1, 2, 0, 1, 2}));
+    EXPECT_EQ(values<std::int64_t>(expanded.clone()),
+              (std::vector<std::int64_t>{0, 1, 2, 0, 1, 2}));
 }
 
 TEST(To, WorksOnNonContiguous) {

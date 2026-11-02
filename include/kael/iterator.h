@@ -28,8 +28,7 @@ public:
     [[nodiscard]] const Tensor& output() const;
     [[nodiscard]] const LoopDims& dims() const noexcept { return dims_; }
 
-    template <typename InnerLoop>
-    void run(InnerLoop&& inner_loop) const;
+    template <typename InnerLoop> void run(InnerLoop&& inner_loop) const;
 
 private:
     void check_inputs() const;
@@ -45,8 +44,7 @@ private:
     std::int64_t element_count_ = 0;
 };
 
-template <typename InnerLoop>
-void TensorIterator::run(InnerLoop&& inner_loop) const {
+template <typename InnerLoop> void TensorIterator::run(InnerLoop&& inner_loop) const {
     if (element_count_ == 0) {
         return;
     }

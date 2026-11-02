@@ -6,8 +6,7 @@
 
 namespace kael::detail {
 
-template <typename T>
-T nan_aware_max(T a, T b) {
+template <typename T> T nan_aware_max(T a, T b) {
     if constexpr (std::is_floating_point_v<T>) {
         if (std::isnan(a) || std::isnan(b)) {
             return std::isnan(a) ? a : b;
@@ -16,8 +15,7 @@ T nan_aware_max(T a, T b) {
     return std::max(a, b);
 }
 
-template <typename T>
-T nan_aware_min(T a, T b) {
+template <typename T> T nan_aware_min(T a, T b) {
     if constexpr (std::is_floating_point_v<T>) {
         if (std::isnan(a) || std::isnan(b)) {
             return std::isnan(a) ? a : b;

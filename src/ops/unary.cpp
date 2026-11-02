@@ -2,16 +2,16 @@
 #include <numbers>
 #include <type_traits>
 
-#include "internal/arithmetic.h"
 #include "kael/kernels.h"
 #include "kael/ops.h"
+
+#include "internal/arithmetic.h"
 
 namespace kael {
 
 namespace {
 
-template <typename T>
-T absolute(T x) {
+template <typename T> T absolute(T x) {
     if constexpr (std::is_same_v<T, std::uint8_t>) {
         return x;
     } else {
@@ -19,8 +19,7 @@ T absolute(T x) {
     }
 }
 
-template <typename T>
-T sign_of(T x) {
+template <typename T> T sign_of(T x) {
     if constexpr (std::is_same_v<T, std::uint8_t>) {
         return x;
     } else {
@@ -28,8 +27,7 @@ T sign_of(T x) {
     }
 }
 
-template <typename T>
-T stable_sigmoid(T x) {
+template <typename T> T stable_sigmoid(T x) {
     if (x >= 0) {
         return 1 / (1 + std::exp(-x));
     }
@@ -37,8 +35,7 @@ T stable_sigmoid(T x) {
     return e / (1 + e);
 }
 
-template <typename T>
-T exact_gelu(T x) {
+template <typename T> T exact_gelu(T x) {
     return T(0.5) * x * (1 + std::erf(x / std::numbers::sqrt2_v<T>));
 }
 

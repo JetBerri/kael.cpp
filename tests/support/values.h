@@ -8,8 +8,7 @@
 
 namespace kael::test {
 
-template <typename T>
-std::vector<T> values(const Tensor& t) {
+template <typename T> std::vector<T> values(const Tensor& t) {
     std::vector<T> result;
     result.reserve(static_cast<std::size_t>(t.numel()));
     for (std::int64_t linear = 0; linear < t.numel(); ++linear) {

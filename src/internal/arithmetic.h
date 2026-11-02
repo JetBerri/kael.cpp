@@ -14,8 +14,7 @@ inline constexpr auto kMinus = [](auto a, auto b) { return a - b; };
 inline constexpr auto kTimes = [](auto a, auto b) { return a * b; };
 inline constexpr auto kDivides = [](auto a, auto b) { return a / b; };
 
-template <typename T>
-T integer_power(T base, T exponent) {
+template <typename T> T integer_power(T base, T exponent) {
     KAEL_CHECK(exponent >= 0, "integers to negative integer powers are not allowed");
     T result = 1;
     while (exponent > 0) {
@@ -40,8 +39,7 @@ struct Clamper {
     double low;
     double high;
 
-    template <typename T>
-    T operator()(T x) const {
+    template <typename T> T operator()(T x) const {
         const T raised = x < convert_value<T>(low) ? convert_value<T>(low) : x;
         return raised > convert_value<T>(high) ? convert_value<T>(high) : raised;
     }

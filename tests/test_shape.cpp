@@ -1,33 +1,34 @@
 #include <gtest/gtest.h>
-#include "kael/shape.h"
-#include "kael/error.h"
 
-TEST(ShapeString, NormalCase){
+#include "kael/error.h"
+#include "kael/shape.h"
+
+TEST(ShapeString, NormalCase) {
     kael::Shape test_shape = {1, 2, 3, 4};
     EXPECT_EQ(kael::to_string(test_shape), "[1, 2, 3, 4]");
 }
 
-TEST(ShapeString, EmptyCase){
+TEST(ShapeString, EmptyCase) {
     kael::Shape test_shape = {};
     EXPECT_EQ(kael::to_string(test_shape), "[]");
 }
 
-TEST(ShapeString, OneDimension){
+TEST(ShapeString, OneDimension) {
     kael::Shape test_shape = {1};
     EXPECT_EQ(kael::to_string(test_shape), "[1]");
 }
 
-TEST(ShapeString, ZeroDimension){
+TEST(ShapeString, ZeroDimension) {
     kael::Shape test_shape = {3, 0, 5};
     EXPECT_EQ(kael::to_string(test_shape), "[3, 0, 5]");
 }
 
-TEST(ShapeString, BigDimension){
+TEST(ShapeString, BigDimension) {
     kael::Shape test_shape = {500000000000};
     EXPECT_EQ(kael::to_string(test_shape), "[500000000000]");
 }
 
-TEST(ValidateShape, NoError){
+TEST(ValidateShape, NoError) {
     kael::Shape test_shape_1 = {};
     kael::Shape test_shape_2 = {2, 3};
     kael::Shape test_shape_3 = {0};
@@ -38,7 +39,7 @@ TEST(ValidateShape, NoError){
     EXPECT_NO_THROW(kael::validate_shape(test_shape_4));
 }
 
-TEST(ValidateShape, ThrowError){
+TEST(ValidateShape, ThrowError) {
     kael::Shape test_shape_1 = {-5};
     kael::Shape test_shape_2 = {-1, 3};
     kael::Shape test_shape_3 = {2, -2};
@@ -49,7 +50,7 @@ TEST(ValidateShape, ThrowError){
     EXPECT_THROW(kael::validate_shape(test_shape_4), kael::Error);
 }
 
-TEST(ValidateShape, ErrorMessageContainsShape){
+TEST(ValidateShape, ErrorMessageContainsShape) {
     try {
         kael::validate_shape({2, -2});
         FAIL() << "expected kael::Error";
@@ -60,7 +61,7 @@ TEST(ValidateShape, ErrorMessageContainsShape){
     }
 }
 
-TEST(Numel, RegularCase){
+TEST(Numel, RegularCase) {
     kael::Shape test_shape_1 = {};
     kael::Shape test_shape_2 = {5};
     kael::Shape test_shape_3 = {2, 3, 4};
@@ -71,14 +72,14 @@ TEST(Numel, RegularCase){
     EXPECT_EQ(kael::numel(test_shape_4), 0);
 }
 
-TEST(Numel, NegativeShape){
+TEST(Numel, NegativeShape) {
     kael::Shape test_shape_1 = {-1};
     kael::Shape test_shape_2 = {1, -2};
     EXPECT_THROW(kael::numel(test_shape_1), kael::Error);
     EXPECT_THROW(kael::numel(test_shape_2), kael::Error);
 }
 
-TEST(Numel, Overflow){
+TEST(Numel, Overflow) {
     EXPECT_THROW(kael::numel({1LL << 40, 1LL << 40}), kael::Error);
 
     const std::int64_t max = std::numeric_limits<std::int64_t>::max();
@@ -230,12 +231,7 @@ TEST(BroadcastShapes, ValidCases) {
 
 TEST(BroadcastShapes, Symmetry) {
     const std::vector<std::pair<kael::Shape, kael::Shape>> pairs = {
-        {{3}, {2, 3}},
-        {{2, 1}, {1, 3}},
-        {{5, 1, 4}, {3, 1}},
-        {{}, {4}},
-        {{}, {}},
-        {{0}, {1}},
+        {{3}, {2, 3}}, {{2, 1}, {1, 3}}, {{5, 1, 4}, {3, 1}}, {{}, {4}}, {{}, {}}, {{0}, {1}},
     };
     for (const auto& [a, b] : pairs) {
         EXPECT_EQ(kael::broadcast_shapes(a, b), kael::broadcast_shapes(b, a));
@@ -264,14 +260,11 @@ TEST(BroadcastShapes, ErrorMessageContainsShapes) {
 }
 
 TEST(BroadcastStrides, ValidCases) {
-    EXPECT_EQ(kael::broadcast_strides({3}, {1}, {2, 3}),
-              (kael::Strides{0, 1}));
+    EXPECT_EQ(kael::broadcast_strides({3}, {1}, {2, 3}), (kael::Strides{0, 1}));
 
-    EXPECT_EQ(kael::broadcast_strides({2, 1}, {1, 1}, {2, 4}),
-              (kael::Strides{1, 0}));
+    EXPECT_EQ(kael::broadcast_strides({2, 1}, {1, 1}, {2, 4}), (kael::Strides{1, 0}));
 
-    EXPECT_EQ(kael::broadcast_strides({}, {}, {2, 2}),
-              (kael::Strides{0, 0}));
+    EXPECT_EQ(kael::broadcast_strides({}, {}, {2, 2}), (kael::Strides{0, 0}));
 }
 
 TEST(BroadcastStrides, SameShape) {
@@ -282,18 +275,15 @@ TEST(BroadcastStrides, SameShape) {
 }
 
 TEST(BroadcastStrides, MoreDimensionsThanTargetThrows) {
-    EXPECT_THROW(kael::broadcast_strides({2, 3}, {3, 1}, {3}),
-                 kael::Error);
+    EXPECT_THROW(kael::broadcast_strides({2, 3}, {3, 1}, {3}), kael::Error);
 }
 
 TEST(BroadcastStrides, IncompatibleDimensionsThrows) {
-    EXPECT_THROW(kael::broadcast_strides({2}, {1}, {3}),
-                 kael::Error);
+    EXPECT_THROW(kael::broadcast_strides({2}, {1}, {3}), kael::Error);
 }
 
 TEST(BroadcastStrides, ShapeStridesSizeMismatchThrows) {
-    EXPECT_THROW(kael::broadcast_strides({2, 3}, {1}, {2, 3}),
-                 kael::Error);
+    EXPECT_THROW(kael::broadcast_strides({2, 3}, {1}, {2, 3}), kael::Error);
 }
 
 TEST(BroadcastStrides, ErrorMessageContainsShapes) {
@@ -322,7 +312,8 @@ TEST(BroadcastStrides, SemanticBroadcastRows) {
 
         std::int64_t offset = kael::offset_from_index(target, broadcasted, 0, index);
 
-        EXPECT_FLOAT_EQ(data.at(static_cast<std::size_t>(offset)), data.at(static_cast<std::size_t>(index[1])));
+        EXPECT_FLOAT_EQ(data.at(static_cast<std::size_t>(offset)),
+                        data.at(static_cast<std::size_t>(index[1])));
     }
 }
 
@@ -340,7 +331,8 @@ TEST(BroadcastStrides, SemanticBroadcastColumns) {
 
         std::int64_t offset = kael::offset_from_index(target, broadcasted, 0, index);
 
-        EXPECT_FLOAT_EQ(data.at(static_cast<std::size_t>(offset)), data.at(static_cast<std::size_t>(index[0])));
+        EXPECT_FLOAT_EQ(data.at(static_cast<std::size_t>(offset)),
+                        data.at(static_cast<std::size_t>(index[0])));
     }
 }
 
@@ -353,17 +345,14 @@ struct BroadcastCase {
 
 TEST(BroadcastShapes, GeneratedCases) {
     const BroadcastCase cases[] = {
-        #include "generated/broadcast_cases.inc"
+#include "generated/broadcast_cases.inc"
     };
 
     std::size_t i = 0;
 
     for (const auto& c : cases) {
-        SCOPED_TRACE(
-            "Case " + std::to_string(i) +
-            " A=" + kael::to_string(c.a) +
-            " B=" + kael::to_string(c.b)
-        );
+        SCOPED_TRACE("Case " + std::to_string(i) + " A=" + kael::to_string(c.a) +
+                     " B=" + kael::to_string(c.b));
 
         if (c.valid) {
             EXPECT_EQ(kael::broadcast_shapes(c.a, c.b), c.expected);
@@ -388,7 +377,8 @@ TEST(WrapDim, OutOfRangeThrowsWithRange) {
         kael::wrap_dim(3, 2);
         FAIL();
     } catch (const kael::Error& e) {
-        EXPECT_NE(std::string(e.what()).find("dimension 3 out of range [-2, 1]"), std::string::npos);
+        EXPECT_NE(std::string(e.what()).find("dimension 3 out of range [-2, 1]"),
+                  std::string::npos);
     }
 }
 

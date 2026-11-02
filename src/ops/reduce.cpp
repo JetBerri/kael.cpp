@@ -4,9 +4,10 @@
 #include <numeric>
 #include <type_traits>
 
-#include "internal/nan_aware.h"
 #include "kael/factory.h"
 #include "kael/ops.h"
+
+#include "internal/nan_aware.h"
 
 namespace kael {
 
@@ -27,7 +28,8 @@ std::vector<bool> reduced_positions(const Tensor& t, const Dims& dims) {
             continue;
         }
         const auto position = static_cast<std::size_t>(wrap_dim(dim, t.dim()));
-        KAEL_CHECK(!reduced[position], "dimension " << dim << " appears more than once in reduction");
+        KAEL_CHECK(!reduced[position],
+                   "dimension " << dim << " appears more than once in reduction");
         reduced[position] = true;
     }
     return reduced;
@@ -139,8 +141,7 @@ Tensor arg_extreme(const Tensor& t, const Dims& dims, bool keepdim, const char* 
     });
 }
 
-template <typename T>
-double chunk_mean(const T* chunk, std::int64_t size) {
+template <typename T> double chunk_mean(const T* chunk, std::int64_t size) {
     double total = 0.0;
     for (std::int64_t i = 0; i < size; ++i) {
         total += static_cast<double>(chunk[i]);
@@ -152,12 +153,10 @@ template <typename Predicate>
 Tensor logical_reduction(const Tensor& t, const Dims& dims, bool keepdim, Predicate predicate) {
     const Reduction reduction = plan_reduction(t, dims, keepdim);
     return dispatch(t.dtype(), [&]<typename T>() {
-        return reduce_chunks<std::uint8_t, T>(reduction, DType::Bool,
-                                              [&](const T* chunk, std::int64_t size) {
-                                                  return predicate(chunk, chunk + size)
-                                                             ? std::uint8_t{1}
-                                                             : std::uint8_t{0};
-                                              });
+        return reduce_chunks<std::uint8_t, T>(
+            reduction, DType::Bool, [&](const T* chunk, std::int64_t size) {
+                return predicate(chunk, chunk + size) ? std::uint8_t{1} : std::uint8_t{0};
+            });
     });
 }
 
@@ -183,11 +182,13 @@ Tensor mean(const Tensor& t, const Dims& dims, bool keepdim) {
 }
 
 Tensor max(const Tensor& t, const Dims& dims, bool keepdim) {
-    return extreme(t, dims, keepdim, "max", [](auto a, auto b) { return detail::nan_aware_max(a, b); });
+    return extreme(t, dims, keepdim, "max",
+                   [](auto a, auto b) { return detail::nan_aware_max(a, b); });
 }
 
 Tensor min(const Tensor& t, const Dims& dims, bool keepdim) {
-    return extreme(t, dims, keepdim, "min", [](auto a, auto b) { return detail::nan_aware_min(a, b); });
+    return extreme(t, dims, keepdim, "min",
+                   [](auto a, auto b) { return detail::nan_aware_min(a, b); });
 }
 
 Tensor argmax(const Tensor& t) {

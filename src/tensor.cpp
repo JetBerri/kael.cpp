@@ -4,8 +4,9 @@
 #include <utility>
 #include <vector>
 
-#include "internal/copy.h"
 #include "kael/factory.h"
+
+#include "internal/copy.h"
 
 namespace kael {
 

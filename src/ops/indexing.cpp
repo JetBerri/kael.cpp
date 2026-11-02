@@ -1,9 +1,10 @@
 #include <utility>
 
-#include "internal/operands.h"
 #include "kael/factory.h"
 #include "kael/kernels.h"
 #include "kael/ops.h"
+
+#include "internal/operands.h"
 
 namespace kael {
 
@@ -45,8 +46,7 @@ void check_gather_shapes(const Tensor& t, const Tensor& indices, std::size_t pos
     }
 }
 
-template <typename Visit>
-void for_each_index(const Shape& shape, Visit visit) {
+template <typename Visit> void for_each_index(const Shape& shape, Visit visit) {
     const std::int64_t count = numel(shape);
     Shape index(shape.size(), 0);
     for (std::int64_t step = 0; step < count; ++step) {
@@ -95,9 +95,9 @@ Tensor stack(const std::vector<Tensor>& tensors, std::int64_t dim) {
     std::vector<Tensor> unsqueezed;
     unsqueezed.reserve(tensors.size());
     for (const Tensor& t : tensors) {
-        KAEL_CHECK(t.shape() == tensors.front().shape(),
-                   "stack needs the same shape, got " << to_string(tensors.front().shape())
-                                                      << " and " << to_string(t.shape()));
+        KAEL_CHECK(t.shape() == tensors.front().shape(), "stack needs the same shape, got "
+                                                             << to_string(tensors.front().shape())
+                                                             << " and " << to_string(t.shape()));
         unsqueezed.push_back(t.unsqueeze(position));
     }
     return cat(unsqueezed, position);
@@ -107,9 +107,8 @@ Tensor where(const Tensor& condition, const Operand& a, const Operand& b) {
     KAEL_CHECK(condition.dtype() == DType::Bool,
                "where needs a bool condition, got " << condition.dtype());
     const auto [x, y] = detail::resolve_operands(a, b);
-    return ternary_kernel(condition, x, y, []<typename T>(T keep, T p, T q) -> T {
-        return keep != T{0} ? p : q;
-    });
+    return ternary_kernel(condition, x, y,
+                          []<typename T>(T keep, T p, T q) -> T { return keep != T{0} ? p : q; });
 }
 
 Tensor masked_fill(const Tensor& t, const Tensor& mask, Scalar value) {
@@ -170,23 +169,23 @@ Tensor& Tensor::scatter_add_(std::int64_t dim, const Tensor& indices, const Tens
     check_index_tensor(indices, "scatter_add_");
     const auto position = static_cast<std::size_t>(wrap_dim(dim, this->dim()));
     check_gather_shapes(*this, indices, position, "scatter_add_");
-    KAEL_CHECK(source.dim() == indices.dim(), "scatter_add_ source shape "
-                                                  << to_string(source.shape()) << " and indices shape "
-                                                  << to_string(indices.shape())
-                                                  << " have different number of dimensions");
+    KAEL_CHECK(source.dim() == indices.dim(),
+               "scatter_add_ source shape " << to_string(source.shape()) << " and indices shape "
+                                            << to_string(indices.shape())
+                                            << " have different number of dimensions");
     for (std::size_t i = 0; i < indices.shape().size(); ++i) {
-        KAEL_CHECK(indices.shape()[i] <= source.shape()[i],
-                   "scatter_add_ indices shape " << to_string(indices.shape())
-                                                 << " is larger than source shape "
-                                                 << to_string(source.shape()));
+        KAEL_CHECK(indices.shape()[i] <= source.shape()[i], "scatter_add_ indices shape "
+                                                                << to_string(indices.shape())
+                                                                << " is larger than source shape "
+                                                                << to_string(source.shape()));
     }
 
     const Tensor converted = source.to(dtype());
     dispatch(dtype(), [&]<typename T>() {
         for_each_index(indices.shape(), [&](const Shape& index) {
             Shape target = index;
-            target[position] = checked_index(indices.at<std::int64_t>(index), shape()[position],
-                                             "scatter_add_");
+            target[position] =
+                checked_index(indices.at<std::int64_t>(index), shape()[position], "scatter_add_");
             T& element = at<T>(target);
             element = static_cast<T>(element + converted.at<T>(index));
         });

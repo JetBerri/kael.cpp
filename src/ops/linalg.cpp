@@ -68,9 +68,9 @@ Tensor multiply_batches(const Tensor& a, const Tensor& b, const MatmulLayout& la
 } // namespace
 
 Tensor matmul(const Tensor& a, const Tensor& b) {
-    KAEL_CHECK(a.dim() >= 1 && b.dim() >= 1,
-               "matmul needs at least 1 dimension, got shapes " << to_string(a.shape()) << " and "
-                                                                << to_string(b.shape()));
+    KAEL_CHECK(a.dim() >= 1 && b.dim() >= 1, "matmul needs at least 1 dimension, got shapes "
+                                                 << to_string(a.shape()) << " and "
+                                                 << to_string(b.shape()));
 
     const bool a_is_vector = a.dim() == 1;
     const bool b_is_vector = b.dim() == 1;

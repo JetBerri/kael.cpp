@@ -11,6 +11,7 @@
 #include "kael/error.h"
 #include "kael/kael.h"
 #include "kael/ops.h"
+
 #include "support/allclose.h"
 #include "support/npy.h"
 
@@ -105,14 +106,16 @@ GoldenOp reduction(Tensor (*op)(const Tensor&, const kael::Dims&, bool)) {
     };
 }
 
-GoldenOp reduction_with_correction(Tensor (*op)(const Tensor&, const kael::Dims&, bool, std::int64_t),
+GoldenOp reduction_with_correction(Tensor (*op)(const Tensor&, const kael::Dims&, bool,
+                                                std::int64_t),
                                    std::int64_t correction) {
     return [op, correction](const Inputs& inputs, const Args& args) {
         return op(inputs[0], args.ints("dims"), args.flag("keepdim"), correction);
     };
 }
 
-GoldenOp arg_reduction(Tensor (*flat)(const Tensor&), Tensor (*along)(const Tensor&, std::int64_t, bool)) {
+GoldenOp arg_reduction(Tensor (*flat)(const Tensor&),
+                       Tensor (*along)(const Tensor&, std::int64_t, bool)) {
     return [flat, along](const Inputs& inputs, const Args& args) {
         return args.has("dim") ? along(inputs[0], args.integer("dim"), args.flag("keepdim"))
                                : flat(inputs[0]);
@@ -192,18 +195,12 @@ const std::map<std::string, GoldenOp>& golden_ops() {
         {"matmul", tensor_pair(kael::matmul)},
         {"dot", tensor_pair(kael::dot)},
         {"outer", tensor_pair(kael::outer)},
-        {"cat",
-         [](const Inputs& inputs, const Args& args) {
-             return kael::cat(inputs, args.integer("dim"));
-         }},
-        {"stack",
-         [](const Inputs& inputs, const Args& args) {
-             return kael::stack(inputs, args.integer("dim"));
-         }},
-        {"where",
-         [](const Inputs& inputs, const Args&) {
-             return kael::where(inputs[0], inputs[1], inputs[2]);
-         }},
+        {"cat", [](const Inputs& inputs,
+                   const Args& args) { return kael::cat(inputs, args.integer("dim")); }},
+        {"stack", [](const Inputs& inputs,
+                     const Args& args) { return kael::stack(inputs, args.integer("dim")); }},
+        {"where", [](const Inputs& inputs,
+                     const Args&) { return kael::where(inputs[0], inputs[1], inputs[2]); }},
         {"masked_fill",
          [](const Inputs& inputs, const Args& args) {
              return kael::masked_fill(inputs[0], inputs[1], args.real("value"));
@@ -225,10 +222,8 @@ const std::map<std::string, GoldenOp>& golden_ops() {
          [](const Inputs& inputs, const Args& args) {
              return kael::logsumexp(inputs[0], args.integer("dim"), args.flag("keepdim"));
          }},
-        {"softmax",
-         [](const Inputs& inputs, const Args& args) {
-             return kael::softmax(inputs[0], args.integer("dim"));
-         }},
+        {"softmax", [](const Inputs& inputs,
+                       const Args& args) { return kael::softmax(inputs[0], args.integer("dim")); }},
         {"log_softmax",
          [](const Inputs& inputs, const Args& args) {
              return kael::log_softmax(inputs[0], args.integer("dim"));

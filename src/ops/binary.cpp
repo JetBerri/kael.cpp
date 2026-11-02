@@ -2,12 +2,13 @@
 #include <cmath>
 #include <type_traits>
 
-#include "internal/arithmetic.h"
-#include "internal/nan_aware.h"
-#include "internal/operands.h"
 #include "kael/factory.h"
 #include "kael/kernels.h"
 #include "kael/ops.h"
+
+#include "internal/arithmetic.h"
+#include "internal/nan_aware.h"
+#include "internal/operands.h"
 
 namespace kael {
 
@@ -23,8 +24,7 @@ Tensor materialize(const Operand& operand, const Operand& other) {
     return scalar(value.value(), dtype);
 }
 
-template <typename T>
-T floor_division(T a, T b) {
+template <typename T> T floor_division(T a, T b) {
     if constexpr (std::is_floating_point_v<T>) {
         return std::floor(a / b);
     } else {
@@ -35,20 +35,17 @@ T floor_division(T a, T b) {
     }
 }
 
-template <typename F>
-Tensor compare(const Operand& a, const Operand& b, F f) {
+template <typename F> Tensor compare(const Operand& a, const Operand& b, F f) {
     const auto [x, y] = detail::resolve_operands(a, b);
     return comparison_kernel(x, y, f);
 }
 
-template <typename F>
-Tensor logical(const Operand& a, const Operand& b, F f) {
+template <typename F> Tensor logical(const Operand& a, const Operand& b, F f) {
     const auto [x, y] = detail::resolve_operands(a, b);
     return comparison_kernel(x.to(DType::Bool), y.to(DType::Bool), f);
 }
 
-template <typename F>
-Tensor elementwise_extreme(const Operand& a, const Operand& b, F f) {
+template <typename F> Tensor elementwise_extreme(const Operand& a, const Operand& b, F f) {
     const auto [x, y] = detail::resolve_operands(a, b);
     return binary_kernel(x, y, f);
 }

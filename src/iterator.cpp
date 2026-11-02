@@ -120,8 +120,8 @@ void TensorIterator::prepare_loop(const Shape& common_shape) {
     full.operand_strides.push_back(to_bytes(output_->strides(), output_->dtype()));
     base_pointers_.push_back(output_->data_ptr_raw());
     for (Tensor& input : inputs_) {
-        full.operand_strides.push_back(
-            to_bytes(broadcast_strides(input.shape(), input.strides(), common_shape), input.dtype()));
+        full.operand_strides.push_back(to_bytes(
+            broadcast_strides(input.shape(), input.strides(), common_shape), input.dtype()));
         base_pointers_.push_back(input.data_ptr_raw());
     }
 

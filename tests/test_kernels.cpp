@@ -8,6 +8,7 @@
 #include "kael/error.h"
 #include "kael/factory.h"
 #include "kael/kernels.h"
+
 #include "support/values.h"
 
 using kael::DType;
@@ -52,7 +53,8 @@ public:
         for (const std::int64_t dim : shape) {
             result.push_back(uniform(0, 2) == 0 ? 1 : dim);
         }
-        result.erase(result.begin(), result.begin() + uniform(0, static_cast<std::int64_t>(result.size())));
+        result.erase(result.begin(),
+                     result.begin() + uniform(0, static_cast<std::int64_t>(result.size())));
         return result;
     }
 

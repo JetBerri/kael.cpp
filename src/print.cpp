@@ -13,8 +13,7 @@ constexpr std::int64_t kSummarizeThreshold = 1000;
 constexpr std::int64_t kSummarizeEdge = 3;
 constexpr int kFloatPrecision = 4;
 
-template <typename T>
-void print_element(std::ostream& os, const Tensor& t, std::int64_t linear) {
+template <typename T> void print_element(std::ostream& os, const Tensor& t, std::int64_t linear) {
     const T value = t.at<T>(index_from_linear(linear, t.shape()));
     if constexpr (std::is_same_v<T, std::uint8_t>) {
         os << (value != 0 ? "true" : "false");
@@ -23,8 +22,7 @@ void print_element(std::ostream& os, const Tensor& t, std::int64_t linear) {
     }
 }
 
-template <typename T>
-void print_elements(std::ostream& os, const Tensor& t) {
+template <typename T> void print_elements(std::ostream& os, const Tensor& t) {
     const std::int64_t count = t.numel();
     const bool summarize = count > kSummarizeThreshold;
     for (std::int64_t i = 0; i < count; ++i) {

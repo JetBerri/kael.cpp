@@ -8,6 +8,7 @@
 #include "kael/error.h"
 #include "kael/factory.h"
 #include "kael/ops.h"
+
 #include "support/values.h"
 
 using kael::DType;
@@ -45,8 +46,7 @@ TEST(Unary, KeepDtype) {
     EXPECT_EQ(values<std::int64_t>(kael::abs(int_tensor())), (std::vector<std::int64_t>{2, 0, 3}));
     EXPECT_EQ(values<std::int64_t>(kael::sign(int_tensor())),
               (std::vector<std::int64_t>{-1, 0, 1}));
-    EXPECT_EQ(values<std::int64_t>(kael::relu(int_tensor())),
-              (std::vector<std::int64_t>{0, 0, 3}));
+    EXPECT_EQ(values<std::int64_t>(kael::relu(int_tensor())), (std::vector<std::int64_t>{0, 0, 3}));
 }
 
 TEST(Unary, MathOnIntegersIsFloat32) {

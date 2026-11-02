@@ -13,9 +13,9 @@ void BM_Matmul(benchmark::State& state) {
         kael::Tensor out = kael::matmul(a, b);
         benchmark::DoNotOptimize(out.data_ptr_raw());
     }
-    state.counters["flops"] = benchmark::Counter(
-        static_cast<double>(state.iterations()) * 2.0 * static_cast<double>(n * n * n),
-        benchmark::Counter::kIsRate);
+    state.counters["flops"] = benchmark::Counter(static_cast<double>(state.iterations()) * 2.0 *
+                                                     static_cast<double>(n * n * n),
+                                                 benchmark::Counter::kIsRate);
 }
 BENCHMARK(BM_Matmul)->Arg(128)->Arg(256)->Arg(512)->Unit(benchmark::kMillisecond);
 

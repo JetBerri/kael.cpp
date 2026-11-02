@@ -52,9 +52,8 @@ TEST(DType, TraitCppToDType) {
 
 TEST(DType, DispatchMatchesElementSize) {
     for (DType d : kAll) {
-        const auto bytes = kael::dispatch(d, []<typename T>() {
-            return static_cast<std::int64_t>(sizeof(T));
-        });
+        const auto bytes =
+            kael::dispatch(d, []<typename T>() { return static_cast<std::int64_t>(sizeof(T)); });
         EXPECT_EQ(bytes, kael::element_size(d)) << d;
     }
 }

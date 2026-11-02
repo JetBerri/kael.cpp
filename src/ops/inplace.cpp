@@ -1,9 +1,10 @@
-#include "internal/arithmetic.h"
-#include "internal/copy.h"
-#include "internal/operands.h"
 #include "kael/factory.h"
 #include "kael/kernels.h"
 #include "kael/ops.h"
+
+#include "internal/arithmetic.h"
+#include "internal/copy.h"
+#include "internal/operands.h"
 
 namespace kael {
 
@@ -24,9 +25,9 @@ void check_writable(const Tensor& self, const char* op) {
 }
 
 void check_result_fits(DType result, DType self, const char* op) {
-    KAEL_CHECK(category(result) <= category(self),
-               op << " result of dtype " << result << " cannot be stored in a tensor of dtype "
-                  << self);
+    KAEL_CHECK(category(result) <= category(self), op << " result of dtype " << result
+                                                      << " cannot be stored in a tensor of dtype "
+                                                      << self);
 }
 
 bool same_layout(const Tensor& a, const Tensor& b) {

@@ -88,55 +88,42 @@ inline std::ostream& operator<<(std::ostream& os, Device device) {
     return os << to_string(device);
 }
 
-template <typename T>
-struct dtype_of;
+template <typename T> struct dtype_of;
 
-template <>
-struct dtype_of<float> {
+template <> struct dtype_of<float> {
     static constexpr DType value = DType::F32;
 };
-template <>
-struct dtype_of<double> {
+template <> struct dtype_of<double> {
     static constexpr DType value = DType::F64;
 };
-template <>
-struct dtype_of<std::int64_t> {
+template <> struct dtype_of<std::int64_t> {
     static constexpr DType value = DType::I64;
 };
-template <>
-struct dtype_of<std::uint8_t> {
+template <> struct dtype_of<std::uint8_t> {
     static constexpr DType value = DType::Bool;
 };
 
-template <typename T>
-inline constexpr DType dtype_of_v = dtype_of<T>::value;
+template <typename T> inline constexpr DType dtype_of_v = dtype_of<T>::value;
 
-template <DType D>
-struct cpp_type;
+template <DType D> struct cpp_type;
 
-template <>
-struct cpp_type<DType::F32> {
+template <> struct cpp_type<DType::F32> {
     using type = float;
 };
-template <>
-struct cpp_type<DType::F64> {
+template <> struct cpp_type<DType::F64> {
     using type = double;
 };
-template <>
-struct cpp_type<DType::I64> {
+template <> struct cpp_type<DType::I64> {
     using type = std::int64_t;
 };
-template <>
-struct cpp_type<DType::Bool> {
+template <> struct cpp_type<DType::Bool> {
     using type = std::uint8_t;
 };
 
-template <DType D>
-using cpp_type_t = typename cpp_type<D>::type;
+template <DType D> using cpp_type_t = typename cpp_type<D>::type;
 
 // A plain static_cast would turn 2.5 into the invalid bool value 2.
-template <typename To, typename From>
-constexpr To convert_value(From value) {
+template <typename To, typename From> constexpr To convert_value(From value) {
     if constexpr (std::is_same_v<To, std::uint8_t>) {
         return value != From{0} ? To{1} : To{0};
     } else {
@@ -144,8 +131,7 @@ constexpr To convert_value(From value) {
     }
 }
 
-template <typename F>
-decltype(auto) dispatch(DType dtype, F&& f) {
+template <typename F> decltype(auto) dispatch(DType dtype, F&& f) {
     switch (dtype) {
     case DType::F32:
         return f.template operator()<float>();
@@ -159,8 +145,7 @@ decltype(auto) dispatch(DType dtype, F&& f) {
     detail::unreachable();
 }
 
-template <typename F>
-decltype(auto) dispatch_floating(DType dtype, const char* op, F&& f) {
+template <typename F> decltype(auto) dispatch_floating(DType dtype, const char* op, F&& f) {
     KAEL_CHECK(is_floating_point(dtype),
                op << " only supports floating point dtypes, got " << dtype);
     if (dtype == DType::F32) {
@@ -169,8 +154,7 @@ decltype(auto) dispatch_floating(DType dtype, const char* op, F&& f) {
     return f.template operator()<double>();
 }
 
-template <typename F>
-decltype(auto) dispatch_no_bool(DType dtype, const char* op, F&& f) {
+template <typename F> decltype(auto) dispatch_no_bool(DType dtype, const char* op, F&& f) {
     KAEL_CHECK(dtype != DType::Bool, op << " does not support dtype bool");
     if (dtype == DType::F32) {
         return f.template operator()<float>();

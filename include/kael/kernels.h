@@ -60,13 +60,11 @@ void same_dtype_kernel_out(Tensor& out, F& f, const Inputs&... inputs) {
 
 } // namespace detail
 
-template <typename F>
-Tensor unary_kernel(const Tensor& input, F f) {
+template <typename F> Tensor unary_kernel(const Tensor& input, F f) {
     return detail::same_dtype_kernel(input.dtype(), f, input);
 }
 
-template <typename F>
-Tensor floating_unary_kernel(const Tensor& input, const char* op, F f) {
+template <typename F> Tensor floating_unary_kernel(const Tensor& input, const char* op, F f) {
     const DType dtype = is_floating_point(input.dtype()) ? input.dtype() : DType::F32;
     TensorIterator iterator;
     iterator.allocate_output(dtype).add_input(input.to(dtype)).build();
@@ -74,18 +72,15 @@ Tensor floating_unary_kernel(const Tensor& input, const char* op, F f) {
     return iterator.output();
 }
 
-template <typename F>
-void unary_kernel_out(Tensor& out, const Tensor& input, F f) {
+template <typename F> void unary_kernel_out(Tensor& out, const Tensor& input, F f) {
     detail::same_dtype_kernel_out(out, f, input);
 }
 
-template <typename F>
-Tensor binary_kernel(const Tensor& a, const Tensor& b, F f) {
+template <typename F> Tensor binary_kernel(const Tensor& a, const Tensor& b, F f) {
     return detail::same_dtype_kernel(promote_types(a.dtype(), b.dtype()), f, a, b);
 }
 
-template <typename F>
-void binary_kernel_out(Tensor& out, const Tensor& a, const Tensor& b, F f) {
+template <typename F> void binary_kernel_out(Tensor& out, const Tensor& a, const Tensor& b, F f) {
     detail::same_dtype_kernel_out(out, f, a, b);
 }
 
@@ -95,8 +90,7 @@ Tensor ternary_kernel(const Tensor& a, const Tensor& b, const Tensor& c, F f) {
     return detail::same_dtype_kernel(dtype, f, a, b, c);
 }
 
-template <typename F>
-Tensor comparison_kernel(const Tensor& a, const Tensor& b, F f) {
+template <typename F> Tensor comparison_kernel(const Tensor& a, const Tensor& b, F f) {
     const DType dtype = promote_types(a.dtype(), b.dtype());
     TensorIterator iterator;
     iterator.allocate_output(DType::Bool).add_input(a.to(dtype)).add_input(b.to(dtype)).build();

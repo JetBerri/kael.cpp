@@ -1,7 +1,8 @@
 #include "kael/tensor_impl.h"
 
-#include "internal/checked_math.h"
 #include "kael/error.h"
+
+#include "internal/checked_math.h"
 
 namespace kael {
 
@@ -47,17 +48,17 @@ bool TensorImpl::is_contiguous() const {
 void TensorImpl::validate() const {
     KAEL_CHECK(storage != nullptr, "tensor has no storage");
     validate_shape(shape);
-    KAEL_CHECK(shape.size() == strides.size(),
-               "shape " << to_string(shape) << " and strides " << to_string(strides)
-                        << " have different number of dimensions");
+    KAEL_CHECK(shape.size() == strides.size(), "shape " << to_string(shape) << " and strides "
+                                                        << to_string(strides)
+                                                        << " have different number of dimensions");
     for (std::size_t i = 0; i < strides.size(); ++i) {
         KAEL_CHECK(strides[i] >= 0, "negative stride " << strides[i] << " at dimension " << i
                                                        << " in strides " << to_string(strides));
     }
     KAEL_CHECK(offset >= 0, "negative storage offset " << offset);
-    KAEL_CHECK(device == storage->device(),
-               "tensor device " << device << " does not match storage device "
-                                << storage->device());
+    KAEL_CHECK(device == storage->device(), "tensor device " << device
+                                                             << " does not match storage device "
+                                                             << storage->device());
     if (numel() > 0) {
         check_fits_in_storage(*this);
     }

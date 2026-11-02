@@ -7,6 +7,7 @@
 #include "kael/factory.h"
 #include "kael/iterator.h"
 #include "kael/scalar.h"
+
 #include "support/values.h"
 
 using kael::DType;

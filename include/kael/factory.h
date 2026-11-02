@@ -30,8 +30,7 @@ namespace detail {
 void check_value_count(std::size_t value_count, const Shape& shape);
 }
 
-template <typename T>
-Tensor from_vector(const std::vector<T>& data, const Shape& shape) {
+template <typename T> Tensor from_vector(const std::vector<T>& data, const Shape& shape) {
     detail::check_value_count(data.size(), shape);
     Tensor t = empty(shape, dtype_of_v<T>);
     if (!data.empty()) {
@@ -40,18 +39,15 @@ Tensor from_vector(const std::vector<T>& data, const Shape& shape) {
     return t;
 }
 
-template <typename T>
-Tensor from_vector(const std::vector<T>& data) {
+template <typename T> Tensor from_vector(const std::vector<T>& data) {
     return from_vector(data, Shape{static_cast<std::int64_t>(data.size())});
 }
 
-template <typename T>
-Tensor from_vector(std::initializer_list<T> data, const Shape& shape) {
+template <typename T> Tensor from_vector(std::initializer_list<T> data, const Shape& shape) {
     return from_vector(std::vector<T>(data), shape);
 }
 
-template <typename T>
-Tensor from_vector(std::initializer_list<T> data) {
+template <typename T> Tensor from_vector(std::initializer_list<T> data) {
     return from_vector(std::vector<T>(data));
 }
 

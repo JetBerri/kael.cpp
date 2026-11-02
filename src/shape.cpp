@@ -73,8 +73,8 @@ std::int64_t offset_from_index(std::span<const std::int64_t> shape,
                    << " has " << strides.size());
     KAEL_CHECK(index.size() == shape.size(),
                "index and shape have different number of dimensions: index "
-                   << join(index) << " has " << index.size() << ", shape " << join(shape)
-                   << " has " << shape.size());
+                   << join(index) << " has " << index.size() << ", shape " << join(shape) << " has "
+                   << shape.size());
 
     std::int64_t offset = base_offset;
     for (std::size_t i = 0; i < shape.size(); ++i) {
@@ -158,10 +158,9 @@ Shape infer_shape(const Shape& requested, std::int64_t element_count) {
 
     const auto inferred = std::ranges::find(requested, kInferredDim);
     if (inferred == requested.end()) {
-        KAEL_CHECK(known_count == element_count, "shape " << to_string(requested) << " has "
-                                                          << known_count
-                                                          << " elements but the tensor has "
-                                                          << element_count);
+        KAEL_CHECK(known_count == element_count,
+                   "shape " << to_string(requested) << " has " << known_count
+                            << " elements but the tensor has " << element_count);
         return requested;
     }
 

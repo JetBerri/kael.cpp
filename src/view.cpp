@@ -1,8 +1,9 @@
 #include <algorithm>
 #include <utility>
 
-#include "internal/checked_math.h"
 #include "kael/tensor.h"
+
+#include "internal/checked_math.h"
 
 namespace kael {
 
@@ -23,8 +24,7 @@ std::size_t wrapped_index(std::int64_t dim, std::int64_t ndim) {
     return static_cast<std::size_t>(wrap_dim(dim, ndim));
 }
 
-template <typename Container>
-void erase_at(Container& container, std::size_t position) {
+template <typename Container> void erase_at(Container& container, std::size_t position) {
     container.erase(container.begin() + static_cast<std::ptrdiff_t>(position));
 }
 
@@ -34,18 +34,17 @@ void insert_at(Container& container, std::size_t position, std::int64_t value) {
 }
 
 Shape resolve_expand_shape(const Shape& current, const Shape& requested) {
-    KAEL_CHECK(requested.size() >= current.size(), "cannot expand shape "
-                                                       << to_string(current) << " to "
-                                                       << to_string(requested)
-                                                       << ": too few dimensions");
+    KAEL_CHECK(requested.size() >= current.size(),
+               "cannot expand shape " << to_string(current) << " to " << to_string(requested)
+                                      << ": too few dimensions");
     const std::size_t new_dims = requested.size() - current.size();
     Shape resolved = requested;
     for (std::size_t i = 0; i < requested.size(); ++i) {
         if (requested[i] != -1) {
             continue;
         }
-        KAEL_CHECK(i >= new_dims, "expand cannot use -1 for new dimension " << i << " in shape "
-                                                                            << to_string(requested));
+        KAEL_CHECK(i >= new_dims, "expand cannot use -1 for new dimension "
+                                      << i << " in shape " << to_string(requested));
         resolved[i] = current[i - new_dims];
     }
     return resolved;
@@ -59,8 +58,8 @@ std::int64_t clamp_slice_bound(std::int64_t bound, std::int64_t size) {
 
 Tensor Tensor::view(const Shape& requested) const {
     KAEL_CHECK(is_contiguous(), "view needs a contiguous tensor, but shape "
-                                    << to_string(shape()) << " has strides "
-                                    << to_string(strides()) << "; use reshape instead");
+                                    << to_string(shape()) << " has strides " << to_string(strides())
+                                    << "; use reshape instead");
     Shape target = infer_shape(requested, numel());
     Strides target_strides = contiguous_strides(target);
     return make_view(*this, std::move(target), std::move(target_strides), offset());
@@ -168,9 +167,8 @@ Tensor Tensor::slice(std::int64_t dim, std::int64_t start, std::int64_t end,
     const std::int64_t first = clamp_slice_bound(start, shape()[position]);
     const std::int64_t last = clamp_slice_bound(end, shape()[position]);
     const std::int64_t stride = strides()[position];
-    const std::int64_t new_offset =
-        detail::checked_add(offset(), detail::checked_mul(first, stride, "slice offset"),
-                            "slice offset");
+    const std::int64_t new_offset = detail::checked_add(
+        offset(), detail::checked_mul(first, stride, "slice offset"), "slice offset");
 
     Shape new_shape = shape();
     Strides new_strides = strides();
@@ -199,9 +197,9 @@ Tensor Tensor::narrow(std::int64_t dim, std::int64_t start, std::int64_t length)
     const std::int64_t first = start < 0 ? start + size : start;
     KAEL_CHECK(first >= 0 && first <= size, "narrow start " << start << " out of range for size "
                                                             << size << " at dimension " << dim);
-    KAEL_CHECK(length >= 0 && length <= size - first,
-               "narrow length " << length << " does not fit size " << size << " from start "
-                                << first);
+    KAEL_CHECK(length >= 0 && length <= size - first, "narrow length "
+                                                          << length << " does not fit size " << size
+                                                          << " from start " << first);
     return slice(dim, first, first + length);
 }
 

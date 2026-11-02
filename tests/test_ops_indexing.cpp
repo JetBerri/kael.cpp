@@ -7,6 +7,7 @@
 #include "kael/error.h"
 #include "kael/factory.h"
 #include "kael/ops.h"
+
 #include "support/values.h"
 
 using kael::DType;
@@ -59,7 +60,8 @@ TEST(Stack, AddsADimension) {
 
 TEST(Where, PicksByCondition) {
     auto cond = kael::from_vector({true, false, true});
-    auto out = kael::where(cond, kael::from_vector({1.f, 2.f, 3.f}), kael::from_vector({4.f, 5.f, 6.f}));
+    auto out =
+        kael::where(cond, kael::from_vector({1.f, 2.f, 3.f}), kael::from_vector({4.f, 5.f, 6.f}));
     EXPECT_EQ(values<float>(out), (std::vector<float>{1, 5, 3}));
 }
 
@@ -72,14 +74,17 @@ TEST(Where, BroadcastsAllThree) {
 
 TEST(Where, AcceptsScalars) {
     auto cond = kael::from_vector({true, false});
-    EXPECT_EQ(values<float>(kael::where(cond, 1.5, kael::zeros({2}))), (std::vector<float>{1.5f, 0}));
-    EXPECT_EQ(values<float>(kael::where(cond, kael::zeros({2}), 1.5)), (std::vector<float>{0, 1.5f}));
+    EXPECT_EQ(values<float>(kael::where(cond, 1.5, kael::zeros({2}))),
+              (std::vector<float>{1.5f, 0}));
+    EXPECT_EQ(values<float>(kael::where(cond, kael::zeros({2}), 1.5)),
+              (std::vector<float>{0, 1.5f}));
     EXPECT_EQ(kael::where(cond, 1, 2).dtype(), DType::I64);
 }
 
 TEST(Where, NanInBranchesIsKept) {
     const float nan = std::numeric_limits<float>::quiet_NaN();
-    auto out = kael::where(kael::from_vector({false}), kael::from_vector({nan}), kael::from_vector({2.f}));
+    auto out =
+        kael::where(kael::from_vector({false}), kael::from_vector({nan}), kael::from_vector({2.f}));
     EXPECT_EQ(out.item<float>(), 2.f);
 }
 
