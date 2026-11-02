@@ -1,5 +1,6 @@
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -465,4 +466,60 @@ TEST(Chunk, EmptyDimensionGivesEmptyChunks) {
     ASSERT_EQ(pieces.size(), 3u);
     EXPECT_EQ(pieces[0].numel(), 0);
     EXPECT_THROW((void)iota_shaped({3}).chunk(0), kael::Error);
+}
+
+namespace {
+
+struct ViewOp {
+    enum Kind { Transpose, Permute, Slice, Select, Unsqueeze, Squeeze, Expand, Reshape };
+    Kind kind;
+    std::vector<std::int64_t> args;
+};
+
+struct ViewCase {
+    Shape initial;
+    std::vector<ViewOp> ops;
+    Shape expected_shape;
+    std::vector<std::int64_t> expected_values;
+};
+
+Tensor apply(const Tensor& t, const ViewOp& op) {
+    switch (op.kind) {
+    case ViewOp::Transpose:
+        return t.transpose(op.args[0], op.args[1]);
+    case ViewOp::Permute:
+        return t.permute(op.args);
+    case ViewOp::Slice:
+        return t.slice(op.args[0], op.args[1], op.args[2], op.args[3]);
+    case ViewOp::Select:
+        return t.select(op.args[0], op.args[1]);
+    case ViewOp::Unsqueeze:
+        return t.unsqueeze(op.args[0]);
+    case ViewOp::Squeeze:
+        return t.squeeze(op.args[0]);
+    case ViewOp::Expand:
+        return t.expand(op.args);
+    case ViewOp::Reshape:
+        return t.reshape(op.args);
+    }
+    throw kael::Error("unknown view operation");
+}
+
+} // namespace
+
+TEST(ViewChain, GeneratedNumPyCases) {
+    const std::vector<ViewCase> cases = {
+#include "generated/view_cases.inc"
+    };
+
+    for (std::size_t i = 0; i < cases.size(); ++i) {
+        SCOPED_TRACE("case " + std::to_string(i));
+        Tensor t = iota_shaped(cases[i].initial);
+        for (const ViewOp& op : cases[i].ops) {
+            t = apply(t, op);
+        }
+        EXPECT_EQ(t.shape(), cases[i].expected_shape);
+        EXPECT_EQ(values<std::int64_t>(t), cases[i].expected_values);
+        EXPECT_EQ(values<std::int64_t>(t.clone()), cases[i].expected_values);
+    }
 }
