@@ -23,6 +23,7 @@ endfunction()
 
 add_library(kael
     src/shape.cpp
+    src/storage.cpp
 )
 
 add_library(kael::kael ALIAS kael)
