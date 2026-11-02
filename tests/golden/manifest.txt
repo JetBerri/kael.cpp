@@ -653,3 +653,38 @@ op=matmul case=i64 inputs=a,b view_a=none view_b=none args=
 op=dot case=vector_vector inputs=a,b view_a=none view_b=none args=
 op=outer case=plain inputs=a,b view_a=none view_b=none args=
 op=outer case=stepped inputs=a,b view_a=slice:0:0:6:2 view_b=none args=
+op=cat case=dim0 inputs=a,b view_a=none view_b=none args=dim:0
+op=cat case=dim1 inputs=a,b view_a=none view_b=none args=dim:1
+op=cat case=negative inputs=a,b view_a=none view_b=none args=dim:-1
+op=cat case=transposed inputs=a,b view_a=transpose:0:1 view_b=none args=dim:1
+op=cat case=stepped inputs=a,b view_a=slice:0:0:6:2 view_b=none args=dim:0
+op=cat case=promotes inputs=a,b view_a=none view_b=none args=dim:0
+op=cat case=empty_part inputs=a,b view_a=none view_b=none args=dim:0
+op=stack case=dim0 inputs=a,b view_a=none view_b=none args=dim:0
+op=stack case=dim_last inputs=a,b view_a=none view_b=none args=dim:2
+op=stack case=negative inputs=a,b view_a=none view_b=none args=dim:-1
+op=stack case=transposed inputs=a,b view_a=transpose:0:1 view_b=none args=dim:1
+op=where case=same inputs=c,a,b view_c=none view_a=none view_b=none args=
+op=where case=broadcast_all inputs=c,a,b view_c=none view_a=none view_b=none args=
+op=where case=transposed inputs=c,a,b view_c=transpose:0:1 view_a=none view_b=none args=
+op=where case=promotes inputs=c,a,b view_c=none view_a=none view_b=none args=
+op=where case=empty inputs=c,a,b view_c=none view_a=none view_b=none args=
+op=masked_fill case=same inputs=x,m view_x=none view_m=none args=value:7.5
+op=masked_fill case=broadcast_mask inputs=x,m view_x=none view_m=none args=value:-1.0
+op=masked_fill case=transposed inputs=x,m view_x=transpose:0:1 view_m=none args=value:2.0
+op=masked_fill case=minus_infinity inputs=x,m view_x=none view_m=none args=value:-inf
+op=masked_fill case=i64 inputs=x,m view_x=none view_m=none args=value:9
+op=index_select case=dim0 inputs=x,i view_x=none view_i=none args=dim:0
+op=index_select case=dim1 inputs=x,i view_x=none view_i=none args=dim:1
+op=index_select case=negative inputs=x,i view_x=none view_i=none args=dim:-1
+op=index_select case=transposed inputs=x,i view_x=transpose:0:1 view_i=none args=dim:0
+op=index_select case=empty inputs=x,i view_x=none view_i=none args=dim:0
+op=gather case=dim0 inputs=x,i view_x=none view_i=none args=dim:0
+op=gather case=dim1 inputs=x,i view_x=none view_i=none args=dim:1
+op=gather case=negative inputs=x,i view_x=none view_i=none args=dim:-1
+op=gather case=transposed inputs=x,i view_x=transpose:0:1 view_i=none args=dim:1
+op=gather case=smaller_index inputs=x,i view_x=none view_i=none args=dim:1
+op=gather case=i64 inputs=x,i view_x=none view_i=none args=dim:1
+op=scatter_add_ case=dim1_repeated inputs=x,i,s view_x=none view_i=none view_s=none args=dim:1
+op=scatter_add_ case=dim0 inputs=x,i,s view_x=none view_i=none view_s=none args=dim:0
+op=scatter_add_ case=larger_source inputs=x,i,s view_x=none view_i=none view_s=none args=dim:1

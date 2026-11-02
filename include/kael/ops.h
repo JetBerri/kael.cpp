@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "kael/operand.h"
 #include "kael/tensor.h"
 
@@ -67,6 +69,13 @@ Tensor dot(const Tensor& a, const Tensor& b);
 Tensor outer(const Tensor& a, const Tensor& b);
 Tensor mm(const Tensor& a, const Tensor& b);
 Tensor bmm(const Tensor& a, const Tensor& b);
+
+Tensor cat(const std::vector<Tensor>& tensors, std::int64_t dim = 0);
+Tensor stack(const std::vector<Tensor>& tensors, std::int64_t dim = 0);
+Tensor where(const Tensor& condition, const Operand& a, const Operand& b);
+Tensor masked_fill(const Tensor& t, const Tensor& mask, Scalar value);
+Tensor index_select(const Tensor& t, std::int64_t dim, const Tensor& indices);
+Tensor gather(const Tensor& t, std::int64_t dim, const Tensor& indices);
 
 Tensor operator-(const Tensor& t);
 Tensor operator+(const Operand& a, const Operand& b);

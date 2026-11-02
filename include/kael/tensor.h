@@ -121,6 +121,8 @@ public:
     Tensor& copy_(const Tensor& source);
     Tensor& fill_(Scalar value);
     Tensor& zero_();
+    Tensor& masked_fill_(const Tensor& mask, Scalar value);
+    Tensor& scatter_add_(std::int64_t dim, const Tensor& indices, const Tensor& source);
 
     [[nodiscard]] bool is_same(const Tensor& other) const noexcept {
         return impl_ == other.impl_;

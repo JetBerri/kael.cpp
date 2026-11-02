@@ -344,6 +344,86 @@ add_cases(
     ],
 )
 
+add_cases(
+    "cat",
+    lambda a, b, dim: torch.cat([a, b], dim=dim),
+    [
+        ("dim0", {"a": spec((2, 3)), "b": spec((1, 3))}, {"dim": 0}),
+        ("dim1", {"a": spec((2, 3)), "b": spec((2, 2))}, {"dim": 1}),
+        ("negative", {"a": spec((2, 3)), "b": spec((2, 2))}, {"dim": -1}),
+        ("transposed", {"a": spec((3, 2), view="transpose:0:1"), "b": spec((2, 2))}, {"dim": 1}),
+        ("stepped", {"a": spec((6,), view="slice:0:0:6:2"), "b": spec((2,))}, {"dim": 0}),
+        ("promotes", {"a": spec((2,)), "b": spec((2,), "i64")}, {"dim": 0}),
+        ("empty_part", {"a": spec((0, 3)), "b": spec((2, 3))}, {"dim": 0}),
+    ],
+)
+add_cases(
+    "stack",
+    lambda a, b, dim: torch.stack([a, b], dim=dim),
+    [
+        ("dim0", {"a": spec((2, 3)), "b": spec((2, 3))}, {"dim": 0}),
+        ("dim_last", {"a": spec((2, 3)), "b": spec((2, 3))}, {"dim": 2}),
+        ("negative", {"a": spec((2, 3)), "b": spec((2, 3))}, {"dim": -1}),
+        ("transposed", {"a": spec((3, 2), view="transpose:0:1"), "b": spec((2, 3))}, {"dim": 1}),
+    ],
+)
+add_cases(
+    "where",
+    torch.where,
+    [
+        ("same", {"c": spec((3, 4), "bool"), "a": spec((3, 4)), "b": spec((3, 4))}, {}),
+        ("broadcast_all", {"c": spec((2, 1), "bool"), "a": spec((3,)), "b": spec((2, 3))}, {}),
+        ("transposed", {"c": spec((4, 3), "bool", view="transpose:0:1"), "a": spec((3, 4)), "b": spec(())}, {}),
+        ("promotes", {"c": spec((3,), "bool"), "a": spec((3,), "i64"), "b": spec((3,))}, {}),
+        ("empty", {"c": spec((0,), "bool"), "a": spec((0,)), "b": spec((0,))}, {}),
+    ],
+)
+add_cases(
+    "masked_fill",
+    lambda x, m, value: x.masked_fill(m, value),
+    [
+        ("same", {"x": spec((3, 4)), "m": spec((3, 4), "bool")}, {"value": 7.5}),
+        ("broadcast_mask", {"x": spec((2, 3)), "m": spec((3,), "bool")}, {"value": -1.0}),
+        ("transposed", {"x": spec((4, 3), view="transpose:0:1"), "m": spec((3, 4), "bool")}, {"value": 2.0}),
+        ("minus_infinity", {"x": spec((3,)), "m": spec((3,), "bool")}, {"value": -float("inf")}),
+        ("i64", {"x": spec((4,), "i64"), "m": spec((4,), "bool")}, {"value": 9}),
+    ],
+)
+INDICES_1D = spec((4,), "i64", values=[2, 0, 2, 1])
+add_cases(
+    "index_select",
+    lambda x, i, dim: torch.index_select(x, dim, i),
+    [
+        ("dim0", {"x": spec((3, 4)), "i": INDICES_1D}, {"dim": 0}),
+        ("dim1", {"x": spec((2, 3)), "i": INDICES_1D}, {"dim": 1}),
+        ("negative", {"x": spec((2, 3)), "i": INDICES_1D}, {"dim": -1}),
+        ("transposed", {"x": spec((4, 3), view="transpose:0:1"), "i": INDICES_1D}, {"dim": 0}),
+        ("empty", {"x": spec((3, 4)), "i": spec((0,), "i64", values=[])}, {"dim": 0}),
+    ],
+)
+GATHER_INDEX = spec((2, 3), "i64", values=[0, 1, 0, 1, 1, 0])
+add_cases(
+    "gather",
+    lambda x, i, dim: torch.gather(x, dim, i),
+    [
+        ("dim0", {"x": spec((2, 3)), "i": GATHER_INDEX}, {"dim": 0}),
+        ("dim1", {"x": spec((2, 4)), "i": GATHER_INDEX}, {"dim": 1}),
+        ("negative", {"x": spec((2, 4)), "i": GATHER_INDEX}, {"dim": -1}),
+        ("transposed", {"x": spec((3, 2), view="transpose:0:1"), "i": GATHER_INDEX}, {"dim": 1}),
+        ("smaller_index", {"x": spec((5, 4)), "i": GATHER_INDEX}, {"dim": 1}),
+        ("i64", {"x": spec((2, 3), "i64"), "i": GATHER_INDEX}, {"dim": 1}),
+    ],
+)
+add_cases(
+    "scatter_add_",
+    lambda x, i, s, dim: x.scatter_add_(dim, i, s),
+    [
+        ("dim1_repeated", {"x": spec((2, 4)), "i": GATHER_INDEX, "s": spec((2, 3))}, {"dim": 1}),
+        ("dim0", {"x": spec((2, 3)), "i": GATHER_INDEX, "s": spec((2, 3))}, {"dim": 0}),
+        ("larger_source", {"x": spec((2, 4)), "i": GATHER_INDEX, "s": spec((3, 5))}, {"dim": 1}),
+    ],
+)
+
 
 def main():
     if GOLDEN_DIR.exists():

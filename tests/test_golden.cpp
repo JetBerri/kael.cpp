@@ -192,6 +192,35 @@ const std::map<std::string, GoldenOp>& golden_ops() {
         {"matmul", tensor_pair(kael::matmul)},
         {"dot", tensor_pair(kael::dot)},
         {"outer", tensor_pair(kael::outer)},
+        {"cat",
+         [](const Inputs& inputs, const Args& args) {
+             return kael::cat(inputs, args.integer("dim"));
+         }},
+        {"stack",
+         [](const Inputs& inputs, const Args& args) {
+             return kael::stack(inputs, args.integer("dim"));
+         }},
+        {"where",
+         [](const Inputs& inputs, const Args&) {
+             return kael::where(inputs[0], inputs[1], inputs[2]);
+         }},
+        {"masked_fill",
+         [](const Inputs& inputs, const Args& args) {
+             return kael::masked_fill(inputs[0], inputs[1], args.real("value"));
+         }},
+        {"index_select",
+         [](const Inputs& inputs, const Args& args) {
+             return kael::index_select(inputs[0], args.integer("dim"), inputs[1]);
+         }},
+        {"gather",
+         [](const Inputs& inputs, const Args& args) {
+             return kael::gather(inputs[0], args.integer("dim"), inputs[1]);
+         }},
+        {"scatter_add_",
+         [](const Inputs& inputs, const Args& args) {
+             Tensor self = inputs[0];
+             return self.scatter_add_(args.integer("dim"), inputs[1], inputs[2]);
+         }},
         {"clamp",
          [](const Inputs& inputs, const Args& args) {
              return kael::clamp(inputs[0], args.real("min"), args.real("max"));
