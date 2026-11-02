@@ -79,6 +79,7 @@ add_library(kael
     src/ops/indexing.cpp
     src/ops/nn.cpp
     src/ops/sequence.cpp
+    src/io/safetensors.cpp
     src/autograd/grad_mode.cpp
     src/autograd/tensor_autograd.cpp
     src/autograd/node.cpp
@@ -107,6 +108,15 @@ target_include_directories(kael PUBLIC include PRIVATE src)
 target_compile_features(kael PUBLIC cxx_std_20)
 target_compile_definitions(kael PRIVATE KAEL_VERSION="${PROJECT_VERSION}")
 kael_configure_target(kael)
+
+include(FetchContent)
+FetchContent_Declare(
+    nlohmann_json
+    URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+)
+set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(nlohmann_json)
+target_link_libraries(kael PRIVATE nlohmann_json::nlohmann_json)
 
 if (KAEL_BUILD_PYTHON)
     set_target_properties(kael PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -149,8 +159,6 @@ if (KAEL_NATIVE)
         target_compile_options(kael PRIVATE -mcpu=native)
     endif ()
 endif ()
-
-include(FetchContent)
 
 if (KAEL_BUILD_TESTS)
     FetchContent_Declare(
