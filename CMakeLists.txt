@@ -96,6 +96,7 @@ add_library(kael
     src/nn/functional.cpp
     src/nn/loss.cpp
     src/nn/layers.cpp
+    src/nn/transformer.cpp
     src/optim/optimizer.cpp
     src/data/dataset.cpp
     src/data/mnist.cpp

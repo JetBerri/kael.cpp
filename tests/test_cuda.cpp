@@ -14,6 +14,7 @@
 #include "kael/nn/linear.h"
 #include "kael/nn/loss.h"
 #include "kael/nn/sequential.h"
+#include "kael/nn/transformer.h"
 #include "kael/optim/adam.h"
 #include "kael/optim/clip.h"
 
@@ -535,4 +536,41 @@ TEST_F(Cuda, DeviceBlocksAreCached) {
     EXPECT_EQ(after.misses, before.misses);
     kael::empty_cache();
     EXPECT_EQ(kael::allocator_stats(Device::CUDA).cached_bytes, 0);
+}
+
+TEST_F(Cuda, SequenceOpsMatchCpu) {
+    const Tensor x = kael::randn({5, 6});
+    expect_matches_cpu(kael::cumsum(x.cuda(), 1), kael::cumsum(x, 1), "cumsum");
+    expect_matches_cpu(kael::sort(x.cuda(), 1).values, kael::sort(x, 1).values, "sort");
+    expect_matches_cpu(kael::topk(x.cuda(), 2).indices, kael::topk(x, 2).indices, "topk");
+    expect_matches_cpu(kael::tril(x.cuda()), kael::tril(x), "tril");
+    expect_matches_cpu(kael::triu(x.cuda(), 1), kael::triu(x, 1), "triu");
+    EXPECT_EQ(kael::multinomial(kael::ones({3}).cuda(), 2, true).device(), Device::CUDA);
+}
+
+TEST_F(Cuda, GptMatchesCpuIncludingTheCacheAndGeneration) {
+    kael::nn::GptConfig config;
+    config.vocab_size = 11;
+    config.max_positions = 16;
+    config.layers = 2;
+    config.heads = 2;
+    config.dimension = 8;
+    config.dtype = DType::F64;
+    kael::manual_seed(31);
+    kael::nn::GPT model(config);
+    const Tensor tokens = kael::randint(0, 11, {2, 6});
+    const Tensor expected = model(tokens);
+    const Tensor generated_on_cpu =
+        kael::nn::generate(model, tokens, {.max_new_tokens = 4, .temperature = 0.0});
+    model.to(Device::CUDA);
+    expect_matches_cpu(model(tokens.cuda()), expected, "logits");
+    expect_matches_cpu(
+        kael::nn::generate(model, tokens.cuda(), {.max_new_tokens = 4, .temperature = 0.0}),
+        generated_on_cpu, "generate");
+    expect_matches_cpu(
+        kael::nn::generate(model, tokens.cuda(),
+                           {.max_new_tokens = 4, .temperature = 0.0, .use_cache = false}),
+        generated_on_cpu, "generate without cache");
+    kael::sum(model(tokens.cuda())).backward();
+    EXPECT_EQ(model.parameters()[0].grad()->device(), Device::CUDA);
 }

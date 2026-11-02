@@ -38,6 +38,7 @@ add_executable(kael_tests
     test_cuda_absent.cpp
     test_sequence_ops.cpp
     test_safetensors.cpp
+    test_transformer.cpp
     support/npy.cpp
 )
 
