@@ -14,13 +14,25 @@ kael is a deep learning framework written from zero in modern C++, with no depen
 |-------|------|--------|
 | 1 | Project skeleton: CMake, GoogleTest, `kael::Error`, CI | ✅ |
 | 2 | Shapes, strides, indexing and broadcasting | ✅ [chapter](docs/01-shapes-and-strides.md) |
-| 3 | Storage and Tensor | ⬜ |
+| 3 | Storage and Tensor | ✅ [chapter](docs/02-memory-model.md) |
 | 4 | Views: reshape, transpose and slicing without copying | ⬜ |
 | 5 | Elementwise ops with broadcasting | ⬜ |
 | 6 | Matmul and reductions | ⬜ |
 | 7 | Autograd | ⬜ |
 | 8 | Layers, losses and optimizers | ⬜ |
 | 9 | Train MNIST | ⬜ |
+
+## Usage
+
+```cpp
+#include "kael/kael.h"
+
+kael::Tensor a = kael::arange(0, 6).to(kael::DType::F64);
+kael::Tensor b = a;          // shares data with a
+kael::Tensor c = a.clone();  // independent copy
+b.at<double>({0}) = 7.0;
+std::cout << a << "\n";      // tensor([7.0000, 1.0000, ...], shape=[6], dtype=float64)
+```
 
 ## Roadmap
 
@@ -59,3 +71,4 @@ legacy/         old experiments kept for reference
 All chapters live in [docs/](docs/).
 
 - [01. Shapes and strides](docs/01-shapes-and-strides.md)
+- [02. The memory model](docs/02-memory-model.md)
