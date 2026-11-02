@@ -323,3 +323,146 @@ TEST(Expand, HasInternalOverlap) {
     EXPECT_TRUE(t.expand({2, 3}).has_internal_overlap());
     EXPECT_FALSE(t.expand({1, 3}).has_internal_overlap());
 }
+
+TEST(Slice, StepExample) {
+    auto t = iota_shaped({10});
+    auto s = t.slice(0, 2, 9, 3);
+    EXPECT_EQ(s.shape(), (Shape{3}));
+    EXPECT_EQ(s.strides(), (Strides{3}));
+    EXPECT_EQ(s.offset(), 2);
+    EXPECT_TRUE(s.shares_storage(t));
+    EXPECT_EQ(values<std::int64_t>(s), (std::vector<std::int64_t>{2, 5, 8}));
+}
+
+TEST(Slice, TwoDimensionalExample) {
+    auto s = iota_shaped({4, 5}).slice(1, 1, 4);
+    EXPECT_EQ(s.shape(), (Shape{4, 3}));
+    EXPECT_EQ(s.strides(), (Strides{5, 1}));
+    EXPECT_EQ(s.offset(), 1);
+    EXPECT_FALSE(s.is_contiguous());
+    EXPECT_EQ(s.at<std::int64_t>({1, 0}), 6);
+}
+
+TEST(Slice, NegativeBoundsAndDims) {
+    auto t = iota_shaped({5});
+    EXPECT_EQ(values<std::int64_t>(t.slice(-1, -3, -1)), (std::vector<std::int64_t>{2, 3}));
+}
+
+TEST(Slice, BoundsAreClamped) {
+    auto t = iota_shaped({5});
+    EXPECT_EQ(t.slice(0, 0, 100).numel(), 5);
+    EXPECT_EQ(t.slice(0, -100, 2).numel(), 2);
+    EXPECT_EQ(t.slice(0, 3, INT64_MAX).numel(), 2);
+}
+
+TEST(Slice, EmptyResult) {
+    auto t = iota_shaped({5});
+    EXPECT_EQ(t.slice(0, 3, 2).numel(), 0);
+    EXPECT_EQ(t.slice(0, 5, 5).numel(), 0);
+    EXPECT_TRUE(t.slice(0, 5, 5).is_contiguous());
+}
+
+TEST(Slice, BadStepThrows) {
+    auto t = iota_shaped({5});
+    EXPECT_THROW((void)t.slice(0, 0, 5, 0), kael::Error);
+    EXPECT_THROW((void)t.slice(0, 0, 5, -1), kael::Error);
+}
+
+TEST(Select, RemovesTheDimension) {
+    auto t = iota_shaped({2, 3});
+    auto row = t.select(0, 1);
+    EXPECT_EQ(row.shape(), (Shape{3}));
+    EXPECT_EQ(row.offset(), 3);
+    EXPECT_EQ(values<std::int64_t>(row), (std::vector<std::int64_t>{3, 4, 5}));
+    EXPECT_EQ(values<std::int64_t>(t.select(1, -1)), (std::vector<std::int64_t>{2, 5}));
+}
+
+TEST(Select, OutOfRangeThrows) {
+    auto t = iota_shaped({2, 3});
+    EXPECT_THROW((void)t.select(0, 2), kael::Error);
+    EXPECT_THROW((void)t.select(0, -3), kael::Error);
+    EXPECT_THROW((void)t.select(2, 0), kael::Error);
+}
+
+TEST(Narrow, IsAStrictSlice) {
+    auto t = iota_shaped({5});
+    EXPECT_EQ(values<std::int64_t>(t.narrow(0, 1, 3)), (std::vector<std::int64_t>{1, 2, 3}));
+    EXPECT_EQ(values<std::int64_t>(t.narrow(0, -2, 2)), (std::vector<std::int64_t>{3, 4}));
+    EXPECT_EQ(t.narrow(0, 5, 0).numel(), 0);
+    EXPECT_THROW((void)t.narrow(0, 3, 3), kael::Error);
+    EXPECT_THROW((void)t.narrow(0, 6, 0), kael::Error);
+    EXPECT_THROW((void)t.narrow(0, 0, -1), kael::Error);
+}
+
+TEST(ViewChain, SliceOverTransposeOverSelect) {
+    auto t = iota_shaped({3, 4, 5});
+    auto chained = t.select(0, 1).transpose(0, 1).slice(0, 1, 5, 2);
+    EXPECT_EQ(chained.shape(), (Shape{2, 4}));
+    EXPECT_EQ(values<std::int64_t>(chained),
+              (std::vector<std::int64_t>{21, 26, 31, 36, 23, 28, 33, 38}));
+}
+
+TEST(Flatten, DimensionRanges) {
+    auto t = iota_shaped({2, 3, 4});
+    EXPECT_EQ(t.flatten().shape(), (Shape{24}));
+    EXPECT_EQ(t.flatten(1).shape(), (Shape{2, 12}));
+    EXPECT_EQ(t.flatten(0, 1).shape(), (Shape{6, 4}));
+    EXPECT_EQ(t.flatten(-2, -1).shape(), (Shape{2, 12}));
+    EXPECT_TRUE(t.flatten(1, 1).is_same(t));
+    EXPECT_THROW((void)t.flatten(2, 1), kael::Error);
+}
+
+TEST(Flatten, ScalarBecomesOneDimensional) {
+    EXPECT_EQ(kael::scalar(1).flatten().shape(), (Shape{1}));
+}
+
+TEST(Flatten, NonContiguousCopiesInLogicalOrder) {
+    auto tr = iota_shaped({2, 3}).T();
+    EXPECT_EQ(values<std::int64_t>(tr.flatten()), (std::vector<std::int64_t>{0, 3, 1, 4, 2, 5}));
+}
+
+TEST(Unflatten, InverseOfFlatten) {
+    auto t = iota_shaped({2, 12});
+    EXPECT_EQ(t.unflatten(1, {3, 4}).shape(), (Shape{2, 3, 4}));
+    EXPECT_EQ(t.unflatten(-1, {-1, 4}).shape(), (Shape{2, 3, 4}));
+    EXPECT_TRUE(t.unflatten(1, {3, 4}).shares_storage(t));
+    EXPECT_THROW((void)t.unflatten(1, {5, 5}), kael::Error);
+}
+
+TEST(Split, LastPieceCanBeSmaller) {
+    auto t = iota_shaped({5, 2});
+    auto pieces = t.split(2);
+    ASSERT_EQ(pieces.size(), 3u);
+    EXPECT_EQ(pieces[0].shape(), (Shape{2, 2}));
+    EXPECT_EQ(pieces[2].shape(), (Shape{1, 2}));
+    for (const auto& piece : pieces) {
+        EXPECT_TRUE(piece.shares_storage(t));
+    }
+    EXPECT_EQ(values<std::int64_t>(pieces[2]), (std::vector<std::int64_t>{8, 9}));
+}
+
+TEST(Split, AlongOtherDimAndErrors) {
+    auto t = iota_shaped({2, 5});
+    EXPECT_EQ(t.split(3, -1)[1].shape(), (Shape{2, 2}));
+    EXPECT_THROW((void)t.split(0), kael::Error);
+    EXPECT_EQ(iota_shaped({0}).split(2).size(), 1u);
+}
+
+TEST(Chunk, MatchesPyTorchSizes) {
+    auto pieces = iota_shaped({10}).chunk(3);
+    ASSERT_EQ(pieces.size(), 3u);
+    EXPECT_EQ(pieces[0].numel(), 4);
+    EXPECT_EQ(pieces[1].numel(), 4);
+    EXPECT_EQ(pieces[2].numel(), 2);
+}
+
+TEST(Chunk, CanReturnFewerChunks) {
+    EXPECT_EQ(iota_shaped({2}).chunk(5).size(), 2u);
+}
+
+TEST(Chunk, EmptyDimensionGivesEmptyChunks) {
+    auto pieces = iota_shaped({0}).chunk(3);
+    ASSERT_EQ(pieces.size(), 3u);
+    EXPECT_EQ(pieces[0].numel(), 0);
+    EXPECT_THROW((void)iota_shaped({3}).chunk(0), kael::Error);
+}

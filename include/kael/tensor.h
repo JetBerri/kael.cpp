@@ -93,6 +93,14 @@ public:
     // The result reads several logical positions from one element: do not write to it.
     [[nodiscard]] Tensor expand(const Shape& shape) const;
     [[nodiscard]] bool has_internal_overlap() const;
+    [[nodiscard]] Tensor slice(std::int64_t dim, std::int64_t start, std::int64_t end,
+                               std::int64_t step = 1) const;
+    [[nodiscard]] Tensor select(std::int64_t dim, std::int64_t index) const;
+    [[nodiscard]] Tensor narrow(std::int64_t dim, std::int64_t start, std::int64_t length) const;
+    [[nodiscard]] Tensor flatten(std::int64_t start_dim = 0, std::int64_t end_dim = -1) const;
+    [[nodiscard]] Tensor unflatten(std::int64_t dim, const Shape& sizes) const;
+    [[nodiscard]] std::vector<Tensor> split(std::int64_t chunk_size, std::int64_t dim = 0) const;
+    [[nodiscard]] std::vector<Tensor> chunk(std::int64_t chunks, std::int64_t dim = 0) const;
 
     [[nodiscard]] bool is_same(const Tensor& other) const noexcept {
         return impl_ == other.impl_;

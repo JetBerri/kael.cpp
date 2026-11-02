@@ -1,5 +1,7 @@
+#include <algorithm>
 #include <utility>
 
+#include "internal/checked_math.h"
 #include "kael/tensor.h"
 
 namespace kael {
@@ -47,6 +49,10 @@ Shape resolve_expand_shape(const Shape& current, const Shape& requested) {
         resolved[i] = current[i - new_dims];
     }
     return resolved;
+}
+
+std::int64_t clamp_slice_bound(std::int64_t bound, std::int64_t size) {
+    return std::clamp(bound < 0 ? bound + size : bound, std::int64_t{0}, size);
 }
 
 } // namespace
@@ -152,6 +158,107 @@ bool Tensor::has_internal_overlap() const {
         }
     }
     return false;
+}
+
+Tensor Tensor::slice(std::int64_t dim, std::int64_t start, std::int64_t end,
+                     std::int64_t step) const {
+    KAEL_CHECK(step > 0, "slice step must be positive, got " << step);
+
+    const std::size_t position = wrapped_index(dim, this->dim());
+    const std::int64_t first = clamp_slice_bound(start, shape()[position]);
+    const std::int64_t last = clamp_slice_bound(end, shape()[position]);
+    const std::int64_t stride = strides()[position];
+    const std::int64_t new_offset =
+        detail::checked_add(offset(), detail::checked_mul(first, stride, "slice offset"),
+                            "slice offset");
+
+    Shape new_shape = shape();
+    Strides new_strides = strides();
+    new_shape[position] = last > first ? (last - first - 1) / step + 1 : 0;
+    new_strides[position] = detail::checked_mul(stride, step, "slice stride");
+    return make_view(*this, std::move(new_shape), std::move(new_strides), new_offset);
+}
+
+Tensor Tensor::select(std::int64_t dim, std::int64_t index) const {
+    const std::size_t position = wrapped_index(dim, this->dim());
+    const std::int64_t size = shape()[position];
+    const std::int64_t wrapped = index < 0 ? index + size : index;
+    KAEL_CHECK(wrapped >= 0 && wrapped < size, "select index " << index << " out of range for size "
+                                                               << size << " at dimension " << dim);
+
+    Shape new_shape = shape();
+    Strides new_strides = strides();
+    const std::int64_t new_offset = offset() + wrapped * strides()[position];
+    erase_at(new_shape, position);
+    erase_at(new_strides, position);
+    return make_view(*this, std::move(new_shape), std::move(new_strides), new_offset);
+}
+
+Tensor Tensor::narrow(std::int64_t dim, std::int64_t start, std::int64_t length) const {
+    const std::int64_t size = shape()[wrapped_index(dim, this->dim())];
+    const std::int64_t first = start < 0 ? start + size : start;
+    KAEL_CHECK(first >= 0 && first <= size, "narrow start " << start << " out of range for size "
+                                                            << size << " at dimension " << dim);
+    KAEL_CHECK(length >= 0 && length <= size - first,
+               "narrow length " << length << " does not fit size " << size << " from start "
+                                << first);
+    return slice(dim, first, first + length);
+}
+
+Tensor Tensor::flatten(std::int64_t start_dim, std::int64_t end_dim) const {
+    if (dim() == 0) {
+        return reshape({1});
+    }
+    const std::size_t first = wrapped_index(start_dim, dim());
+    const std::size_t last = wrapped_index(end_dim, dim());
+    KAEL_CHECK(first <= last,
+               "flatten start dimension " << start_dim << " is after end dimension " << end_dim);
+    if (first == last) {
+        return *this;
+    }
+
+    const auto begin = shape().begin();
+    const auto first_it = begin + static_cast<std::ptrdiff_t>(first);
+    const auto after_last_it = begin + static_cast<std::ptrdiff_t>(last) + 1;
+
+    Shape target(begin, first_it);
+    target.push_back(kael::numel(Shape(first_it, after_last_it)));
+    target.insert(target.end(), after_last_it, shape().end());
+    return reshape(target);
+}
+
+Tensor Tensor::unflatten(std::int64_t dim, const Shape& sizes) const {
+    const std::size_t position = wrapped_index(dim, this->dim());
+    const Shape resolved = infer_shape(sizes, shape()[position]);
+
+    const auto position_it = shape().begin() + static_cast<std::ptrdiff_t>(position);
+    Shape target(shape().begin(), position_it);
+    target.insert(target.end(), resolved.begin(), resolved.end());
+    target.insert(target.end(), position_it + 1, shape().end());
+    return reshape(target);
+}
+
+std::vector<Tensor> Tensor::split(std::int64_t chunk_size, std::int64_t dim) const {
+    KAEL_CHECK(chunk_size > 0, "split size must be positive, got " << chunk_size);
+
+    const std::int64_t total = size(dim);
+    std::vector<Tensor> pieces;
+    std::int64_t start = 0;
+    do {
+        pieces.push_back(narrow(dim, start, std::min(chunk_size, total - start)));
+        start += chunk_size;
+    } while (start < total);
+    return pieces;
+}
+
+std::vector<Tensor> Tensor::chunk(std::int64_t chunks, std::int64_t dim) const {
+    KAEL_CHECK(chunks > 0, "chunk count must be positive, got " << chunks);
+
+    const std::int64_t total = size(dim);
+    if (total == 0) {
+        return std::vector<Tensor>(static_cast<std::size_t>(chunks), narrow(dim, 0, 0));
+    }
+    return split((total + chunks - 1) / chunks, dim);
 }
 
 } // namespace kael
