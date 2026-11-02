@@ -27,6 +27,12 @@ jobs:
             cc: clang
             cxx: clang++
             sanitizers: ON
+          - name: linux-clang-tsan
+            os: ubuntu-latest
+            cc: clang
+            cxx: clang++
+            sanitizers: OFF
+            tsan: ON
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     env:
@@ -39,6 +45,7 @@ jobs:
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
           -DKAEL_WARNINGS_AS_ERRORS=ON
           -DKAEL_ENABLE_SANITIZERS=${{ matrix.sanitizers }}
+          -DKAEL_ENABLE_TSAN=${{ matrix.tsan || 'OFF' }}
       - name: Build
         run: cmake --build build --parallel
       - name: Test

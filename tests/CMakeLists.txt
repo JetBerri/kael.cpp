@@ -29,6 +29,7 @@ add_executable(kael_tests
     test_optim.cpp
     test_data.cpp
     test_training.cpp
+    test_parallel.cpp
     support/npy.cpp
 )
 

@@ -10,6 +10,7 @@
 #include "kael/factory.h"
 #include "kael/kernels.h"
 #include "kael/ops.h"
+#include "kael/parallel.h"
 #include "kael/random.h"
 #include "kael/shape.h"
 #include "kael/storage.h"

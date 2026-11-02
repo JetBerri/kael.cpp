@@ -3,8 +3,13 @@ project(kael VERSION 0.1.0 LANGUAGES CXX)
 
 option(KAEL_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 option(KAEL_ENABLE_SANITIZERS "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+option(KAEL_ENABLE_TSAN "Build with ThreadSanitizer" OFF)
 option(KAEL_BUILD_BENCHMARKS "Build the benchmarks (use a Release build)" OFF)
 option(KAEL_BUILD_EXAMPLES "Build the examples" OFF)
+
+if (KAEL_ENABLE_SANITIZERS AND KAEL_ENABLE_TSAN)
+    message(FATAL_ERROR "ThreadSanitizer cannot be combined with AddressSanitizer")
+endif ()
 
 function(kael_configure_target target)
     set(gcc_like "$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>")
@@ -19,6 +24,11 @@ function(kael_configure_target target)
         target_compile_options(${target} PRIVATE $<${gcc_like}:${san_flags}>)
         target_link_options(${target} PRIVATE $<${gcc_like}:${san_flags}>)
     endif ()
+    if (KAEL_ENABLE_TSAN)
+        set(tsan_flags -fsanitize=thread -fno-omit-frame-pointer)
+        target_compile_options(${target} PRIVATE $<${gcc_like}:${tsan_flags}>)
+        target_link_options(${target} PRIVATE $<${gcc_like}:${tsan_flags}>)
+    endif ()
 endfunction()
 
 add_library(kael
@@ -32,6 +42,7 @@ add_library(kael
     src/copy.cpp
     src/view.cpp
     src/iterator.cpp
+    src/parallel.cpp
     src/ops/binary.cpp
     src/ops/unary.cpp
     src/ops/inplace.cpp
@@ -67,6 +78,9 @@ target_include_directories(kael PUBLIC include PRIVATE src)
 target_compile_features(kael PUBLIC cxx_std_20)
 target_compile_definitions(kael PRIVATE KAEL_VERSION="${PROJECT_VERSION}")
 kael_configure_target(kael)
+
+find_package(Threads REQUIRED)
+target_link_libraries(kael PUBLIC Threads::Threads)
 
 include(FetchContent)
 FetchContent_Declare(
