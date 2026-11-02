@@ -35,7 +35,7 @@ Tensor dropout(const Tensor& input, double p, bool training) {
         return input;
     }
     const double keep = 1.0 - p;
-    return input * bernoulli(input.shape(), keep, input.dtype()) / keep;
+    return input * bernoulli(input.shape(), keep, input.dtype()).to(input.device()) / keep;
 }
 
 } // namespace kael::nn::functional

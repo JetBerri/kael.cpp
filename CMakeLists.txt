@@ -7,14 +7,34 @@ option(KAEL_ENABLE_TSAN "Build with ThreadSanitizer" OFF)
 option(KAEL_BUILD_BENCHMARKS "Build the benchmarks (use a Release build)" OFF)
 option(KAEL_BUILD_EXAMPLES "Build the examples" OFF)
 option(KAEL_USE_BLAS "Multiply matrices with the system BLAS" OFF)
+option(KAEL_ENABLE_CUDA "Build the CUDA backend" OFF)
+option(KAEL_FAKE_CUDA "Run the CUDA kernels on the host, to test them without a GPU" OFF)
+option(KAEL_USE_CUBLAS "Multiply matrices on the device with cuBLAS" OFF)
 option(KAEL_NATIVE "Optimize for the CPU of the build machine" OFF)
 
 if (KAEL_ENABLE_SANITIZERS AND KAEL_ENABLE_TSAN)
     message(FATAL_ERROR "ThreadSanitizer cannot be combined with AddressSanitizer")
 endif ()
 
+if (KAEL_ENABLE_CUDA AND KAEL_FAKE_CUDA)
+    message(FATAL_ERROR "KAEL_ENABLE_CUDA and KAEL_FAKE_CUDA are mutually exclusive")
+endif ()
+
+if (KAEL_ENABLE_CUDA)
+    enable_language(CUDA)
+    find_package(CUDAToolkit REQUIRED)
+    set(CMAKE_CUDA_STANDARD 20)
+    set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+    set(kael_device_backend src/cuda/backend.cu)
+elseif (KAEL_FAKE_CUDA)
+    set(kael_device_backend src/cuda/backend_fake.cpp)
+else ()
+    set(kael_device_backend src/cuda/backend_none.cpp)
+endif ()
+
 function(kael_configure_target target)
-    set(gcc_like "$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>")
+    set(gcc_family "$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>")
+    set(gcc_like "$<AND:$<COMPILE_LANGUAGE:CXX>,${gcc_family}>")
     target_compile_options(${target} PRIVATE
         $<${gcc_like}:-Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion>
     )
@@ -24,12 +44,12 @@ function(kael_configure_target target)
     if (KAEL_ENABLE_SANITIZERS)
         set(san_flags -fsanitize=address,undefined -fno-omit-frame-pointer)
         target_compile_options(${target} PRIVATE $<${gcc_like}:${san_flags}>)
-        target_link_options(${target} PRIVATE $<${gcc_like}:${san_flags}>)
+        target_link_options(${target} PRIVATE $<${gcc_family}:${san_flags}>)
     endif ()
     if (KAEL_ENABLE_TSAN)
         set(tsan_flags -fsanitize=thread -fno-omit-frame-pointer)
         target_compile_options(${target} PRIVATE $<${gcc_like}:${tsan_flags}>)
-        target_link_options(${target} PRIVATE $<${gcc_like}:${tsan_flags}>)
+        target_link_options(${target} PRIVATE $<${gcc_family}:${tsan_flags}>)
     endif ()
 endfunction()
 
@@ -46,6 +66,8 @@ add_library(kael
     src/iterator.cpp
     src/parallel.cpp
     src/allocator.cpp
+    src/device.cpp
+    ${kael_device_backend}
     src/linalg/matmul_versions.cpp
     src/ops/binary.cpp
     src/ops/unary.cpp
@@ -85,6 +107,14 @@ kael_configure_target(kael)
 
 if (KAEL_ENABLE_SANITIZERS OR KAEL_ENABLE_TSAN)
     target_compile_definitions(kael PRIVATE KAEL_NO_CACHING_ALLOCATOR)
+endif ()
+
+if (KAEL_ENABLE_CUDA)
+    target_link_libraries(kael PUBLIC CUDA::cudart)
+    if (KAEL_USE_CUBLAS)
+        target_link_libraries(kael PRIVATE CUDA::cublas)
+        target_compile_definitions(kael PRIVATE KAEL_USE_CUBLAS)
+    endif ()
 endif ()
 
 find_package(Threads REQUIRED)

@@ -54,9 +54,9 @@ void record_index_select(const Tensor& out, const Tensor& x, std::int64_t dim,
                          const Tensor& indices) {
     if (should_record(out, {&x})) {
         set_history(out, "IndexSelectBackward", {x},
-                    {[shape = x.shape(), dtype = x.dtype(), dim,
+                    {[shape = x.shape(), dtype = x.dtype(), device = x.device(), dim,
                       saved = SavedTensor(indices)](const Tensor& g) {
-                        Tensor full_gradient = zeros(shape, dtype);
+                        Tensor full_gradient = zeros(shape, dtype, device);
                         full_gradient.index_add_(dim, saved.get(), g);
                         return full_gradient;
                     }});
@@ -66,9 +66,9 @@ void record_index_select(const Tensor& out, const Tensor& x, std::int64_t dim,
 void record_gather(const Tensor& out, const Tensor& x, std::int64_t dim, const Tensor& indices) {
     if (should_record(out, {&x})) {
         set_history(out, "GatherBackward", {x},
-                    {[shape = x.shape(), dtype = x.dtype(), dim,
+                    {[shape = x.shape(), dtype = x.dtype(), device = x.device(), dim,
                       saved = SavedTensor(indices)](const Tensor& g) {
-                        Tensor full_gradient = zeros(shape, dtype);
+                        Tensor full_gradient = zeros(shape, dtype, device);
                         full_gradient.scatter_add_(dim, saved.get(), g);
                         return full_gradient;
                     }});

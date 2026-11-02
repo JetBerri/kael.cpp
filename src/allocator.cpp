@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "kael/device_kernels.h"
 #include "kael/error.h"
 #include "kael/storage.h"
 
@@ -24,22 +25,28 @@ constexpr bool kCachingCompiledIn = false;
 constexpr bool kCachingCompiledIn = true;
 #endif
 
-std::byte* system_allocate(std::int64_t capacity) {
+std::byte* host_allocate(std::int64_t capacity) {
     return static_cast<std::byte*>(
         ::operator new(static_cast<std::size_t>(capacity), std::align_val_t{Storage::kAlignment}));
 }
 
-void system_free(std::byte* block) noexcept {
+void host_free(std::byte* block) noexcept {
     ::operator delete(block, std::align_val_t{Storage::kAlignment});
 }
 
 class BlockCache {
 public:
+    using Allocate = std::byte* (*)(std::int64_t);
+    using Free = void (*)(std::byte*) noexcept;
+
+    BlockCache(Allocate system_allocate, Free system_free)
+        : system_allocate_(system_allocate), system_free_(system_free) {}
+
     std::byte* allocate(std::int64_t capacity) {
         if (std::byte* cached = take_cached(capacity)) {
             return cached;
         }
-        std::byte* block = system_allocate(capacity);
+        std::byte* block = system_allocate_(capacity);
         const std::lock_guard lock(mutex_);
         stats_.in_use_bytes += capacity;
         stats_.reserved_bytes += capacity;
@@ -58,7 +65,7 @@ public:
             }
             stats_.reserved_bytes -= capacity;
         }
-        system_free(block);
+        system_free_(block);
     }
 
     void clear() noexcept {
@@ -106,7 +113,7 @@ private:
     void drop_free_blocks() noexcept {
         for (auto& [capacity, blocks] : free_blocks_) {
             for (std::byte* block : blocks) {
-                system_free(block);
+                system_free_(block);
             }
             stats_.reserved_bytes -= capacity * static_cast<std::int64_t>(blocks.size());
             stats_.cached_bytes -= capacity * static_cast<std::int64_t>(blocks.size());
@@ -114,6 +121,8 @@ private:
         }
     }
 
+    Allocate system_allocate_;
+    Free system_free_;
     std::mutex mutex_;
     std::unordered_map<std::int64_t, std::vector<std::byte*>> free_blocks_;
     AllocatorStats stats_;
@@ -121,9 +130,18 @@ private:
 };
 
 // Never destroyed: tensors with static storage can release their blocks after main returns.
-BlockCache& block_cache() {
-    static auto* cache = new BlockCache();
+BlockCache& host_cache() {
+    static auto* cache = new BlockCache(host_allocate, host_free);
     return *cache;
+}
+
+BlockCache& device_cache() {
+    static auto* cache = new BlockCache(device::allocate, device::release);
+    return *cache;
+}
+
+BlockCache& cache_of(Device device) {
+    return device == Device::CPU ? host_cache() : device_cache();
 }
 
 std::int64_t next_power_of_two(std::int64_t value) {
@@ -136,20 +154,22 @@ std::int64_t next_power_of_two(std::int64_t value) {
 
 } // namespace
 
-AllocatorStats allocator_stats() {
-    return block_cache().stats();
+AllocatorStats allocator_stats(Device device) {
+    return cache_of(device).stats();
 }
 
 void empty_cache() {
-    block_cache().clear();
+    host_cache().clear();
+    device_cache().clear();
 }
 
 bool caching_allocator_enabled() {
-    return block_cache().enabled();
+    return host_cache().enabled();
 }
 
 void set_caching_allocator_enabled(bool enabled) {
-    block_cache().set_enabled(enabled && kCachingCompiledIn);
+    host_cache().set_enabled(enabled && kCachingCompiledIn);
+    device_cache().set_enabled(enabled && kCachingCompiledIn);
 }
 
 namespace detail {
@@ -162,12 +182,12 @@ std::int64_t block_capacity(std::int64_t nbytes) {
     return next_power_of_two(nbytes);
 }
 
-std::byte* allocate_block(std::int64_t capacity) {
-    return block_cache().allocate(capacity);
+std::byte* allocate_block(std::int64_t capacity, Device device) {
+    return cache_of(device).allocate(capacity);
 }
 
-void release_block(std::byte* block, std::int64_t capacity) noexcept {
-    block_cache().release(block, capacity);
+void release_block(std::byte* block, std::int64_t capacity, Device device) noexcept {
+    cache_of(device).release(block, capacity);
 }
 
 } // namespace detail

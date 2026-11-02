@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+#include "kael/device_kernels.h"
+#include "kael/ops.h"
 #include "kael/shape.h"
 #include "kael/tensor.h"
 
@@ -29,6 +31,31 @@ inline void check_gather_shapes(const Tensor& t, const Tensor& indices, std::siz
                       << " is larger than tensor shape " << to_string(t.shape()) << " at dimension "
                       << i);
     }
+}
+
+inline void check_device_indices(const Tensor& indices, std::int64_t size, const char* op) {
+    if (indices.numel() == 0) {
+        return;
+    }
+    checked_index(kael::max(indices).item<std::int64_t>(), size, op);
+    checked_index(kael::min(indices).item<std::int64_t>(), size, op);
+}
+
+inline device::IndexLayout index_layout(const Tensor& data, const Tensor& indices,
+                                        const Tensor& source, std::size_t axis) {
+    KAEL_CHECK(indices.dim() <= device::kMaxDims,
+               "device kernels support at most " << device::kMaxDims << " dimensions");
+    device::IndexLayout layout{};
+    layout.dims = static_cast<int>(indices.dim());
+    layout.axis = static_cast<int>(axis);
+    layout.count = indices.numel();
+    for (std::size_t dim = 0; dim < indices.shape().size(); ++dim) {
+        layout.shape[dim] = indices.shape()[dim];
+        layout.data_strides[dim] = data.strides()[dim];
+        layout.index_strides[dim] = indices.strides()[dim];
+        layout.source_strides[dim] = source.strides()[dim];
+    }
+    return layout;
 }
 
 template <typename Visit> void for_each_index(const Shape& shape, Visit visit) {

@@ -30,6 +30,7 @@ public:
 private:
     struct BlockDeleter {
         std::int64_t capacity;
+        Device device;
         void operator()(std::byte* ptr) const noexcept;
     };
 

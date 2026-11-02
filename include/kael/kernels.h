@@ -1,9 +1,11 @@
 #pragma once
 
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
 #include <optional>
+#include <tuple>
 #include <utility>
 
 #include "kael/autograd/grad_mode.h"
@@ -30,6 +32,21 @@ inline DType result_dtype(std::initializer_list<const Tensor*> tensors) {
 
 namespace detail {
 
+template <typename F>
+concept DeviceFunction = requires(const F& f) {
+    { F::kOp } -> std::convertible_to<device::ElementOp>;
+    f.parameters();
+};
+
+template <typename... Inputs> bool any_on_device(const Inputs&... inputs) {
+    return ((inputs.device() != Device::CPU) || ...);
+}
+
+template <typename First, typename... Rest>
+void check_inputs_share_device(const First& first, const Rest&... rest) {
+    (check_same_device(first, rest), ...);
+}
+
 template <typename Out, typename In, std::size_t... I, typename F>
 void typed_inner_loop(std::byte* const* pointers, const std::int64_t* strides, std::int64_t count,
                       F& f, std::index_sequence<I...>) {
@@ -51,6 +68,13 @@ void typed_inner_loop(std::byte* const* pointers, const std::int64_t* strides, s
 
 template <typename Out, typename In, std::size_t InputCount, typename F>
 void run_typed(const TensorIterator& iterator, F& f) {
+    if constexpr (DeviceFunction<F>) {
+        if (iterator.on_device()) {
+            device::elementwise(F::kOp, dtype_of_v<Out>, dtype_of_v<In>, iterator.device_layout(),
+                                f.parameters());
+            return;
+        }
+    }
     iterator.run([&](std::byte* const* pointers, const std::int64_t* strides, std::int64_t count) {
         typed_inner_loop<Out, In>(pointers, strides, count, f,
                                   std::make_index_sequence<InputCount>{});
@@ -60,6 +84,13 @@ void run_typed(const TensorIterator& iterator, F& f) {
 template <typename F, typename... Inputs>
 Tensor same_dtype_kernel(DType dtype, F& f, const Inputs&... inputs) {
     const autograd::NoGradGuard guard;
+    if constexpr (!DeviceFunction<F>) {
+        if (any_on_device(inputs...)) {
+            check_inputs_share_device(inputs...);
+            const Device device = std::get<0>(std::tie(inputs...)).device();
+            return same_dtype_kernel(dtype, f, inputs.cpu()...).to(device);
+        }
+    }
     TensorIterator iterator;
     iterator.allocate_output(dtype);
     (iterator.add_input(inputs.to(dtype)), ...);
@@ -71,6 +102,15 @@ Tensor same_dtype_kernel(DType dtype, F& f, const Inputs&... inputs) {
 template <typename F, typename... Inputs>
 void same_dtype_kernel_out(Tensor& out, F& f, const Inputs&... inputs) {
     const autograd::NoGradGuard guard;
+    if constexpr (!DeviceFunction<F>) {
+        if (any_on_device(out, inputs...)) {
+            check_inputs_share_device(out, inputs...);
+            Tensor host = out.cpu();
+            same_dtype_kernel_out(host, f, inputs.cpu()...);
+            out.copy_(host);
+            return;
+        }
+    }
     TensorIterator iterator;
     iterator.add_output(out);
     (iterator.add_input(inputs.to(out.dtype())), ...);
@@ -87,6 +127,11 @@ template <typename F> Tensor unary_kernel(const Tensor& input, F f) {
 template <typename F> Tensor floating_unary_kernel(const Tensor& input, F f) {
     const DType dtype = is_floating_point(input.dtype()) ? input.dtype() : DType::F32;
     const autograd::NoGradGuard guard;
+    if constexpr (!detail::DeviceFunction<F>) {
+        if (input.device() != Device::CPU) {
+            return floating_unary_kernel(input.cpu(), f).to(input.device());
+        }
+    }
     TensorIterator iterator;
     iterator.allocate_output(dtype).add_input(input.to(dtype)).build();
     dispatch_floating(dtype, "floating_unary_kernel",
@@ -115,6 +160,12 @@ Tensor ternary_kernel(const Tensor& a, const Tensor& b, const Tensor& c, F f) {
 template <typename F> Tensor comparison_kernel(const Tensor& a, const Tensor& b, F f) {
     const DType dtype = result_dtype({&a, &b});
     const autograd::NoGradGuard guard;
+    if constexpr (!detail::DeviceFunction<F>) {
+        if (detail::any_on_device(a, b)) {
+            detail::check_inputs_share_device(a, b);
+            return comparison_kernel(a.cpu(), b.cpu(), f).to(a.device());
+        }
+    }
     TensorIterator iterator;
     iterator.allocate_output(DType::Bool).add_input(a.to(dtype)).add_input(b.to(dtype)).build();
     dispatch(dtype, [&]<typename T>() { detail::run_typed<std::uint8_t, T, 2>(iterator, f); });

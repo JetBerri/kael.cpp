@@ -2,7 +2,9 @@
 #include <type_traits>
 
 #include "kael/autograd/grad_mode.h"
+#include "kael/device_kernels.h"
 #include "kael/factory.h"
+#include "kael/iterator.h"
 #include "kael/matmul_versions.h"
 #include "kael/ops.h"
 #include "kael/parallel.h"
@@ -61,9 +63,15 @@ Tensor multiply_batches(const Tensor& a, const Tensor& b, const Shape& batch,
     const auto [rows, inner, columns] = sizes;
     const Tensor flat_a = as_batch_of_matrices(a.to(dtype), batch, rows, inner);
     const Tensor flat_b = as_batch_of_matrices(b.to(dtype), batch, inner, columns);
-    Tensor out = zeros(with_matrix_dims(batch, rows, columns), dtype);
+    Tensor out = zeros(with_matrix_dims(batch, rows, columns), dtype, a.device());
 
     const std::int64_t batch_count = numel(batch);
+    if (a.device() != Device::CPU) {
+        KAEL_CHECK_TYPE(dtype != DType::Bool, "matmul does not support dtype bool");
+        device::matmul(dtype, flat_a.device_data(), flat_b.device_data(), out.device_data(),
+                       {batch_count, rows, inner, columns});
+        return out;
+    }
     dispatch_no_bool(dtype, "matmul", [&]<typename T>() {
         const T* data_a = flat_a.data_ptr<T>();
         const T* data_b = flat_b.data_ptr<T>();
@@ -94,6 +102,7 @@ Tensor matmul_forward(const Tensor& a, const Tensor& b) {
                                                        << to_string(a.shape()) << " and "
                                                        << to_string(b.shape()));
 
+    check_same_device(a, b);
     const bool a_is_vector = a.dim() == 1;
     const bool b_is_vector = b.dim() == 1;
     const Tensor left = a_is_vector ? a.unsqueeze(0) : a;

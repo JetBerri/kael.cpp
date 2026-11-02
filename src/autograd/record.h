@@ -58,6 +58,7 @@ void record_slice(const Tensor& out, const Tensor& x, std::int64_t dim, std::int
                   std::int64_t end, std::int64_t step);
 void record_select(const Tensor& out, const Tensor& x, std::int64_t dim, std::int64_t index);
 void record_clone(const Tensor& out, const Tensor& x);
+void record_to_device(const Tensor& out, const Tensor& x);
 void record_to(const Tensor& out, const Tensor& x);
 
 void record_cat(const Tensor& out, const std::vector<Tensor>& inputs, std::int64_t dim);

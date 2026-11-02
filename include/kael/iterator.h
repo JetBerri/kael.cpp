@@ -6,6 +6,7 @@
 #include <optional>
 #include <vector>
 
+#include "kael/device_kernels.h"
 #include "kael/dtype.h"
 #include "kael/parallel.h"
 #include "kael/shape.h"
@@ -20,6 +21,8 @@ struct LoopDims {
 
 [[nodiscard]] LoopDims coalesce_dims(const LoopDims& dims);
 
+void check_same_device(const Tensor& a, const Tensor& b);
+
 class TensorIterator {
 public:
     TensorIterator& add_output(Tensor output);
@@ -29,11 +32,14 @@ public:
 
     [[nodiscard]] const Tensor& output() const;
     [[nodiscard]] const LoopDims& dims() const noexcept { return dims_; }
+    [[nodiscard]] bool on_device() const { return output().device() != Device::CPU; }
+    [[nodiscard]] device::ElementLayout device_layout() const;
 
     template <typename InnerLoop> void run(InnerLoop&& inner_loop) const;
 
 private:
     void check_inputs() const;
+    void check_runs_on_host() const;
     [[nodiscard]] Shape common_input_shape() const;
     void prepare_output(const Shape& common_shape);
     void prepare_loop(const Shape& common_shape);
@@ -49,6 +55,7 @@ private:
 };
 
 template <typename InnerLoop> void TensorIterator::run(InnerLoop&& inner_loop) const {
+    check_runs_on_host();
     if (element_count_ == 0) {
         return;
     }

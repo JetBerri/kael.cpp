@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 
+#include "kael/device.h"
 #include "kael/error.h"
 #include "kael/storage.h"
 
@@ -50,6 +51,9 @@ TEST(Storage, NegativeBytesThrows) {
 }
 
 TEST(Storage, CudaThrows) {
+    if (kael::cuda_is_available()) {
+        GTEST_SKIP() << "a CUDA device is present";
+    }
     EXPECT_THROW(kael::Storage(16, kael::Device::CUDA), kael::Error);
 }
 

@@ -34,6 +34,8 @@ add_executable(kael_tests
     test_parallel_ops.cpp
     test_allocator.cpp
     test_errors.cpp
+    test_cuda.cpp
+    test_cuda_absent.cpp
     support/npy.cpp
 )
 

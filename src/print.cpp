@@ -42,8 +42,13 @@ template <typename T> void print_elements(std::ostream& os, const Tensor& t) {
 std::ostream& operator<<(std::ostream& os, const Tensor& t) {
     std::ostringstream text;
     text << std::fixed << std::setprecision(kFloatPrecision) << "tensor([";
-    dispatch(t.dtype(), [&]<typename T>() { print_elements<T>(text, t); });
-    text << "], shape=" << to_string(t.shape()) << ", dtype=" << t.dtype() << ")";
+    const Tensor host = t.cpu();
+    dispatch(t.dtype(), [&]<typename T>() { print_elements<T>(text, host); });
+    text << "], shape=" << to_string(t.shape()) << ", dtype=" << t.dtype();
+    if (t.device() != Device::CPU) {
+        text << ", device=" << t.device();
+    }
+    text << ")";
     return os << text.str();
 }
 

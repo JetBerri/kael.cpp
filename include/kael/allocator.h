@@ -3,6 +3,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "kael/dtype.h"
+
 namespace kael {
 
 struct AllocatorStats {
@@ -13,7 +15,7 @@ struct AllocatorStats {
     std::int64_t misses = 0;
 };
 
-[[nodiscard]] AllocatorStats allocator_stats();
+[[nodiscard]] AllocatorStats allocator_stats(Device device = Device::CPU);
 void empty_cache();
 
 [[nodiscard]] bool caching_allocator_enabled();
@@ -22,8 +24,8 @@ void set_caching_allocator_enabled(bool enabled);
 namespace detail {
 
 [[nodiscard]] std::int64_t block_capacity(std::int64_t nbytes);
-[[nodiscard]] std::byte* allocate_block(std::int64_t capacity);
-void release_block(std::byte* block, std::int64_t capacity) noexcept;
+[[nodiscard]] std::byte* allocate_block(std::int64_t capacity, Device device);
+void release_block(std::byte* block, std::int64_t capacity, Device device) noexcept;
 
 } // namespace detail
 

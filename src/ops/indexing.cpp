@@ -6,6 +6,7 @@
 #include "kael/ops.h"
 
 #include "autograd/record.h"
+#include "internal/element_functions.h"
 #include "internal/index_checks.h"
 #include "internal/operands.h"
 
@@ -37,13 +38,14 @@ Tensor cat(const std::vector<Tensor>& tensors, std::int64_t dim) {
     std::int64_t total = 0;
     for (const Tensor& t : tensors) {
         check_same_except(first, t, position, "cat");
+        check_same_device(first, t);
         dtype = promote_types(dtype, t.dtype());
         total += t.shape()[position];
     }
 
     Shape out_shape = first.shape();
     out_shape[position] = total;
-    Tensor out = empty(out_shape, dtype);
+    Tensor out = empty(out_shape, dtype, first.device());
 
     {
         const autograd::NoGradGuard guard;
@@ -76,9 +78,10 @@ Tensor stack(const std::vector<Tensor>& tensors, std::int64_t dim) {
 Tensor where(const Tensor& condition, const Operand& a, const Operand& b) {
     KAEL_CHECK_TYPE(condition.dtype() == DType::Bool,
                     "where needs a bool condition, got " << condition.dtype());
-    const auto [x, y] = detail::resolve_operands(a, b);
-    Tensor out = ternary_kernel(
-        condition, x, y, []<typename T>(T keep, T p, T q) -> T { return keep != T{0} ? p : q; });
+    const auto [resolved_x, resolved_y] = detail::resolve_operands(a, b);
+    const Tensor x = resolved_x.dim() == 0 ? resolved_x.to(condition.device()) : resolved_x;
+    const Tensor y = resolved_y.dim() == 0 ? resolved_y.to(condition.device()) : resolved_y;
+    Tensor out = ternary_kernel(condition, x, y, functions::Where{});
     autograd::record_where(out, condition, x, y);
     return out;
 }
@@ -101,6 +104,16 @@ Tensor index_select(const Tensor& t, std::int64_t dim, const Tensor& indices) {
 
     Shape out_shape = t.shape();
     out_shape[position] = indices.numel();
+    check_same_device(t, indices);
+    if (t.device() != Device::CPU) {
+        Tensor selected = autograd::without_grad([&] {
+            Shape along_dim(t.shape().size(), 1);
+            along_dim[position] = indices.numel();
+            return gather(t, dim, indices.view(along_dim).expand(out_shape));
+        });
+        autograd::record_index_select(selected, t, dim, indices);
+        return selected;
+    }
     Tensor out = empty(out_shape, t.dtype());
     {
         const autograd::NoGradGuard guard;
@@ -119,6 +132,17 @@ Tensor gather(const Tensor& t, std::int64_t dim, const Tensor& indices) {
     const std::size_t position = dim_position(dim, t.dim());
     detail::check_gather_shapes(t, indices, position, "gather");
 
+    check_same_device(t, indices);
+    if (t.device() != Device::CPU) {
+        Tensor gathered = empty(indices.shape(), t.dtype(), t.device());
+        const Tensor flat = autograd::without_grad([&] { return indices.contiguous(); });
+        detail::check_device_indices(flat, t.shape()[position], "gather");
+        device::gather(t.dtype(), gathered.device_data(), t.device_data(),
+                       reinterpret_cast<const std::int64_t*>(flat.device_data()),
+                       detail::index_layout(t, flat, gathered, position));
+        autograd::record_gather(gathered, t, dim, indices);
+        return gathered;
+    }
     Tensor out = empty(indices.shape(), t.dtype());
     dispatch(t.dtype(), [&]<typename T>() {
         detail::for_each_index(indices.shape(), [&](const Shape& index) {

@@ -5,6 +5,7 @@
 #include <type_traits>
 
 #include "kael/autograd/grad_mode.h"
+#include "kael/device_kernels.h"
 #include "kael/factory.h"
 #include "kael/ops.h"
 #include "kael/parallel.h"
@@ -230,60 +231,135 @@ Tensor logical_reduction(const Tensor& t, const Dims& dims, bool keepdim, Predic
 
 constexpr auto kIsNonZero = [](auto value) { return value != decltype(value){0}; };
 
+bool on_device(const Tensor& t) {
+    return t.device() != Device::CPU;
+}
+
+template <typename Compute> Tensor on_host(const Tensor& t, Compute compute) {
+    if (!on_device(t)) {
+        return compute(t);
+    }
+    const autograd::NoGradGuard guard;
+    return compute(t.cpu()).to(t.device());
+}
+
+Tensor device_reduce(const Reduction& reduction, device::ReduceOp op, DType dtype) {
+    Tensor out = empty(reduction.output_shape, dtype, reduction.data.device());
+    device::reduce(op, dtype, reduction.data.dtype(), out.device_data(),
+                   reduction.data.device_data(), reduction.chunk_size, reduction.output_count);
+    return out;
+}
+
+Tensor device_sum(const Tensor& t, const Dims& dims, bool keepdim) {
+    return device_reduce(plan_reduction(t, dims, keepdim), device::ReduceOp::Sum,
+                         is_floating_point(t.dtype()) ? t.dtype() : DType::I64);
+}
+
+std::int64_t reduced_count(const Tensor& t, const Tensor& reduced) {
+    return t.numel() / std::max<std::int64_t>(1, reduced.numel());
+}
+
+void check_floating(const Tensor& t, const char* op) {
+    KAEL_CHECK_TYPE(is_floating_point(t.dtype()),
+                    op << " only supports floating point dtypes, got " << t.dtype());
+}
+
+Tensor device_mean(const Tensor& t, const Dims& dims, bool keepdim) {
+    check_floating(t, "mean");
+    const autograd::NoGradGuard guard;
+    const Tensor total = device_sum(t, dims, keepdim);
+    return total / reduced_count(t, total);
+}
+
+Tensor device_var(const Tensor& t, const Dims& dims, bool keepdim, std::int64_t correction) {
+    check_floating(t, "var");
+    const autograd::NoGradGuard guard;
+    const Tensor deviation = t - device_mean(t, dims, true);
+    const Tensor squares = device_sum(deviation * deviation, dims, keepdim);
+    return squares / std::max<std::int64_t>(reduced_count(t, squares) - correction, 0);
+}
+
+Tensor device_norm(const Tensor& t, const Dims& dims, bool keepdim) {
+    check_floating(t, "norm");
+    const autograd::NoGradGuard guard;
+    return sqrt(device_sum(t * t, dims, keepdim));
+}
+
 } // namespace
 
 Tensor sum(const Tensor& t, const Dims& dims, bool keepdim) {
-    Tensor out = accumulate(t, dims, keepdim, 0, std::plus<>{});
+    Tensor out = on_device(t) ? device_sum(t, dims, keepdim)
+                              : accumulate(t, dims, keepdim, 0, std::plus<>{});
     autograd::record_sum(out, t, dims, keepdim);
     return out;
 }
 
 Tensor prod(const Tensor& t, const Dims& dims, bool keepdim) {
-    Tensor out = accumulate(t, dims, keepdim, 1, std::multiplies<>{});
+    Tensor out = on_host(t, [&](const Tensor& host) {
+        return accumulate(host, dims, keepdim, 1, std::multiplies<>{});
+    });
     autograd::record_prod(out, t, dims, keepdim);
     return out;
 }
 
 Tensor mean(const Tensor& t, const Dims& dims, bool keepdim) {
-    Tensor out =
-        reduce_floating(t, dims, keepdim, "mean", [](const auto* chunk, std::int64_t size) {
-            return chunk_mean(chunk, size);
-        });
+    Tensor out = on_device(t) ? device_mean(t, dims, keepdim)
+                              : reduce_floating(t, dims, keepdim, "mean",
+                                                [](const auto* chunk, std::int64_t size) {
+                                                    return chunk_mean(chunk, size);
+                                                });
     autograd::record_mean(out, t, dims, keepdim);
     return out;
 }
 
 Tensor max(const Tensor& t, const Dims& dims, bool keepdim) {
-    Tensor out = extreme(t, dims, keepdim, "max",
-                         [](auto a, auto b) { return detail::nan_aware_max(a, b); });
+    Tensor out = on_device(t) ? device_reduce(plan_nonempty_reduction(t, dims, keepdim, "max"),
+                                              device::ReduceOp::Max, t.dtype())
+                              : extreme(t, dims, keepdim, "max",
+                                        [](auto a, auto b) { return detail::nan_aware_max(a, b); });
     autograd::record_extreme(out, t, dims, keepdim, "MaxBackward");
     return out;
 }
 
 Tensor min(const Tensor& t, const Dims& dims, bool keepdim) {
-    Tensor out = extreme(t, dims, keepdim, "min",
-                         [](auto a, auto b) { return detail::nan_aware_min(a, b); });
+    Tensor out = on_device(t) ? device_reduce(plan_nonempty_reduction(t, dims, keepdim, "min"),
+                                              device::ReduceOp::Min, t.dtype())
+                              : extreme(t, dims, keepdim, "min",
+                                        [](auto a, auto b) { return detail::nan_aware_min(a, b); });
     autograd::record_extreme(out, t, dims, keepdim, "MinBackward");
     return out;
 }
 
 Tensor argmax(const Tensor& t) {
-    return arg_extreme<std::greater>(t.flatten(), {0}, false, "argmax");
+    return on_host(t, [](const Tensor& host) {
+        return arg_extreme<std::greater>(host.flatten(), {0}, false, "argmax");
+    });
 }
 
 Tensor argmax(const Tensor& t, std::int64_t dim, bool keepdim) {
-    return arg_extreme<std::greater>(t, {dim}, keepdim, "argmax");
+    return on_host(t, [&](const Tensor& host) {
+        return arg_extreme<std::greater>(host, {dim}, keepdim, "argmax");
+    });
 }
 
 Tensor argmin(const Tensor& t) {
-    return arg_extreme<std::less>(t.flatten(), {0}, false, "argmin");
+    return on_host(t, [](const Tensor& host) {
+        return arg_extreme<std::less>(host.flatten(), {0}, false, "argmin");
+    });
 }
 
 Tensor argmin(const Tensor& t, std::int64_t dim, bool keepdim) {
-    return arg_extreme<std::less>(t, {dim}, keepdim, "argmin");
+    return on_host(t, [&](const Tensor& host) {
+        return arg_extreme<std::less>(host, {dim}, keepdim, "argmin");
+    });
 }
 
 Tensor var(const Tensor& t, const Dims& dims, bool keepdim, std::int64_t correction) {
+    if (on_device(t)) {
+        Tensor out = device_var(t, dims, keepdim, correction);
+        autograd::record_var(out, t, dims, keepdim, correction);
+        return out;
+    }
     Tensor out =
         reduce_floating(t, dims, keepdim, "var", [&](const auto* chunk, std::int64_t size) {
             const double center = chunk_mean(chunk, size);
@@ -302,18 +378,27 @@ Tensor std(const Tensor& t, const Dims& dims, bool keepdim, std::int64_t correct
 }
 
 Tensor all(const Tensor& t, const Dims& dims, bool keepdim) {
-    return logical_reduction(t, dims, keepdim, [](auto first, auto last) {
-        return std::all_of(first, last, kIsNonZero);
+    return on_host(t, [&](const Tensor& host) {
+        return logical_reduction(host, dims, keepdim, [](auto first, auto last) {
+            return std::all_of(first, last, kIsNonZero);
+        });
     });
 }
 
 Tensor any(const Tensor& t, const Dims& dims, bool keepdim) {
-    return logical_reduction(t, dims, keepdim, [](auto first, auto last) {
-        return std::any_of(first, last, kIsNonZero);
+    return on_host(t, [&](const Tensor& host) {
+        return logical_reduction(host, dims, keepdim, [](auto first, auto last) {
+            return std::any_of(first, last, kIsNonZero);
+        });
     });
 }
 
 Tensor norm(const Tensor& t, const Dims& dims, bool keepdim) {
+    if (on_device(t)) {
+        Tensor out = device_norm(t, dims, keepdim);
+        autograd::record_norm(out, t, dims, keepdim);
+        return out;
+    }
     Tensor out =
         reduce_floating(t, dims, keepdim, "norm", [](const auto* chunk, std::int64_t size) {
             return std::sqrt(sum_in_blocks(size, [&](std::int64_t i) {

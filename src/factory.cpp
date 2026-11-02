@@ -6,6 +6,8 @@
 #include <type_traits>
 #include <utility>
 
+#include "kael/device_kernels.h"
+
 #include "internal/checked_math.h"
 
 namespace kael {
@@ -50,42 +52,50 @@ void check_value_count(std::size_t value_count, const Shape& shape) {
 
 } // namespace detail
 
-Tensor empty(const Shape& shape, DType dtype) {
+Tensor empty(const Shape& shape, DType dtype, Device device) {
     const std::int64_t bytes =
         detail::checked_mul(numel(shape), element_size(dtype), "tensor size in bytes");
 
     auto impl = std::make_shared<TensorImpl>();
-    impl->storage = std::make_shared<Storage>(bytes, Device::CPU);
+    impl->storage = std::make_shared<Storage>(bytes, device);
+    impl->device = device;
     impl->shape = shape;
     impl->strides = contiguous_strides(shape);
     impl->dtype = dtype;
     return Tensor::from_impl(std::move(impl));
 }
 
-Tensor full(const Shape& shape, Scalar value, DType dtype) {
-    Tensor t = empty(shape, dtype);
-    dispatch(dtype, [&]<typename T>() { std::fill_n(t.data_ptr<T>(), t.numel(), value.as<T>()); });
+Tensor full(const Shape& shape, Scalar value, DType dtype, Device device) {
+    Tensor t = empty(shape, dtype, device);
+    dispatch(dtype, [&]<typename T>() {
+        const T converted = value.as<T>();
+        if (device == Device::CPU) {
+            std::fill_n(t.data_ptr<T>(), t.numel(), converted);
+        } else {
+            device::fill(dtype, t.device_data(), t.numel(), &converted);
+        }
+    });
     return t;
 }
 
-Tensor zeros(const Shape& shape, DType dtype) {
-    return full(shape, 0, dtype);
+Tensor zeros(const Shape& shape, DType dtype, Device device) {
+    return full(shape, 0, dtype, device);
 }
 
-Tensor ones(const Shape& shape, DType dtype) {
-    return full(shape, 1, dtype);
+Tensor ones(const Shape& shape, DType dtype, Device device) {
+    return full(shape, 1, dtype, device);
 }
 
 Tensor empty_like(const Tensor& t) {
-    return empty(t.shape(), t.dtype());
+    return empty(t.shape(), t.dtype(), t.device());
 }
 
 Tensor zeros_like(const Tensor& t) {
-    return zeros(t.shape(), t.dtype());
+    return zeros(t.shape(), t.dtype(), t.device());
 }
 
 Tensor ones_like(const Tensor& t) {
-    return ones(t.shape(), t.dtype());
+    return ones(t.shape(), t.dtype(), t.device());
 }
 
 Tensor arange(double end, DType dtype) {

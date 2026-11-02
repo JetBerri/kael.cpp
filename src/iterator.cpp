@@ -39,6 +39,11 @@ Strides to_bytes(Strides strides, DType dtype) {
 
 } // namespace
 
+void check_same_device(const Tensor& a, const Tensor& b) {
+    KAEL_CHECK(a.device() == b.device(), "expected all tensors to be on the same device, but found "
+                                             << a.device() << " and " << b.device());
+}
+
 LoopDims coalesce_dims(const LoopDims& dims) {
     LoopDims merged = without_size_one_dims(dims);
 
@@ -93,7 +98,37 @@ void TensorIterator::check_inputs() const {
         KAEL_CHECK_TYPE(input.dtype() == inputs_.front().dtype(),
                         "iterator inputs must share a dtype, got " << inputs_.front().dtype()
                                                                    << " and " << input.dtype());
+        check_same_device(input, inputs_.front());
     }
+    if (output_.has_value()) {
+        check_same_device(*output_, inputs_.front());
+    }
+}
+
+void TensorIterator::check_runs_on_host() const {
+    KAEL_CHECK(!on_device(), "this kernel has no implementation for device " << output().device());
+}
+
+device::ElementLayout TensorIterator::device_layout() const {
+    KAEL_CHECK(static_cast<int>(dims_.shape.size()) <= device::kMaxDims,
+               "device kernels support at most " << device::kMaxDims
+                                                 << " dimensions after merging");
+    KAEL_CHECK(static_cast<int>(base_pointers_.size()) <= device::kMaxOperands,
+               "device kernels support at most " << device::kMaxOperands << " operands");
+    device::ElementLayout layout{};
+    layout.dims = static_cast<int>(dims_.shape.size());
+    layout.operands = static_cast<int>(base_pointers_.size());
+    layout.count = element_count_;
+    for (std::size_t dim = 0; dim < dims_.shape.size(); ++dim) {
+        layout.shape[dim] = dims_.shape[dim];
+    }
+    for (std::size_t op = 0; op < base_pointers_.size(); ++op) {
+        layout.base[op] = base_pointers_[op];
+        for (std::size_t dim = 0; dim < dims_.shape.size(); ++dim) {
+            layout.strides[op][dim] = dims_.operand_strides[op][dim];
+        }
+    }
+    return layout;
 }
 
 Shape TensorIterator::common_input_shape() const {
@@ -106,7 +141,7 @@ Shape TensorIterator::common_input_shape() const {
 
 void TensorIterator::prepare_output(const Shape& common_shape) {
     if (!output_.has_value()) {
-        output_ = empty(common_shape, *output_dtype_);
+        output_ = empty(common_shape, *output_dtype_, inputs_.front().device());
         return;
     }
     KAEL_CHECK(output_->shape() == common_shape,
@@ -119,11 +154,11 @@ void TensorIterator::prepare_loop(const Shape& common_shape) {
     LoopDims full;
     full.shape = common_shape;
     full.operand_strides.push_back(to_bytes(output_->strides(), output_->dtype()));
-    base_pointers_.push_back(output_->data_ptr_raw());
+    base_pointers_.push_back(output_->device_data());
     for (Tensor& input : inputs_) {
         full.operand_strides.push_back(to_bytes(
             broadcast_strides(input.shape(), input.strides(), common_shape), input.dtype()));
-        base_pointers_.push_back(input.data_ptr_raw());
+        base_pointers_.push_back(input.device_data());
     }
 
     element_count_ = numel(common_shape);

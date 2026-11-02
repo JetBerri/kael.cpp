@@ -64,21 +64,22 @@ void record_expand(const Tensor& out, const Tensor& x) {
 void record_slice(const Tensor& out, const Tensor& x, std::int64_t dim, std::int64_t start,
                   std::int64_t end, std::int64_t step) {
     if (should_record(out, {&x})) {
-        set_history(
-            out, "SliceBackward", {x},
-            {[shape = x.shape(), dtype = x.dtype(), dim, start, end, step](const Tensor& g) {
-                Tensor full_gradient = zeros(shape, dtype);
-                full_gradient.slice(dim, start, end, step).copy_(g);
-                return full_gradient;
-            }});
+        set_history(out, "SliceBackward", {x},
+                    {[shape = x.shape(), dtype = x.dtype(), device = x.device(), dim, start, end,
+                      step](const Tensor& g) {
+                        Tensor full_gradient = zeros(shape, dtype, device);
+                        full_gradient.slice(dim, start, end, step).copy_(g);
+                        return full_gradient;
+                    }});
     }
 }
 
 void record_select(const Tensor& out, const Tensor& x, std::int64_t dim, std::int64_t index) {
     if (should_record(out, {&x})) {
         set_history(out, "SelectBackward", {x},
-                    {[shape = x.shape(), dtype = x.dtype(), dim, index](const Tensor& g) {
-                        Tensor full_gradient = zeros(shape, dtype);
+                    {[shape = x.shape(), dtype = x.dtype(), device = x.device(), dim,
+                      index](const Tensor& g) {
+                        Tensor full_gradient = zeros(shape, dtype, device);
                         full_gradient.select(dim, index).copy_(g);
                         return full_gradient;
                     }});
@@ -95,6 +96,13 @@ void record_to(const Tensor& out, const Tensor& x) {
     if (should_record(out, {&x})) {
         set_history(out, "ToBackward", {x},
                     {[dtype = x.dtype()](const Tensor& g) { return g.to(dtype); }});
+    }
+}
+
+void record_to_device(const Tensor& out, const Tensor& x) {
+    if (should_record(out, {&x})) {
+        set_history(out, "ToDeviceBackward", {x},
+                    {[device = x.device()](const Tensor& g) { return g.to(device); }});
     }
 }
 

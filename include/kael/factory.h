@@ -11,10 +11,11 @@
 
 namespace kael {
 
-Tensor empty(const Shape& shape, DType dtype = DType::F32);
-Tensor zeros(const Shape& shape, DType dtype = DType::F32);
-Tensor ones(const Shape& shape, DType dtype = DType::F32);
-Tensor full(const Shape& shape, Scalar value, DType dtype = DType::F32);
+Tensor empty(const Shape& shape, DType dtype = DType::F32, Device device = Device::CPU);
+Tensor zeros(const Shape& shape, DType dtype = DType::F32, Device device = Device::CPU);
+Tensor ones(const Shape& shape, DType dtype = DType::F32, Device device = Device::CPU);
+Tensor full(const Shape& shape, Scalar value, DType dtype = DType::F32,
+            Device device = Device::CPU);
 
 Tensor empty_like(const Tensor& t);
 Tensor zeros_like(const Tensor& t);

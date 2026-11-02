@@ -31,7 +31,7 @@ constexpr std::int64_t kExponentialCost = 16;
 constexpr std::int64_t kStandardizeCost = 4;
 
 bool is_last_dim_of_contiguous(const Tensor& x, std::int64_t dim) {
-    return x.dim() > 0 && x.is_contiguous() &&
+    return x.device() == Device::CPU && x.dim() > 0 && x.is_contiguous() &&
            dim_position(dim, x.dim()) == static_cast<std::size_t>(x.dim() - 1);
 }
 
@@ -160,6 +160,13 @@ Tensor standardize(const Tensor& t, std::int64_t normalized_dims, double eps) {
         const Tensor x = as_floating(t).contiguous();
         if (x.numel() == 0) {
             return x.clone();
+        }
+        if (x.device() != Device::CPU) {
+            Dims dims;
+            for (std::int64_t i = 1; i <= normalized_dims; ++i) {
+                dims.push_back(-i);
+            }
+            return (x - mean(x, dims, true)) / sqrt(var(x, dims, true, 0) + eps);
         }
         const auto trailing = x.shape().end() - static_cast<std::ptrdiff_t>(normalized_dims);
         const std::int64_t row_size = numel(Shape(trailing, x.shape().end()));

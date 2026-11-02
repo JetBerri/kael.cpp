@@ -2,6 +2,7 @@ add_executable(kael_bench
     bench_elementwise.cpp
     bench_matmul.cpp
     bench_compare.cpp
+    bench_cuda.cpp
 )
 
 target_link_libraries(kael_bench PRIVATE kael::kael benchmark::benchmark_main)

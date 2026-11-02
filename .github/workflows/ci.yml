@@ -33,6 +33,12 @@ jobs:
             cxx: clang++
             sanitizers: OFF
             tsan: ON
+          - name: linux-clang-fake-cuda
+            os: ubuntu-latest
+            cc: clang
+            cxx: clang++
+            sanitizers: ON
+            fake_cuda: ON
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     env:
@@ -46,7 +52,23 @@ jobs:
           -DKAEL_WARNINGS_AS_ERRORS=ON
           -DKAEL_ENABLE_SANITIZERS=${{ matrix.sanitizers }}
           -DKAEL_ENABLE_TSAN=${{ matrix.tsan || 'OFF' }}
+          -DKAEL_FAKE_CUDA=${{ matrix.fake_cuda || 'OFF' }}
       - name: Build
         run: cmake --build build --parallel
       - name: Test
         run: ctest --test-dir build --output-on-failure
+
+  cuda-build:
+    name: cuda-compile-only
+    runs-on: ubuntu-latest
+    container: nvidia/cuda:12.6.2-devel-ubuntu22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install CMake
+        run: apt-get update && apt-get install -y python3-pip && pip3 install cmake
+      - name: Configure
+        run: >
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          -DKAEL_ENABLE_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=86
+      - name: Build
+        run: cmake --build build --parallel

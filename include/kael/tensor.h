@@ -57,20 +57,33 @@ public:
 
     template <typename T> [[nodiscard]] T* data_ptr() {
         check_dtype<T>();
+        check_on_host();
         return reinterpret_cast<T*>(first_element());
     }
 
     template <typename T> [[nodiscard]] const T* data_ptr() const {
         check_dtype<T>();
+        check_on_host();
         return reinterpret_cast<const T*>(first_element());
     }
 
-    [[nodiscard]] std::byte* data_ptr_raw() { return first_element(); }
-    [[nodiscard]] const std::byte* data_ptr_raw() const { return first_element(); }
+    [[nodiscard]] std::byte* data_ptr_raw() {
+        check_on_host();
+        return first_element();
+    }
+    [[nodiscard]] const std::byte* data_ptr_raw() const {
+        check_on_host();
+        return first_element();
+    }
+    // On a CUDA tensor this address can only be dereferenced by device code.
+    [[nodiscard]] std::byte* device_data() const { return first_element(); }
 
     template <typename T> [[nodiscard]] T item() const {
         check_dtype<T>();
         check_single_element();
+        if (device() != Device::CPU) {
+            return cpu().template item<T>();
+        }
         return *reinterpret_cast<const T*>(first_element());
     }
 
@@ -94,6 +107,9 @@ public:
     }
 
     [[nodiscard]] Tensor to(DType dtype) const;
+    [[nodiscard]] Tensor to(Device device) const;
+    [[nodiscard]] Tensor cuda() const { return to(Device::CUDA); }
+    [[nodiscard]] Tensor cpu() const { return to(Device::CPU); }
     [[nodiscard]] Tensor clone() const;
     [[nodiscard]] Tensor contiguous() const;
 
@@ -153,10 +169,12 @@ private:
 
     template <typename T> [[nodiscard]] T* element_ptr(std::span<const std::int64_t> index) const {
         check_dtype<T>();
+        check_on_host();
         return reinterpret_cast<T*>(impl_->storage->data()) + element_offset(index);
     }
 
     void check_single_element() const;
+    void check_on_host() const;
     [[nodiscard]] std::byte* first_element() const;
     [[nodiscard]] std::int64_t element_offset(std::span<const std::int64_t> index) const;
 

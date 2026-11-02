@@ -20,9 +20,13 @@ Tensor materialize(const Operand& operand, const Operand& other) {
         return operand.tensor();
     }
     const Scalar value = operand.scalar();
-    const DType dtype =
-        other.is_tensor() ? promote_with_scalar(other.tensor().dtype(), value) : value.dtype();
-    return scalar(value, dtype);
+    if (!other.is_tensor()) {
+        return scalar(value, value.dtype());
+    }
+    const Tensor& tensor = other.tensor();
+    const DType dtype = promote_with_scalar(tensor.dtype(), value);
+    return tensor.device() == Device::CPU ? scalar(value, dtype)
+                                          : full({}, value, dtype, tensor.device());
 }
 
 template <typename T> T floating_floor_division(T a, T b) {
@@ -130,63 +134,63 @@ Tensor pow(const Operand& base, const Operand& exponent) {
 
 Tensor maximum(const Operand& a, const Operand& b) {
     const auto [x, y] = detail::resolve_operands(a, b);
-    Tensor out = binary_kernel(x, y, [](auto p, auto q) { return detail::nan_aware_max(p, q); });
+    Tensor out = binary_kernel(x, y, functions::Maximum{});
     autograd::record_maximum(out, x, y);
     return out;
 }
 
 Tensor minimum(const Operand& a, const Operand& b) {
     const auto [x, y] = detail::resolve_operands(a, b);
-    Tensor out = binary_kernel(x, y, [](auto p, auto q) { return detail::nan_aware_min(p, q); });
+    Tensor out = binary_kernel(x, y, functions::Minimum{});
     autograd::record_minimum(out, x, y);
     return out;
 }
 
 Tensor eq(const Operand& a, const Operand& b) {
-    return compare(a, b, [](auto p, auto q) { return p == q; });
+    return compare(a, b, functions::Equal{});
 }
 
 Tensor ne(const Operand& a, const Operand& b) {
-    return compare(a, b, [](auto p, auto q) { return p != q; });
+    return compare(a, b, functions::NotEqual{});
 }
 
 Tensor lt(const Operand& a, const Operand& b) {
-    return compare(a, b, [](auto p, auto q) { return p < q; });
+    return compare(a, b, functions::Less{});
 }
 
 Tensor le(const Operand& a, const Operand& b) {
-    return compare(a, b, [](auto p, auto q) { return p <= q; });
+    return compare(a, b, functions::LessEqual{});
 }
 
 Tensor gt(const Operand& a, const Operand& b) {
-    return compare(a, b, [](auto p, auto q) { return p > q; });
+    return compare(a, b, functions::Greater{});
 }
 
 Tensor ge(const Operand& a, const Operand& b) {
-    return compare(a, b, [](auto p, auto q) { return p >= q; });
+    return compare(a, b, functions::GreaterEqual{});
 }
 
 Tensor logical_and(const Operand& a, const Operand& b) {
-    return logical(a, b, [](auto p, auto q) { return p != 0 && q != 0; });
+    return logical(a, b, functions::LogicalAnd{});
 }
 
 Tensor logical_or(const Operand& a, const Operand& b) {
-    return logical(a, b, [](auto p, auto q) { return p != 0 || q != 0; });
+    return logical(a, b, functions::LogicalOr{});
 }
 
 Tensor logical_xor(const Operand& a, const Operand& b) {
-    return logical(a, b, [](auto p, auto q) { return (p != 0) != (q != 0); });
+    return logical(a, b, functions::LogicalXor{});
 }
 
 Tensor logical_not(const Tensor& t) {
-    return unary_kernel(t.to(DType::Bool), [](auto x) { return x == 0; });
+    return unary_kernel(t.to(DType::Bool), functions::IsZero{});
 }
 
 bool equal(const Tensor& a, const Tensor& b) {
     if (a.shape() != b.shape()) {
         return false;
     }
-    const Tensor same = eq(a, b);
+    const Tensor same = eq(a, b).cpu();
     const std::uint8_t* flags = same.data_ptr<std::uint8_t>();
     return std::all_of(flags, flags + same.numel(), [](std::uint8_t flag) { return flag != 0; });
 }

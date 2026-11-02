@@ -38,6 +38,7 @@ public:
     [[nodiscard]] bool is_training() const noexcept { return training_; }
 
     void zero_grad();
+    void to(Device device);
 
     [[nodiscard]] StateDict state_dict() const;
     void load_state_dict(const StateDict& state);

@@ -113,7 +113,8 @@ Tensor& Tensor::copy_(const Tensor& source) {
     check_grad_rules(*this, &source, "copy_");
     check_writable(*this, "copy_");
     const autograd::NoGradGuard guard;
-    detail::convert_strided(*this, without_partial_aliasing(*this, source).expand(shape()));
+    const Tensor same_device = source.to(device());
+    detail::convert_strided(*this, without_partial_aliasing(*this, same_device).expand(shape()));
     impl_->storage->bump_version();
     return *this;
 }
@@ -138,9 +139,7 @@ Tensor& Tensor::masked_fill_(const Tensor& mask, Scalar value) {
         .add_input(without_partial_aliasing(*this, mask).to(dtype()))
         .build();
     dispatch(dtype(), [&]<typename T>() {
-        auto fill = [replacement = value.as<T>()](T current, T selected) {
-            return selected != T{0} ? replacement : current;
-        };
+        functions::MaskedFill<T> fill{value.as<T>()};
         detail::run_typed<T, T, 2>(iterator, fill);
     });
     impl_->storage->bump_version();
@@ -158,6 +157,26 @@ Tensor& Tensor::scatter_add_(std::int64_t dim, const Tensor& indices, const Tens
                                                    << dtype() << ", got " << source.dtype());
     KAEL_CHECK(!source.shares_storage(*this) && !indices.shares_storage(*this),
                "scatter_add_ cannot read from the tensor it writes to; call clone() first");
+    check_same_device(*this, indices);
+    check_same_device(*this, source);
+
+    if (device() != Device::CPU) {
+        if (dtype() == DType::Bool) {
+            Tensor host = cpu();
+            host.scatter_add_(dim, indices.cpu(), source.cpu());
+            const autograd::NoGradGuard guard;
+            return copy_(host);
+        }
+        const autograd::NoGradGuard guard;
+        const Tensor contiguous_indices = indices.contiguous();
+        detail::check_device_indices(contiguous_indices, shape()[position], "scatter_add_");
+        device::scatter_add(dtype(), device_data(),
+                            reinterpret_cast<const std::int64_t*>(contiguous_indices.device_data()),
+                            source.device_data(),
+                            detail::index_layout(*this, contiguous_indices, source, position));
+        impl_->storage->bump_version();
+        return *this;
+    }
 
     dispatch(dtype(), [&]<typename T>() {
         detail::for_each_index(indices.shape(), [&](const Shape& index) {

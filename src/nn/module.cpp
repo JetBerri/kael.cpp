@@ -3,6 +3,7 @@
 #include <unordered_set>
 
 #include "kael/autograd/grad_mode.h"
+#include "kael/autograd/meta.h"
 #include "kael/error.h"
 
 namespace kael::nn {
@@ -67,6 +68,24 @@ void Module::train(bool training) {
 void Module::zero_grad() {
     for (Tensor& parameter : parameters()) {
         parameter.zero_grad();
+    }
+}
+
+void Module::to(Device device) {
+    const autograd::NoGradGuard guard;
+    for (Tensor& parameter : parameters()) {
+        if (parameter.device() == device) {
+            continue;
+        }
+        const Tensor moved = parameter.detach().to(device);
+        TensorImpl& impl = *parameter.impl();
+        impl.storage = moved.impl()->storage;
+        impl.strides = moved.strides();
+        impl.offset = moved.offset();
+        impl.device = device;
+        if (const std::optional<Tensor> gradient = parameter.grad()) {
+            impl.autograd->grad = gradient->to(device);
+        }
     }
 }
 

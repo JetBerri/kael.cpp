@@ -46,7 +46,7 @@ template <typename T> T gelu_tanh_slope(T x) {
 }
 
 Tensor extreme_weight(const Tensor& wins, const Tensor& ties, DType dtype) {
-    return where(ties, kael::scalar(0.5, dtype), wins.to(dtype));
+    return where(ties, 0.5, wins.to(dtype));
 }
 
 } // namespace
