@@ -13,6 +13,8 @@ public:
     static constexpr std::size_t kAlignment = 64;
 
     explicit Storage(std::int64_t nbytes, Device device = Device::CPU);
+    [[nodiscard]] static Storage external(std::byte* data, std::int64_t nbytes,
+                                          std::shared_ptr<void> owner);
 
     Storage(const Storage&) = delete;
     Storage& operator=(const Storage&) = delete;
@@ -35,6 +37,7 @@ private:
     };
 
     std::unique_ptr<std::byte[], BlockDeleter> data_;
+    std::shared_ptr<void> owner_;
     std::int64_t nbytes_;
     Device device_;
     std::int64_t version_ = 0;

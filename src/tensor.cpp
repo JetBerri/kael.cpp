@@ -101,6 +101,18 @@ Tensor Tensor::to(Device target) const {
     return out;
 }
 
+Tensor& Tensor::move_to_(Device target) {
+    if (target == device()) {
+        return *this;
+    }
+    const Tensor moved = detach().to(target);
+    impl_->storage = moved.impl()->storage;
+    impl_->strides = moved.strides();
+    impl_->offset = moved.offset();
+    impl_->device = target;
+    return *this;
+}
+
 Tensor Tensor::clone() const {
     Tensor out = empty(shape(), dtype(), device());
     if (!is_contiguous()) {

@@ -1,9 +1,12 @@
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <type_traits>
+#include <vector>
 
 #include <gtest/gtest.h>
 
+#include "kael/allocator.h"
 #include "kael/device.h"
 #include "kael/error.h"
 #include "kael/storage.h"
@@ -63,4 +66,29 @@ TEST(Storage, Movable) {
     kael::Storage b(std::move(a));
     EXPECT_EQ(b.data(), ptr);
     EXPECT_EQ(b.nbytes(), 32);
+}
+
+TEST(Storage, ExternalMemoryIsAdoptedAndReleasedWithItsOwner) {
+    auto released = std::make_shared<bool>(false);
+    std::vector<std::byte> memory(32);
+    {
+        const std::shared_ptr<void> owner(nullptr, [released](void*) { *released = true; });
+        const kael::Storage storage = kael::Storage::external(memory.data(), 32, owner);
+        EXPECT_EQ(storage.data(), memory.data());
+        EXPECT_EQ(storage.nbytes(), 32);
+        EXPECT_EQ(storage.device(), kael::Device::CPU);
+    }
+    EXPECT_TRUE(*released);
+}
+
+TEST(Storage, ExternalMemoryDoesNotTouchTheAllocator) {
+    const kael::AllocatorStats before = kael::allocator_stats();
+    std::vector<std::byte> memory(4096);
+    {
+        const kael::Storage storage =
+            kael::Storage::external(memory.data(), 4096, std::shared_ptr<void>());
+    }
+    const kael::AllocatorStats after = kael::allocator_stats();
+    EXPECT_EQ(after.in_use_bytes, before.in_use_bytes);
+    EXPECT_EQ(after.cached_bytes, before.cached_bytes);
 }

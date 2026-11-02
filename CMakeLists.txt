@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(kael VERSION 0.3.0 LANGUAGES CXX)
+project(kael VERSION 0.4.0 LANGUAGES CXX)
 
 option(KAEL_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 option(KAEL_ENABLE_SANITIZERS "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
@@ -10,6 +10,8 @@ option(KAEL_USE_BLAS "Multiply matrices with the system BLAS" OFF)
 option(KAEL_ENABLE_CUDA "Build the CUDA backend" OFF)
 option(KAEL_FAKE_CUDA "Run the CUDA kernels on the host, to test them without a GPU" OFF)
 option(KAEL_USE_CUBLAS "Multiply matrices on the device with cuBLAS" OFF)
+option(KAEL_BUILD_TESTS "Build the C++ tests" ON)
+option(KAEL_BUILD_PYTHON "Build the Python extension module" OFF)
 option(KAEL_NATIVE "Optimize for the CPU of the build machine" OFF)
 
 if (KAEL_ENABLE_SANITIZERS AND KAEL_ENABLE_TSAN)
@@ -104,6 +106,9 @@ target_include_directories(kael PUBLIC include PRIVATE src)
 target_compile_features(kael PUBLIC cxx_std_20)
 target_compile_definitions(kael PRIVATE KAEL_VERSION="${PROJECT_VERSION}")
 kael_configure_target(kael)
+if (KAEL_BUILD_PYTHON)
+    set_target_properties(kael PROPERTIES POSITION_INDEPENDENT_CODE ON)
+endif ()
 
 if (KAEL_ENABLE_SANITIZERS OR KAEL_ENABLE_TSAN)
     target_compile_definitions(kael PRIVATE KAEL_NO_CACHING_ALLOCATOR)
@@ -144,14 +149,20 @@ if (KAEL_NATIVE)
 endif ()
 
 include(FetchContent)
-FetchContent_Declare(
-    googletest
-    URL https://github.com/google/googletest/archive/refs/tags/v1.15.2.tar.gz
-)
-FetchContent_MakeAvailable(googletest)
 
-enable_testing()
-add_subdirectory(tests)
+if (KAEL_BUILD_TESTS)
+    FetchContent_Declare(
+        googletest
+        URL https://github.com/google/googletest/archive/refs/tags/v1.15.2.tar.gz
+    )
+    FetchContent_MakeAvailable(googletest)
+    enable_testing()
+    add_subdirectory(tests)
+endif ()
+
+if (KAEL_BUILD_PYTHON)
+    add_subdirectory(python)
+endif ()
 
 if (KAEL_BUILD_EXAMPLES)
     add_subdirectory(examples)

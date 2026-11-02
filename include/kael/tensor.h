@@ -110,6 +110,7 @@ public:
     [[nodiscard]] Tensor to(Device device) const;
     [[nodiscard]] Tensor cuda() const { return to(Device::CUDA); }
     [[nodiscard]] Tensor cpu() const { return to(Device::CPU); }
+    Tensor& move_to_(Device device);
     [[nodiscard]] Tensor clone() const;
     [[nodiscard]] Tensor contiguous() const;
 

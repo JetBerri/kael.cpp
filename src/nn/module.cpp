@@ -74,17 +74,9 @@ void Module::zero_grad() {
 void Module::to(Device device) {
     const autograd::NoGradGuard guard;
     for (Tensor& parameter : parameters()) {
-        if (parameter.device() == device) {
-            continue;
-        }
-        const Tensor moved = parameter.detach().to(device);
-        TensorImpl& impl = *parameter.impl();
-        impl.storage = moved.impl()->storage;
-        impl.strides = moved.strides();
-        impl.offset = moved.offset();
-        impl.device = device;
+        parameter.move_to_(device);
         if (const std::optional<Tensor> gradient = parameter.grad()) {
-            impl.autograd->grad = gradient->to(device);
+            parameter.impl()->autograd->grad = gradient->to(device);
         }
     }
 }

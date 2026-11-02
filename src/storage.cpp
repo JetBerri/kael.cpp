@@ -1,12 +1,24 @@
 #include "kael/storage.h"
 
+#include <utility>
+
 #include "kael/allocator.h"
 #include "kael/error.h"
 
 namespace kael {
 
 void Storage::BlockDeleter::operator()(std::byte* ptr) const noexcept {
-    detail::release_block(ptr, capacity, device);
+    if (capacity > 0) {
+        detail::release_block(ptr, capacity, device);
+    }
+}
+
+Storage Storage::external(std::byte* data, std::int64_t nbytes, std::shared_ptr<void> owner) {
+    Storage storage(0);
+    storage.data_ = {data, BlockDeleter{0, Device::CPU}};
+    storage.nbytes_ = nbytes;
+    storage.owner_ = std::move(owner);
+    return storage;
 }
 
 Storage::Storage(std::int64_t nbytes, Device device) : nbytes_(nbytes), device_(device) {
