@@ -61,7 +61,7 @@ template <typename T> __device__ void atomic_add(T* target, T value) {
 }
 
 template <> __device__ void atomic_add<std::int64_t>(std::int64_t* target, std::int64_t value) {
-    atomicAdd(reinterpret_cast<long long*>(target), static_cast<long long>(value));
+    atomicAdd(reinterpret_cast<unsigned long long*>(target), static_cast<unsigned long long>(value));
 }
 
 } // namespace kael::device::tasks
