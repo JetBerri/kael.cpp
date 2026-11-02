@@ -6,6 +6,7 @@
 #include "kael/kernels.h"
 #include "kael/ops.h"
 
+#include "autograd/record.h"
 #include "internal/arithmetic.h"
 #include "internal/nan_aware.h"
 #include "internal/operands.h"
@@ -69,11 +70,6 @@ template <typename F> Tensor logical(const Operand& a, const Operand& b, F f) {
     return comparison_kernel(x.to(DType::Bool), y.to(DType::Bool), f);
 }
 
-template <typename F> Tensor elementwise_extreme(const Operand& a, const Operand& b, F f) {
-    const auto [x, y] = detail::resolve_operands(a, b);
-    return binary_kernel(x, y, f);
-}
-
 } // namespace
 
 namespace detail {
@@ -87,24 +83,34 @@ std::pair<Tensor, Tensor> resolve_operands(const Operand& a, const Operand& b) {
 Tensor add(const Operand& a, const Operand& b) {
     const auto [x, y] = detail::resolve_operands(a, b);
     const DType dtype = detail::add_dtype(x, y);
-    return binary_kernel(x.to(dtype), y.to(dtype), detail::kPlus);
+    Tensor out = autograd::without_grad(
+        [&] { return binary_kernel(x.to(dtype), y.to(dtype), detail::kPlus); });
+    autograd::record_add(out, x, y);
+    return out;
 }
 
 Tensor sub(const Operand& a, const Operand& b) {
     const auto [x, y] = detail::resolve_operands(a, b);
     detail::check_no_bool(x, y, "sub");
-    return binary_kernel(x, y, detail::kMinus);
+    Tensor out = binary_kernel(x, y, detail::kMinus);
+    autograd::record_sub(out, x, y);
+    return out;
 }
 
 Tensor mul(const Operand& a, const Operand& b) {
     const auto [x, y] = detail::resolve_operands(a, b);
-    return binary_kernel(x, y, detail::kTimes);
+    Tensor out = binary_kernel(x, y, detail::kTimes);
+    autograd::record_mul(out, x, y);
+    return out;
 }
 
 Tensor div(const Operand& a, const Operand& b) {
     const auto [x, y] = detail::resolve_operands(a, b);
     const DType dtype = detail::div_dtype(x, y);
-    return binary_kernel(x.to(dtype), y.to(dtype), detail::kDivides);
+    Tensor out = autograd::without_grad(
+        [&] { return binary_kernel(x.to(dtype), y.to(dtype), detail::kDivides); });
+    autograd::record_div(out, x, y);
+    return out;
 }
 
 Tensor floor_divide(const Operand& a, const Operand& b) {
@@ -117,15 +123,23 @@ Tensor pow(const Operand& base, const Operand& exponent) {
     const auto [x, y] = detail::resolve_operands(base, exponent);
     detail::check_no_bool(x, y, "pow");
     detail::check_integer_exponent(x, exponent);
-    return binary_kernel(x, y, detail::kPower);
+    Tensor out = binary_kernel(x, y, detail::kPower);
+    autograd::record_pow(out, x, y);
+    return out;
 }
 
 Tensor maximum(const Operand& a, const Operand& b) {
-    return elementwise_extreme(a, b, [](auto p, auto q) { return detail::nan_aware_max(p, q); });
+    const auto [x, y] = detail::resolve_operands(a, b);
+    Tensor out = binary_kernel(x, y, [](auto p, auto q) { return detail::nan_aware_max(p, q); });
+    autograd::record_maximum(out, x, y);
+    return out;
 }
 
 Tensor minimum(const Operand& a, const Operand& b) {
-    return elementwise_extreme(a, b, [](auto p, auto q) { return detail::nan_aware_min(p, q); });
+    const auto [x, y] = detail::resolve_operands(a, b);
+    Tensor out = binary_kernel(x, y, [](auto p, auto q) { return detail::nan_aware_min(p, q); });
+    autograd::record_minimum(out, x, y);
+    return out;
 }
 
 Tensor eq(const Operand& a, const Operand& b) {

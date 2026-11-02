@@ -1,9 +1,11 @@
 #include <utility>
 
+#include "kael/autograd/grad_mode.h"
 #include "kael/factory.h"
 #include "kael/kernels.h"
 #include "kael/ops.h"
 
+#include "autograd/record.h"
 #include "internal/index_checks.h"
 #include "internal/operands.h"
 
@@ -42,12 +44,16 @@ Tensor cat(const std::vector<Tensor>& tensors, std::int64_t dim) {
     out_shape[position] = total;
     Tensor out = empty(out_shape, dtype);
 
-    std::int64_t start = 0;
-    for (const Tensor& t : tensors) {
-        const std::int64_t length = t.shape()[position];
-        out.narrow(dim, start, length).copy_(t);
-        start += length;
+    {
+        const autograd::NoGradGuard guard;
+        std::int64_t start = 0;
+        for (const Tensor& t : tensors) {
+            const std::int64_t length = t.shape()[position];
+            out.narrow(dim, start, length).copy_(t);
+            start += length;
+        }
     }
+    autograd::record_cat(out, tensors, dim);
     return out;
 }
 
@@ -70,13 +76,19 @@ Tensor where(const Tensor& condition, const Operand& a, const Operand& b) {
     KAEL_CHECK(condition.dtype() == DType::Bool,
                "where needs a bool condition, got " << condition.dtype());
     const auto [x, y] = detail::resolve_operands(a, b);
-    return ternary_kernel(condition, x, y,
-                          []<typename T>(T keep, T p, T q) -> T { return keep != T{0} ? p : q; });
+    Tensor out = ternary_kernel(
+        condition, x, y, []<typename T>(T keep, T p, T q) -> T { return keep != T{0} ? p : q; });
+    autograd::record_where(out, condition, x, y);
+    return out;
 }
 
 Tensor masked_fill(const Tensor& t, const Tensor& mask, Scalar value) {
-    Tensor out = t.expand(broadcast_shapes(t.shape(), mask.shape())).clone();
-    out.masked_fill_(mask, value);
+    Tensor out = autograd::without_grad([&] {
+        Tensor filled = t.expand(broadcast_shapes(t.shape(), mask.shape())).clone();
+        filled.masked_fill_(mask, value);
+        return filled;
+    });
+    autograd::record_masked_fill(out, t, mask);
     return out;
 }
 
@@ -89,11 +101,15 @@ Tensor index_select(const Tensor& t, std::int64_t dim, const Tensor& indices) {
     Shape out_shape = t.shape();
     out_shape[position] = indices.numel();
     Tensor out = empty(out_shape, t.dtype());
-    for (std::int64_t i = 0; i < indices.numel(); ++i) {
-        const std::int64_t source = detail::checked_index(indices.at<std::int64_t>({i}),
-                                                          t.shape()[position], "index_select");
-        out.narrow(dim, i, 1).copy_(t.narrow(dim, source, 1));
+    {
+        const autograd::NoGradGuard guard;
+        for (std::int64_t i = 0; i < indices.numel(); ++i) {
+            const std::int64_t source = detail::checked_index(indices.at<std::int64_t>({i}),
+                                                              t.shape()[position], "index_select");
+            out.narrow(dim, i, 1).copy_(t.narrow(dim, source, 1));
+        }
     }
+    autograd::record_index_select(out, t, dim, indices);
     return out;
 }
 
@@ -111,6 +127,7 @@ Tensor gather(const Tensor& t, std::int64_t dim, const Tensor& indices) {
             out.at<T>(index) = t.at<T>(source);
         });
     });
+    autograd::record_gather(out, t, dim, indices);
     return out;
 }
 

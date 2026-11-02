@@ -6,6 +6,7 @@
 
 #include "kael/factory.h"
 
+#include "autograd/record.h"
 #include "internal/copy.h"
 
 namespace kael {
@@ -67,6 +68,7 @@ Tensor Tensor::to(DType target) const {
     }
     Tensor out = empty(shape(), target);
     detail::convert_strided(out, *this);
+    autograd::record_to(out, *this);
     return out;
 }
 
@@ -77,6 +79,7 @@ Tensor Tensor::clone() const {
     } else if (nbytes() > 0) {
         std::memcpy(out.data_ptr_raw(), data_ptr_raw(), static_cast<std::size_t>(nbytes()));
     }
+    autograd::record_clone(out, *this);
     return out;
 }
 

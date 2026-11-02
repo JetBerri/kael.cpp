@@ -136,3 +136,20 @@ TEST(CompoundOperators, CallTheInPlaceVersion) {
     t /= 2;
     EXPECT_EQ(t.item<float>(), 6.f);
 }
+
+TEST(OpsInplace, IndexAddSumsRepeatedIndices) {
+    kael::Tensor t = kael::zeros({2, 3});
+    const kael::Tensor indices = kael::from_vector<std::int64_t>({2, 0, 2});
+    const kael::Tensor source = kael::from_vector<float>({1, 2, 3, 4, 5, 6}, {2, 3});
+    t.index_add_(1, indices, source);
+    EXPECT_EQ(t.at<float>({0, 2}), 4.0f);
+    EXPECT_EQ(t.at<float>({0, 0}), 2.0f);
+    EXPECT_EQ(t.at<float>({1, 2}), 10.0f);
+    EXPECT_EQ(t.at<float>({1, 1}), 0.0f);
+}
+
+TEST(OpsInplace, IndexAddRejectsMismatchedSource) {
+    kael::Tensor t = kael::zeros({2, 3});
+    const kael::Tensor indices = kael::from_vector<std::int64_t>({0, 1});
+    EXPECT_THROW(t.index_add_(1, indices, kael::zeros({2, 3})), kael::Error);
+}

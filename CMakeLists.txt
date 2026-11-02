@@ -38,6 +38,17 @@ add_library(kael
     src/ops/linalg.cpp
     src/ops/indexing.cpp
     src/ops/nn.cpp
+    src/autograd/grad_mode.cpp
+    src/autograd/tensor_autograd.cpp
+    src/autograd/node.cpp
+    src/autograd/engine.cpp
+    src/autograd/recording.cpp
+    src/autograd/functions_math.cpp
+    src/autograd/functions_reduce.cpp
+    src/autograd/functions_view.cpp
+    src/autograd/functions_indexing.cpp
+    src/autograd/functions_linalg.cpp
+    src/autograd/gradcheck.cpp
 )
 
 add_library(kael::kael ALIAS kael)

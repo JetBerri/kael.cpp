@@ -9,14 +9,24 @@
 
 namespace kael {
 
+namespace autograd {
+struct AutogradMeta;
+}
+
 // Strides and offset count elements, not bytes.
 struct TensorImpl {
+    TensorImpl();
+    TensorImpl(TensorImpl&&) noexcept;
+    TensorImpl& operator=(TensorImpl&&) noexcept;
+    ~TensorImpl();
+
     std::shared_ptr<Storage> storage;
     Shape shape;
     Strides strides;
     std::int64_t offset = 0;
     DType dtype = DType::F32;
     Device device = Device::CPU;
+    std::unique_ptr<autograd::AutogradMeta> autograd;
 
     [[nodiscard]] std::int64_t numel() const { return kael::numel(shape); }
     [[nodiscard]] std::int64_t dim() const { return static_cast<std::int64_t>(shape.size()); }

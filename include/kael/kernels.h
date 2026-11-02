@@ -6,6 +6,7 @@
 #include <optional>
 #include <utility>
 
+#include "kael/autograd/grad_mode.h"
 #include "kael/dtype.h"
 #include "kael/iterator.h"
 #include "kael/tensor.h"
@@ -58,6 +59,7 @@ void run_typed(const TensorIterator& iterator, F& f) {
 
 template <typename F, typename... Inputs>
 Tensor same_dtype_kernel(DType dtype, F& f, const Inputs&... inputs) {
+    const autograd::NoGradGuard guard;
     TensorIterator iterator;
     iterator.allocate_output(dtype);
     (iterator.add_input(inputs.to(dtype)), ...);
@@ -68,6 +70,7 @@ Tensor same_dtype_kernel(DType dtype, F& f, const Inputs&... inputs) {
 
 template <typename F, typename... Inputs>
 void same_dtype_kernel_out(Tensor& out, F& f, const Inputs&... inputs) {
+    const autograd::NoGradGuard guard;
     TensorIterator iterator;
     iterator.add_output(out);
     (iterator.add_input(inputs.to(out.dtype())), ...);
@@ -83,6 +86,7 @@ template <typename F> Tensor unary_kernel(const Tensor& input, F f) {
 
 template <typename F> Tensor floating_unary_kernel(const Tensor& input, F f) {
     const DType dtype = is_floating_point(input.dtype()) ? input.dtype() : DType::F32;
+    const autograd::NoGradGuard guard;
     TensorIterator iterator;
     iterator.allocate_output(dtype).add_input(input.to(dtype)).build();
     dispatch_floating(dtype, "floating_unary_kernel",
@@ -110,6 +114,7 @@ Tensor ternary_kernel(const Tensor& a, const Tensor& b, const Tensor& c, F f) {
 
 template <typename F> Tensor comparison_kernel(const Tensor& a, const Tensor& b, F f) {
     const DType dtype = result_dtype({&a, &b});
+    const autograd::NoGradGuard guard;
     TensorIterator iterator;
     iterator.allocate_output(DType::Bool).add_input(a.to(dtype)).add_input(b.to(dtype)).build();
     dispatch(dtype, [&]<typename T>() { detail::run_typed<std::uint8_t, T, 2>(iterator, f); });

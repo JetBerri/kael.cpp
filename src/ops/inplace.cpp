@@ -1,3 +1,4 @@
+#include "kael/autograd/grad_mode.h"
 #include "kael/factory.h"
 #include "kael/kernels.h"
 #include "kael/ops.h"
@@ -10,6 +11,19 @@
 namespace kael {
 
 namespace {
+
+void check_grad_rules(const Tensor& self, const Tensor* source, const char* op) {
+    if (!autograd::GradMode::is_enabled()) {
+        return;
+    }
+    KAEL_CHECK(!self.requires_grad() || !self.is_leaf(),
+               "a leaf tensor that requires grad is being used in the in-place operation " << op);
+    KAEL_CHECK(
+        !self.requires_grad(),
+        op << " is not supported on a tensor with gradient history; use the out-of-place op");
+    KAEL_CHECK(source == nullptr || !source->requires_grad(),
+               op << " is not supported with a source that requires grad");
+}
 
 void check_writable(const Tensor& self, const char* op) {
     KAEL_CHECK(!self.has_internal_overlap(),
@@ -47,9 +61,11 @@ void check_scatter_source(const Tensor& indices, const Tensor& source) {
 
 template <typename F>
 Tensor& binary_inplace(Tensor& self, const Tensor& other, DType result, const char* op, F f) {
+    check_grad_rules(self, &other, op);
     check_writable(self, op);
     check_result_fits(result, self.dtype(), op);
     binary_kernel_out(self, self, without_partial_aliasing(self, other), f);
+    self.impl()->storage->bump_version();
     return self;
 }
 
@@ -84,16 +100,21 @@ Tensor& Tensor::pow_(const Operand& exponent) {
 }
 
 Tensor& Tensor::clamp_(Scalar min, Scalar max) {
+    check_grad_rules(*this, nullptr, "clamp_");
     check_writable(*this, "clamp_");
     check_result_fits(promote_with_scalar(promote_with_scalar(dtype(), min), max), dtype(),
                       "clamp_");
     detail::clamp_into(*this, *this, min, max);
+    impl_->storage->bump_version();
     return *this;
 }
 
 Tensor& Tensor::copy_(const Tensor& source) {
+    check_grad_rules(*this, &source, "copy_");
     check_writable(*this, "copy_");
+    const autograd::NoGradGuard guard;
     detail::convert_strided(*this, without_partial_aliasing(*this, source).expand(shape()));
+    impl_->storage->bump_version();
     return *this;
 }
 
@@ -107,6 +128,7 @@ Tensor& Tensor::zero_() {
 
 Tensor& Tensor::masked_fill_(const Tensor& mask, Scalar value) {
     KAEL_CHECK(mask.dtype() == DType::Bool, "masked_fill needs a bool mask, got " << mask.dtype());
+    check_grad_rules(*this, nullptr, "masked_fill_");
     check_writable(*this, "masked_fill_");
 
     TensorIterator iterator;
@@ -120,11 +142,13 @@ Tensor& Tensor::masked_fill_(const Tensor& mask, Scalar value) {
         };
         detail::run_typed<T, T, 2>(iterator, fill);
     });
+    impl_->storage->bump_version();
     return *this;
 }
 
 Tensor& Tensor::scatter_add_(std::int64_t dim, const Tensor& indices, const Tensor& source) {
     detail::check_index_tensor(indices, "scatter_add_");
+    check_grad_rules(*this, &source, "scatter_add_");
     const std::size_t position = dim_position(dim, this->dim());
     detail::check_gather_shapes(*this, indices, position, "scatter_add_");
     check_scatter_source(indices, source);
@@ -143,7 +167,22 @@ Tensor& Tensor::scatter_add_(std::int64_t dim, const Tensor& indices, const Tens
             element = convert_value<T>(element + source.at<T>(index));
         });
     });
+    impl_->storage->bump_version();
     return *this;
+}
+
+Tensor& Tensor::index_add_(std::int64_t dim, const Tensor& indices, const Tensor& source) {
+    detail::check_index_tensor(indices, "index_add_");
+    KAEL_CHECK(indices.dim() == 1,
+               "index_add_ needs 1-d indices, got shape " << to_string(indices.shape()));
+    const std::size_t position = dim_position(dim, this->dim());
+    KAEL_CHECK(source.dim() == this->dim() && source.shape()[position] == indices.numel(),
+               "index_add_ source shape " << to_string(source.shape()) << " does not match "
+                                          << indices.numel() << " indices at dimension " << dim);
+    Shape along_dim(shape().size(), 1);
+    along_dim[position] = indices.numel();
+    const autograd::NoGradGuard guard;
+    return scatter_add_(dim, indices.view(along_dim).expand(source.shape()), source);
 }
 
 Tensor& operator+=(Tensor& t, const Operand& other) {

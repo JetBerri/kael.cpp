@@ -4,9 +4,11 @@
 #include <numeric>
 #include <type_traits>
 
+#include "kael/autograd/grad_mode.h"
 #include "kael/factory.h"
 #include "kael/ops.h"
 
+#include "autograd/record.h"
 #include "internal/nan_aware.h"
 
 namespace kael {
@@ -36,6 +38,7 @@ std::vector<bool> reduced_positions(const Tensor& t, const Dims& dims) {
 }
 
 Reduction plan_reduction(const Tensor& t, const Dims& dims, bool keepdim) {
+    const autograd::NoGradGuard guard;
     const std::vector<bool> reduced = reduced_positions(t, dims);
 
     std::vector<std::int64_t> kept_first;
@@ -179,27 +182,38 @@ constexpr auto kIsNonZero = [](auto value) { return value != decltype(value){0};
 } // namespace
 
 Tensor sum(const Tensor& t, const Dims& dims, bool keepdim) {
-    return accumulate(t, dims, keepdim, 0, std::plus<>{});
+    Tensor out = accumulate(t, dims, keepdim, 0, std::plus<>{});
+    autograd::record_sum(out, t, dims, keepdim);
+    return out;
 }
 
 Tensor prod(const Tensor& t, const Dims& dims, bool keepdim) {
-    return accumulate(t, dims, keepdim, 1, std::multiplies<>{});
+    Tensor out = accumulate(t, dims, keepdim, 1, std::multiplies<>{});
+    autograd::record_prod(out, t, dims, keepdim);
+    return out;
 }
 
 Tensor mean(const Tensor& t, const Dims& dims, bool keepdim) {
-    return reduce_floating(t, dims, keepdim, "mean", [](const auto* chunk, std::int64_t size) {
-        return chunk_mean(chunk, size);
-    });
+    Tensor out =
+        reduce_floating(t, dims, keepdim, "mean", [](const auto* chunk, std::int64_t size) {
+            return chunk_mean(chunk, size);
+        });
+    autograd::record_mean(out, t, dims, keepdim);
+    return out;
 }
 
 Tensor max(const Tensor& t, const Dims& dims, bool keepdim) {
-    return extreme(t, dims, keepdim, "max",
-                   [](auto a, auto b) { return detail::nan_aware_max(a, b); });
+    Tensor out = extreme(t, dims, keepdim, "max",
+                         [](auto a, auto b) { return detail::nan_aware_max(a, b); });
+    autograd::record_extreme(out, t, dims, keepdim, "MaxBackward");
+    return out;
 }
 
 Tensor min(const Tensor& t, const Dims& dims, bool keepdim) {
-    return extreme(t, dims, keepdim, "min",
-                   [](auto a, auto b) { return detail::nan_aware_min(a, b); });
+    Tensor out = extreme(t, dims, keepdim, "min",
+                         [](auto a, auto b) { return detail::nan_aware_min(a, b); });
+    autograd::record_extreme(out, t, dims, keepdim, "MinBackward");
+    return out;
 }
 
 Tensor argmax(const Tensor& t) {
@@ -219,15 +233,18 @@ Tensor argmin(const Tensor& t, std::int64_t dim, bool keepdim) {
 }
 
 Tensor var(const Tensor& t, const Dims& dims, bool keepdim, std::int64_t correction) {
-    return reduce_floating(t, dims, keepdim, "var", [&](const auto* chunk, std::int64_t size) {
-        const double center = chunk_mean(chunk, size);
-        double squares = 0.0;
-        for (std::int64_t i = 0; i < size; ++i) {
-            const double deviation = static_cast<double>(chunk[i]) - center;
-            squares += deviation * deviation;
-        }
-        return squares / static_cast<double>(std::max<std::int64_t>(size - correction, 0));
-    });
+    Tensor out =
+        reduce_floating(t, dims, keepdim, "var", [&](const auto* chunk, std::int64_t size) {
+            const double center = chunk_mean(chunk, size);
+            double squares = 0.0;
+            for (std::int64_t i = 0; i < size; ++i) {
+                const double deviation = static_cast<double>(chunk[i]) - center;
+                squares += deviation * deviation;
+            }
+            return squares / static_cast<double>(std::max<std::int64_t>(size - correction, 0));
+        });
+    autograd::record_var(out, t, dims, keepdim, correction);
+    return out;
 }
 
 Tensor std(const Tensor& t, const Dims& dims, bool keepdim, std::int64_t correction) {
@@ -247,13 +264,16 @@ Tensor any(const Tensor& t, const Dims& dims, bool keepdim) {
 }
 
 Tensor norm(const Tensor& t, const Dims& dims, bool keepdim) {
-    return reduce_floating(t, dims, keepdim, "norm", [](const auto* chunk, std::int64_t size) {
-        double squares = 0.0;
-        for (std::int64_t i = 0; i < size; ++i) {
-            squares += static_cast<double>(chunk[i]) * static_cast<double>(chunk[i]);
-        }
-        return std::sqrt(squares);
-    });
+    Tensor out =
+        reduce_floating(t, dims, keepdim, "norm", [](const auto* chunk, std::int64_t size) {
+            double squares = 0.0;
+            for (std::int64_t i = 0; i < size; ++i) {
+                squares += static_cast<double>(chunk[i]) * static_cast<double>(chunk[i]);
+            }
+            return std::sqrt(squares);
+        });
+    autograd::record_norm(out, t, dims, keepdim);
+    return out;
 }
 
 Tensor Tensor::sum(const Dims& dims, bool keepdim) const {

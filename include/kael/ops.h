@@ -44,7 +44,7 @@ Tensor cos(const Tensor& t);
 Tensor tanh(const Tensor& t);
 Tensor sigmoid(const Tensor& t);
 Tensor relu(const Tensor& t);
-Tensor gelu(const Tensor& t);
+Tensor gelu(const Tensor& t, bool approximate = false);
 Tensor clamp(const Tensor& t, Scalar min, Scalar max);
 
 Tensor sum(const Tensor& t, const Dims& dims = {}, bool keepdim = false);

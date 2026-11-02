@@ -1,5 +1,8 @@
+#include "kael/autograd/grad_mode.h"
 #include "kael/factory.h"
 #include "kael/ops.h"
+
+#include "autograd/record.h"
 
 namespace kael {
 
@@ -71,9 +74,7 @@ void check_ranks(const Tensor& a, const Tensor& b, std::int64_t rank_a, std::int
                   << to_string(b.shape()));
 }
 
-} // namespace
-
-Tensor matmul(const Tensor& a, const Tensor& b) {
+Tensor matmul_forward(const Tensor& a, const Tensor& b) {
     KAEL_CHECK(a.dim() >= 1 && b.dim() >= 1, "matmul needs at least 1 dimension, got shapes "
                                                  << to_string(a.shape()) << " and "
                                                  << to_string(b.shape()));
@@ -94,6 +95,14 @@ Tensor matmul(const Tensor& a, const Tensor& b) {
         out = out.squeeze(-1);
     }
     return a_is_vector ? out.squeeze(b_is_vector ? -1 : -2) : out;
+}
+
+} // namespace
+
+Tensor matmul(const Tensor& a, const Tensor& b) {
+    Tensor out = autograd::without_grad([&] { return matmul_forward(a, b); });
+    autograd::record_matmul(out, a, b);
+    return out;
 }
 
 Tensor dot(const Tensor& a, const Tensor& b) {

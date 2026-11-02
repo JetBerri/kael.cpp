@@ -94,6 +94,33 @@ def write_npy_fixtures():
     (directory / "not_npy.npy").write_bytes(b"this is not an npy file")
 
 
+def write_mlp_fixture():
+    directory = GOLDEN_DIR / "mlp"
+    directory.mkdir(parents=True, exist_ok=True)
+    torch.manual_seed(20260)
+    inputs = torch.randn(6, 4, dtype=torch.float64)
+    targets = torch.tensor([0, 2, 1, 2, 0, 1], dtype=torch.int64)
+    parameters = {
+        "w1": torch.randn(5, 4, dtype=torch.float64),
+        "b1": torch.randn(5, dtype=torch.float64),
+        "w2": torch.randn(3, 5, dtype=torch.float64),
+        "b2": torch.randn(3, dtype=torch.float64),
+    }
+    for parameter in parameters.values():
+        parameter.requires_grad_()
+    hidden = torch.tanh(inputs @ parameters["w1"].T + parameters["b1"])
+    logits = hidden @ parameters["w2"].T + parameters["b2"]
+    log_probabilities = torch.log_softmax(logits, dim=1)
+    loss = -log_probabilities.gather(1, targets.unsqueeze(1)).mean()
+    loss.backward()
+    np.save(directory / "inputs.npy", inputs.numpy())
+    np.save(directory / "targets.npy", targets.numpy())
+    np.save(directory / "loss.npy", loss.detach().numpy())
+    for name, parameter in parameters.items():
+        np.save(directory / f"{name}.npy", parameter.detach().numpy())
+        np.save(directory / f"{name}_grad.npy", parameter.grad.numpy())
+
+
 CASES = []
 
 
@@ -214,6 +241,7 @@ for function in [torch.log, torch.log1p, torch.sqrt, torch.rsqrt]:
     add_cases(function.__name__, function, POSITIVE_PATTERNS + [INTEGER_INPUT])
 add_cases("relu", torch.relu, UNARY_PATTERNS)
 add_cases("gelu", torch.nn.functional.gelu, UNARY_PATTERNS)
+add_cases("gelu_tanh", lambda x: torch.nn.functional.gelu(x, approximate="tanh"), UNARY_PATTERNS)
 add_cases(
     "clamp",
     torch.clamp,
@@ -465,6 +493,7 @@ def main():
     if GOLDEN_DIR.exists():
         shutil.rmtree(GOLDEN_DIR)
     write_npy_fixtures()
+    write_mlp_fixture()
     manifest = []
     for op, name, inputs, args, compute in CASES:
         write_case(manifest, op, name, inputs, args, compute)

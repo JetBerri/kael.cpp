@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <optional>
 #include <sstream>
 #include <type_traits>
 
@@ -32,6 +33,7 @@ inline Tolerance default_tolerance(DType dtype) {
 
 struct AllcloseOptions {
     bool equal_nan = false;
+    std::optional<Tolerance> tolerance = std::nullopt;
 };
 
 template <typename T>
@@ -63,7 +65,7 @@ inline testing::AssertionResult allclose(const Tensor& actual, const Tensor& exp
                << "dtype " << actual.dtype() << " != " << expected.dtype();
     }
 
-    const Tolerance tolerance = default_tolerance(actual.dtype());
+    const Tolerance tolerance = options.tolerance.value_or(default_tolerance(actual.dtype()));
     return dispatch(actual.dtype(), [&]<typename T>() -> testing::AssertionResult {
         for (std::int64_t linear = 0; linear < actual.numel(); ++linear) {
             const Shape index = index_from_linear(linear, actual.shape());

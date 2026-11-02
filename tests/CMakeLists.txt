@@ -18,6 +18,12 @@ add_executable(kael_tests
     test_ops_linalg.cpp
     test_ops_indexing.cpp
     test_ops_nn.cpp
+    test_autograd_grad_mode.cpp
+    test_autograd_fields.cpp
+    test_autograd_engine.cpp
+    test_autograd_gradcheck.cpp
+    test_autograd_sum_to_shape.cpp
+    test_autograd_mlp.cpp
     support/npy.cpp
 )
 

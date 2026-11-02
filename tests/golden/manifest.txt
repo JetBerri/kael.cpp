@@ -426,6 +426,14 @@ op=gelu case=scalar inputs=x view_x=none args=
 op=gelu case=empty inputs=x view_x=none args=
 op=gelu case=f64 inputs=x view_x=none args=
 op=gelu case=special inputs=x view_x=none args=
+op=gelu_tanh case=matrix inputs=x view_x=none args=
+op=gelu_tanh case=transposed inputs=x view_x=transpose:0:1 args=
+op=gelu_tanh case=stepped inputs=x view_x=slice:0:0:6:2 args=
+op=gelu_tanh case=expanded inputs=x view_x=expand:2:3 args=
+op=gelu_tanh case=scalar inputs=x view_x=none args=
+op=gelu_tanh case=empty inputs=x view_x=none args=
+op=gelu_tanh case=f64 inputs=x view_x=none args=
+op=gelu_tanh case=special inputs=x view_x=none args=
 op=clamp case=matrix inputs=x view_x=none args=min:-0.5,max:0.5
 op=clamp case=transposed inputs=x view_x=transpose:0:1 args=min:-0.5,max:0.5
 op=clamp case=stepped inputs=x view_x=slice:0:0:6:2 args=min:-0.5,max:0.5

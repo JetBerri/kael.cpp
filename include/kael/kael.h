@@ -1,5 +1,10 @@
 #pragma once
 
+#include "kael/autograd/engine.h"
+#include "kael/autograd/functions.h"
+#include "kael/autograd/grad_mode.h"
+#include "kael/autograd/gradcheck.h"
+#include "kael/autograd/node.h"
 #include "kael/dtype.h"
 #include "kael/error.h"
 #include "kael/factory.h"

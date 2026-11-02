@@ -24,6 +24,8 @@ public:
     [[nodiscard]] const std::byte* data() const noexcept { return data_.get(); }
     [[nodiscard]] std::int64_t nbytes() const noexcept { return nbytes_; }
     [[nodiscard]] Device device() const noexcept { return device_; }
+    [[nodiscard]] std::int64_t version() const noexcept { return version_; }
+    void bump_version() noexcept { ++version_; }
 
 private:
     struct AlignedDeleter {
@@ -33,6 +35,7 @@ private:
     std::unique_ptr<std::byte[], AlignedDeleter> data_;
     std::int64_t nbytes_;
     Device device_;
+    std::int64_t version_ = 0;
 };
 
 } // namespace kael

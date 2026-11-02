@@ -1,10 +1,16 @@
 #include "kael/tensor_impl.h"
 
+#include "kael/autograd/meta.h"
 #include "kael/error.h"
 
 #include "internal/checked_math.h"
 
 namespace kael {
+
+TensorImpl::TensorImpl() = default;
+TensorImpl::TensorImpl(TensorImpl&&) noexcept = default;
+TensorImpl& TensorImpl::operator=(TensorImpl&&) noexcept = default;
+TensorImpl::~TensorImpl() = default;
 
 namespace {
 

@@ -5,6 +5,7 @@
 #include <initializer_list>
 #include <iosfwd>
 #include <memory>
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -17,6 +18,10 @@
 namespace kael {
 
 class Operand;
+
+namespace autograd {
+class Node;
+}
 
 using Dims = std::vector<std::int64_t>;
 
@@ -36,6 +41,19 @@ public:
     [[nodiscard]] std::int64_t stride(std::int64_t dim) const;
     [[nodiscard]] std::int64_t nbytes() const;
     [[nodiscard]] const std::shared_ptr<TensorImpl>& impl() const noexcept { return impl_; }
+
+    [[nodiscard]] bool requires_grad() const noexcept;
+    Tensor& requires_grad_(bool required = true);
+    [[nodiscard]] bool is_leaf() const noexcept;
+    [[nodiscard]] std::optional<Tensor> grad() const;
+    [[nodiscard]] std::shared_ptr<autograd::Node> grad_fn() const noexcept;
+    void zero_grad();
+    void retain_grad();
+    void backward(bool retain_graph = false) const;
+    void backward(const Tensor& gradient, bool retain_graph = false) const;
+    [[nodiscard]] Tensor detach() const;
+    Tensor& detach_();
+    [[nodiscard]] std::int64_t version() const noexcept;
 
     template <typename T> [[nodiscard]] T* data_ptr() {
         check_dtype<T>();
@@ -117,6 +135,7 @@ public:
     Tensor& zero_();
     Tensor& masked_fill_(const Tensor& mask, Scalar value);
     Tensor& scatter_add_(std::int64_t dim, const Tensor& indices, const Tensor& source);
+    Tensor& index_add_(std::int64_t dim, const Tensor& indices, const Tensor& source);
 
     [[nodiscard]] bool is_same(const Tensor& other) const noexcept { return impl_ == other.impl_; }
 

@@ -3,6 +3,7 @@
 
 #include "kael/tensor.h"
 
+#include "autograd/record.h"
 #include "internal/checked_math.h"
 
 namespace kael {
@@ -58,7 +59,13 @@ Tensor Tensor::view(const Shape& requested) const {
                                     << "; use reshape instead");
     Shape target = infer_shape(requested, numel());
     Strides target_strides = contiguous_strides(target);
-    return make_view(*this, std::move(target), std::move(target_strides), offset());
+    Tensor out = make_view(*this, std::move(target), std::move(target_strides), offset());
+    autograd::record_view(out, *this);
+    return out;
+}
+
+Tensor Tensor::detach() const {
+    return make_view(*this, shape(), strides(), offset());
 }
 
 Tensor Tensor::reshape(const Shape& requested) const {
@@ -78,7 +85,9 @@ Tensor Tensor::transpose(std::int64_t dim0, std::int64_t dim1) const {
     Strides new_strides = strides();
     std::swap(new_shape[first], new_shape[second]);
     std::swap(new_strides[first], new_strides[second]);
-    return make_view(*this, std::move(new_shape), std::move(new_strides), offset());
+    Tensor out = make_view(*this, std::move(new_shape), std::move(new_strides), offset());
+    autograd::record_transpose(out, *this, dim0, dim1);
+    return out;
 }
 
 Tensor Tensor::permute(const Dims& dims) const {
@@ -95,7 +104,9 @@ Tensor Tensor::permute(const Dims& dims) const {
         new_shape[i] = shape()[source];
         new_strides[i] = strides()[source];
     }
-    return make_view(*this, std::move(new_shape), std::move(new_strides), offset());
+    Tensor out = make_view(*this, std::move(new_shape), std::move(new_strides), offset());
+    autograd::record_permute(out, *this, dims);
+    return out;
 }
 
 Tensor Tensor::T() const {
@@ -118,7 +129,9 @@ Tensor Tensor::squeeze() const {
             new_strides.push_back(strides()[i]);
         }
     }
-    return make_view(*this, std::move(new_shape), std::move(new_strides), offset());
+    Tensor out = make_view(*this, std::move(new_shape), std::move(new_strides), offset());
+    autograd::record_squeeze(out, *this);
+    return out;
 }
 
 Tensor Tensor::squeeze(std::int64_t dim) const {
@@ -134,7 +147,9 @@ Tensor Tensor::squeeze(std::int64_t dim) const {
     Strides new_strides = strides();
     erase_at(new_shape, position);
     erase_at(new_strides, position);
-    return make_view(*this, std::move(new_shape), std::move(new_strides), offset());
+    Tensor out = make_view(*this, std::move(new_shape), std::move(new_strides), offset());
+    autograd::record_squeeze(out, *this, dim);
+    return out;
 }
 
 Tensor Tensor::unsqueeze(std::int64_t dim) const {
@@ -146,13 +161,17 @@ Tensor Tensor::unsqueeze(std::int64_t dim) const {
     Strides new_strides = strides();
     insert_at(new_shape, position, 1);
     insert_at(new_strides, position, new_stride);
-    return make_view(*this, std::move(new_shape), std::move(new_strides), offset());
+    Tensor out = make_view(*this, std::move(new_shape), std::move(new_strides), offset());
+    autograd::record_unsqueeze(out, *this, dim);
+    return out;
 }
 
 Tensor Tensor::expand(const Shape& requested) const {
     Shape target = resolve_expand_shape(shape(), requested);
     Strides target_strides = broadcast_strides(shape(), strides(), target);
-    return make_view(*this, std::move(target), std::move(target_strides), offset());
+    Tensor out = make_view(*this, std::move(target), std::move(target_strides), offset());
+    autograd::record_expand(out, *this);
+    return out;
 }
 
 bool Tensor::has_internal_overlap() const {
@@ -179,7 +198,9 @@ Tensor Tensor::slice(std::int64_t dim, std::int64_t start, std::int64_t end,
     Strides new_strides = strides();
     new_shape[position] = last > first ? (last - first - 1) / step + 1 : 0;
     new_strides[position] = detail::checked_mul(stride, step, "slice stride");
-    return make_view(*this, std::move(new_shape), std::move(new_strides), new_offset);
+    Tensor out = make_view(*this, std::move(new_shape), std::move(new_strides), new_offset);
+    autograd::record_slice(out, *this, dim, start, end, step);
+    return out;
 }
 
 Tensor Tensor::select(std::int64_t dim, std::int64_t index) const {
@@ -194,7 +215,9 @@ Tensor Tensor::select(std::int64_t dim, std::int64_t index) const {
     const std::int64_t new_offset = offset() + wrapped * strides()[position];
     erase_at(new_shape, position);
     erase_at(new_strides, position);
-    return make_view(*this, std::move(new_shape), std::move(new_strides), new_offset);
+    Tensor out = make_view(*this, std::move(new_shape), std::move(new_strides), new_offset);
+    autograd::record_select(out, *this, dim, index);
+    return out;
 }
 
 Tensor Tensor::narrow(std::int64_t dim, std::int64_t start, std::int64_t length) const {
