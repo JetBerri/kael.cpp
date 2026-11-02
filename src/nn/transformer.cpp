@@ -24,6 +24,11 @@ Tensor future_positions_mask(std::int64_t size) {
     return triu(ones({size, size}, DType::Bool), 1);
 }
 
+const GptConfig& checked_config(const GptConfig& config) {
+    KAEL_CHECK_VALUE(config.layers > 0, "GPT needs at least one layer, got " << config.layers);
+    return config;
+}
+
 std::int64_t checked_head_dimension(std::int64_t dimension, std::int64_t heads) {
     KAEL_CHECK_VALUE(heads > 0 && dimension % heads == 0,
                      "dimension " << dimension << " does not divide by " << heads << " heads");
@@ -159,7 +164,7 @@ Tensor TransformerBlock::forward(const Tensor& input, LayerCache* cache) {
 }
 
 GPT::GPT(const GptConfig& config)
-    : config_(config),
+    : config_(checked_config(config)),
       token_embedding_(register_module(
           "token_embedding",
           std::make_shared<Embedding>(config.vocab_size, config.dimension, config.dtype))),
@@ -209,6 +214,9 @@ Tensor GPT::forward(const Tensor& indices, KvCache* cache) {
     if (cache != nullptr && cache->empty()) {
         cache->resize(blocks_.size());
     }
+    KAEL_CHECK_VALUE(cache == nullptr || cache->size() == blocks_.size(),
+                     "cache has " << cache->size() << " layers but the model has "
+                                  << blocks_.size());
     const std::int64_t past =
         cache != nullptr && cache->front().keys ? cache->front().keys->size(2) : 0;
     const std::int64_t length = indices.size(1);

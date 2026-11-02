@@ -323,3 +323,16 @@ TEST(Gpt2Weights, Conv1DWeightsAreTransposed) {
         EXPECT_TRUE(kael::equal(loaded.at(name), tensor)) << name;
     }
 }
+
+TEST(Gpt, NeedsAtLeastOneLayer) {
+    GptConfig config = tiny_config();
+    config.layers = 0;
+    EXPECT_THROW(GPT model(config), kael::ValueError);
+}
+
+TEST(Gpt, RejectsACacheOfAnotherModel) {
+    GPT model(tiny_config());
+    kael::nn::KvCache cache(1);
+    const kael::autograd::NoGradGuard guard;
+    EXPECT_THROW((void)model.forward(kael::zeros({1, 2}, DType::I64), &cache), kael::ValueError);
+}

@@ -81,9 +81,12 @@ Tensor multinomial(const Tensor& weights, std::int64_t samples, bool replacement
                          << to_string(weights.shape()));
     KAEL_CHECK_VALUE(samples > 0, "multinomial needs a positive sample count, got " << samples);
 
+    KAEL_CHECK_VALUE(weights.numel() > 0,
+                     "multinomial needs weights, got shape " << to_string(weights.shape()));
+
     const Tensor rows = weights.detach().cpu().to(DType::F64).contiguous();
     const std::int64_t classes = rows.size(-1);
-    const std::int64_t row_count = classes > 0 ? rows.numel() / classes : 0;
+    const std::int64_t row_count = rows.numel() / classes;
     Shape out_shape = weights.shape();
     out_shape.back() = samples;
     Tensor out = empty(out_shape, DType::I64);
