@@ -40,7 +40,7 @@ void bind_models(nb::module_& m) {
             [](const text::BpeTokenizer& tokenizer, const std::string& input) {
                 return tokenizer.encode(input);
             },
-            nb::arg("text"))
+            nb::arg("text"), nb::call_guard<nb::gil_scoped_release>())
         .def(
             "decode",
             [](const text::BpeTokenizer& tokenizer, const std::vector<std::int64_t>& ids) {
@@ -121,7 +121,15 @@ void bind_models(nb::module_& m) {
                 if (on_token) {
                     options.on_token = [&on_token](const Tensor& token) {
                         const nb::gil_scoped_acquire gil;
-                        return nb::cast<bool>((*on_token)(token));
+                        const nb::object answer = (*on_token)(token);
+                        if (answer.is_none()) {
+                            return true;
+                        }
+                        const int truth = PyObject_IsTrue(answer.ptr());
+                        if (truth < 0) {
+                            nb::raise_python_error();
+                        }
+                        return truth == 1;
                     };
                 }
                 return nn::generate(model, prompt, options);

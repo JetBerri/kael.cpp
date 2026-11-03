@@ -43,6 +43,7 @@ from ._C import (
     is_grad_enabled,
     le,
     BpeTokenizer,
+    cross_entropy_losses,
     load_safetensors,
     log,
     log1p,

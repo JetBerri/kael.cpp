@@ -75,3 +75,19 @@ def test_numpy_view_survives_moving_the_tensor():
     assert array[0] == 1
     array[1] = 3
     assert other[1].item() == 7
+
+
+def test_generate_reports_tokens_from_the_device():
+    model = kael.GPT(vocab_size=32, max_positions=16, layers=1, heads=2, dimension=8)
+    model.to("cuda")
+    seen = []
+    model.generate(kael.tensor([[1, 2]]).to("cuda"), 3, on_token=lambda token: seen.append(token.item()))
+    assert len(seen) == 3
+
+
+def test_cross_entropy_runs_on_the_device():
+    logits = kael.rand(4, 3, device="cuda").requires_grad_()
+    targets = kael.tensor([0, 1, 2, 1]).to("cuda")
+    loss = kael.nn.functional.cross_entropy(logits, targets)
+    loss.backward()
+    assert logits.grad.device == "cuda"
