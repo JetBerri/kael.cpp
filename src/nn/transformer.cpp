@@ -236,6 +236,23 @@ Tensor GPT::forward(const Tensor& indices, KvCache* cache) {
     return matmul(token_embedding_->weight(), ln_final_->forward(x).mT()).mT().contiguous();
 }
 
+namespace {
+
+class TrainingModeRestorer {
+public:
+    explicit TrainingModeRestorer(GPT& model) : model_(model), was_training_(model.is_training()) {}
+    ~TrainingModeRestorer() { model_.train(was_training_); }
+
+    TrainingModeRestorer(const TrainingModeRestorer&) = delete;
+    TrainingModeRestorer& operator=(const TrainingModeRestorer&) = delete;
+
+private:
+    GPT& model_;
+    bool was_training_;
+};
+
+} // namespace
+
 Tensor generate(GPT& model, const Tensor& prompt, const GenerateOptions& options) {
     KAEL_CHECK_VALUE(options.max_new_tokens >= 0,
                      "max_new_tokens must not be negative, got " << options.max_new_tokens);
@@ -246,7 +263,7 @@ Tensor generate(GPT& model, const Tensor& prompt, const GenerateOptions& options
                      "generate needs a prompt of shape [B, T], got " << to_string(prompt.shape()));
 
     const autograd::NoGradGuard guard;
-    const bool was_training = model.is_training();
+    const TrainingModeRestorer restorer(model);
     model.eval();
     const std::int64_t context = model.config().max_positions;
 
@@ -274,7 +291,6 @@ Tensor generate(GPT& model, const Tensor& prompt, const GenerateOptions& options
             break;
         }
     }
-    model.train(was_training);
     return sequence;
 }
 

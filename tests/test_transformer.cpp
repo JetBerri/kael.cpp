@@ -4,6 +4,8 @@
 #include <memory>
 #include <vector>
 
+#include <stdexcept>
+
 #include <gtest/gtest.h>
 
 #include "kael/autograd/gradcheck.h"
@@ -371,4 +373,18 @@ TEST(GptGenerate, AReceiverCanStopTheGeneration) {
                                                     }});
     EXPECT_EQ(calls, 3);
     EXPECT_EQ(output.size(1), 5);
+}
+
+TEST(GptGenerate, AThrowingReceiverRestoresTheTrainingMode) {
+    kael::manual_seed(63);
+    GPT model(tiny_config());
+    model.train();
+    const kael::Tensor prompt = kael::zeros({1, 2}, kael::DType::I64);
+    EXPECT_THROW((void)kael::nn::generate(model, prompt,
+                                          {.max_new_tokens = 2,
+                                           .on_token = [](const kael::Tensor&) -> bool {
+                                               throw std::runtime_error("stop");
+                                           }}),
+                 std::runtime_error);
+    EXPECT_TRUE(model.is_training());
 }
