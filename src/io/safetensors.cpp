@@ -1,12 +1,16 @@
 #include "kael/io/safetensors.h"
 
 #include <algorithm>
+#include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
 #include <limits>
 #include <nlohmann/json.hpp>
 #include <memory>
+#include <string>
+#include <system_error>
 #include <vector>
 
 #if !defined(_WIN32)
@@ -130,6 +134,23 @@ void check_bools(const Tensor& t, const std::string& name) {
     }
 }
 
+struct TemporaryFileRemover {
+    std::filesystem::path path;
+
+    ~TemporaryFileRemover() {
+        std::error_code ignored;
+        if (!path.empty()) {
+            std::filesystem::remove(path, ignored);
+        }
+    }
+};
+
+std::uint64_t next_temporary_suffix() {
+    static std::atomic<std::uint64_t> counter{0};
+    const auto clock = std::chrono::steady_clock::now().time_since_epoch().count();
+    return static_cast<std::uint64_t>(clock) + counter.fetch_add(1);
+}
+
 // Private pages: writing to a mapped tensor copies the page and never reaches the file.
 std::shared_ptr<void> map_file(const std::filesystem::path& path, std::uint64_t expected_size) {
 #if defined(_WIN32)
@@ -193,8 +214,12 @@ void save_safetensors(const std::filesystem::path& path, const TensorMap& tensor
     text.append((kHeaderAlignment - (text.size() % kHeaderAlignment)) % kHeaderAlignment, ' ');
     const std::uint64_t header_size = text.size();
 
-    std::ofstream file(path, std::ios::binary);
-    KAEL_CHECK(file.is_open(), "cannot write safetensors file " << path);
+    // Mapped tensors may read from the file being replaced: truncating it would invalidate them.
+    std::filesystem::path temporary = path;
+    temporary += ".tmp" + std::to_string(next_temporary_suffix());
+    TemporaryFileRemover remover{temporary};
+    std::ofstream file(temporary, std::ios::binary);
+    KAEL_CHECK(file.is_open(), "cannot write safetensors file " << temporary);
     file.write(reinterpret_cast<const char*>(&header_size), sizeof(header_size));
     file.write(text.data(), static_cast<std::streamsize>(text.size()));
     for (const Tensor& payload : payloads) {
@@ -203,7 +228,10 @@ void save_safetensors(const std::filesystem::path& path, const TensorMap& tensor
                        static_cast<std::streamsize>(payload.nbytes()));
         }
     }
-    KAEL_CHECK(file.good(), "failed writing safetensors file " << path);
+    file.close();
+    KAEL_CHECK(file.good(), "failed writing safetensors file " << temporary);
+    std::filesystem::rename(temporary, path);
+    remover.path.clear();
 }
 
 SafetensorsFile read_safetensors(const std::filesystem::path& path, LoadMode mode) {

@@ -241,3 +241,33 @@ TEST_F(Safetensors, MappedLoadRejectsCorruptFilesLikeTheCopyingLoad) {
     write_raw("nope");
     EXPECT_THROW((void)kael::io::load_safetensors(path_, kael::io::LoadMode::Mapped), kael::Error);
 }
+
+TEST_F(Safetensors, SavingOverTheFileBehindAMappedTensorKeepsItValid) {
+    kael::manual_seed(8);
+    const kael::Tensor original = kael::randn({512, 512});
+    kael::io::save_safetensors(path_, {{"a", original}});
+    const TensorMap mapped = kael::io::load_safetensors(path_, kael::io::LoadMode::Mapped);
+
+    kael::io::save_safetensors(path_, mapped);
+
+    EXPECT_TRUE(kael::equal(mapped.at("a"), original));
+    EXPECT_TRUE(kael::equal(kael::io::load_safetensors(path_).at("a"), original));
+}
+
+TEST_F(Safetensors, AFailedSaveLeavesTheExistingFileIntact) {
+    kael::io::save_safetensors(path_, {{"a", kael::full({2}, 1.0)}});
+    const TensorMap invalid = {{"__metadata__", kael::zeros({1})}};
+    EXPECT_THROW(kael::io::save_safetensors(path_, invalid), kael::Error);
+    EXPECT_EQ(kael::io::load_safetensors(path_).at("a").at<float>({0}), 1.0f);
+}
+
+TEST_F(Safetensors, SavingLeavesNoTemporaryFilesBehind) {
+    kael::io::save_safetensors(path_, {{"a", kael::full({2}, 1.0)}});
+    int siblings = 0;
+    for (const auto& entry : std::filesystem::directory_iterator(path_.parent_path())) {
+        if (entry.path().filename().string().starts_with(path_.filename().string())) {
+            ++siblings;
+        }
+    }
+    EXPECT_EQ(siblings, 1);
+}
