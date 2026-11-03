@@ -5,11 +5,15 @@ architecture="${1:-native}"
 build="${2:-build-cuda}"
 report="${3:-cuda-report}"
 minimum_cmake="3.24"
+minimum_mnist_accuracy="97"
+incomplete_exit_code=3
 
 mkdir -p "$report"
+rm -f "$report"/*.log
 summary="$report/summary.txt"
 : >"$summary"
 failures=0
+skips=0
 
 step() {
     local name="$1"
@@ -29,6 +33,7 @@ step() {
 
 skip() {
     printf 'SKIP  %-24s        %s\n' "$1" "$2" | tee -a "$summary"
+    skips=$((skips + 1))
 }
 
 finish() {
@@ -39,7 +44,11 @@ finish() {
         echo "$failures step(s) failed; logs are in $report/"
         exit 1
     fi
-    echo "all steps passed; logs are in $report/"
+    if [[ "$skips" -gt 0 ]]; then
+        echo "no step failed, but $skips step(s) did not run: this is not a complete pass"
+        exit "$incomplete_exit_code"
+    fi
+    echo "all steps ran and passed; logs are in $report/"
     exit 0
 }
 
@@ -89,6 +98,37 @@ run_sanitizer() {
         --gtest_filter='Cuda.BackwardMatchesCpuAndStaysOnTheDevice:Cuda.IndexingMatchesCpu'
 }
 
+# Prints the output so the step log keeps it, and fails below the expected final accuracy.
+expect_mnist_accuracy() {
+    local output
+    output="$("$@" 2>&1)"
+    local status=$?
+    echo "$output"
+    [[ "$status" -eq 0 ]] || return "$status"
+    local accuracy
+    accuracy="$(echo "$output" | grep 'test accuracy' | tail -n 1 | sed -E 's/.*test accuracy ([0-9.]+)%.*/\1/')"
+    [[ -n "$accuracy" ]] || {
+        echo "no test accuracy in the output"
+        return 1
+    }
+    awk -v found="$accuracy" -v wanted="$minimum_mnist_accuracy" 'BEGIN { exit !(found + 0 >= wanted + 0) }' || {
+        echo "accuracy $accuracy% is below $minimum_mnist_accuracy%"
+        return 1
+    }
+}
+
+run_python_device_tests() {
+    local output
+    output="$(python_tool -m pytest python/tests/test_cuda.py -q -rs 2>&1)"
+    local status=$?
+    echo "$output"
+    [[ "$status" -eq 0 ]] || return "$status"
+    if echo "$output" | grep -q 'skipped'; then
+        echo "python device tests were skipped"
+        return 1
+    fi
+}
+
 build_python() {
     local environment="$build/python-venv"
     python3 -m venv "$environment" &&
@@ -96,7 +136,9 @@ build_python() {
         "$environment/bin/pip" install --quiet \
             --config-settings=cmake.define.KAEL_ENABLE_CUDA=ON \
             --config-settings=cmake.define.CMAKE_CUDA_ARCHITECTURES="$architecture" . &&
-        "$environment/bin/pip" install --quiet pytest hypothesis numpy tiktoken
+        "$environment/bin/pip" install --quiet torch --index-url https://download.pytorch.org/whl/cpu &&
+        "$environment/bin/pip" install --quiet pytest hypothesis numpy tiktoken transformers \
+            safetensors fastapi httpx
 }
 
 python_tool() {
@@ -122,9 +164,9 @@ fi
 step benchmarks "$build/benchmarks/kael_bench" --benchmark_filter='BM_Device'
 
 if [[ -d data/mnist ]]; then
-    step mnist-cpu "$build/examples/mnist_mlp" data/mnist --device cpu
-    step mnist-cuda "$build/examples/mnist_mlp" data/mnist --device cuda
-    step mnist-cuda-1024 "$build/examples/mnist_mlp" data/mnist --device cuda --hidden 1024
+    step mnist-cpu expect_mnist_accuracy "$build/examples/mnist_mlp" data/mnist --device cpu
+    step mnist-cuda expect_mnist_accuracy "$build/examples/mnist_mlp" data/mnist --device cuda
+    step mnist-cuda-1024 expect_mnist_accuracy "$build/examples/mnist_mlp" data/mnist --device cuda --hidden 1024
 else
     skip mnist "data/mnist is missing: run scripts/download_mnist.sh"
 fi
@@ -143,15 +185,20 @@ fi
 
 if step python-build build_python; then
     step python-sees-gpu python_tool -c 'import kael; assert kael.cuda_is_available()'
-    step python-tests python_tool -m pytest python/tests -q
+    step python-device-tests run_python_device_tests
+    step python-tests python_tool -m pytest python/tests -q -rs
     if [[ -d data/mnist ]]; then
-        step python-mnist-cuda python_tool examples/mnist.py --device cuda
+        step python-mnist-cuda expect_mnist_accuracy python_tool examples/mnist.py --device cuda
+    else
+        skip python-mnist-cuda "data/mnist is missing: run scripts/download_mnist.sh"
     fi
     if [[ -f data/gpt2/model.safetensors ]]; then
         step gpt2-cuda python_tool examples/gpt2_generate.py --device cuda
     else
         skip gpt2-cuda "data/gpt2/model.safetensors is missing"
     fi
+else
+    skip python-steps "the Python package did not build"
 fi
 
 finish
