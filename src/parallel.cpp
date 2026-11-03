@@ -215,7 +215,7 @@ private:
     // The workers do not exist in a forked child, so the pool can be neither used nor destroyed.
     void forget_threads_after_fork() {
         new (&mutex_) std::mutex;
-        (void)pool_.release();
+        [[maybe_unused]] const auto* forgotten = pool_.release();
         inside_parallel_region = false;
     }
 #endif

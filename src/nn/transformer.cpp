@@ -24,7 +24,7 @@ Tensor future_positions_mask(std::int64_t size) {
     return triu(ones({size, size}, DType::Bool), 1);
 }
 
-const GptConfig& checked_config(const GptConfig& config) {
+GptConfig checked_config(GptConfig config) {
     KAEL_CHECK_VALUE(config.layers > 0, "GPT needs at least one layer, got " << config.layers);
     return config;
 }
