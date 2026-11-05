@@ -921,7 +921,7 @@ Inputs must be `F64`, require grad and be leaves. `F32` has about 7 significant 
 - **Deep graphs.** Traversal, dependency counting and destruction are iterative. Recursion depth does not grow with graph depth.
 - **Integer outputs.** Ops with integral or boolean outputs never record, even if an input requires grad.
 - **Higher-order gradients.** Not supported. The engine runs under `NoGradGuard`, so gradients have no history.
-- **Debug hooks.** Setting `KAEL_TRACE_BACKWARD` in the environment prints each node, its gradient shape and its squared norm to stderr. `set_anomaly_detection(true)` from `kael/debug.h` makes the engine check every returned gradient for NaN. Both are covered in [13. Serving and tooling](13-serving-and-tooling.md).
+- **Debug hooks.** Setting `KAEL_TRACE_BACKWARD` in the environment prints each node, its gradient shape and its L2 norm to stderr. `set_anomaly_detection(true)` from `kael/debug.h` makes the engine check every returned gradient for NaN. Both are covered in [13. Serving and tooling](13-serving-and-tooling.md).
 
 ## How it is tested
 

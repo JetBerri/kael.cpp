@@ -77,7 +77,25 @@ void scatter_add(DType dtype, std::byte* data, const std::int64_t* indices, cons
                  const IndexLayout& layout);
 ```
 
-Operations are named by enums. `ElementOp` lists 36 elementwise operations, from `Plus` to `MaskedFill`. `ReduceOp` has `Sum`, `Max` and `Min`. `ElementParameters` carries up to two `double` constants, used by `Clamp` (low and high) and `MaskedFill` (the fill value).
+Operations are named by enums. `ElementOp` lists 36 elementwise operations, from `Plus` to `MaskedFill`. `ReduceOp` has `Sum`, `Max` and `Min`. `ElementParameters` carries up to two constants, used by `Clamp` (low and high) and `MaskedFill` (the fill value):
+
+```cpp
+// Integer arguments travel apart from real ones: a double cannot hold every int64 exactly.
+struct ElementParameters {
+    std::array<double, 2> reals{};
+    std::array<std::int64_t, 2> integers{};
+
+    template <typename T> [[nodiscard]] T get(std::size_t index) const {
+        if constexpr (std::is_integral_v<T>) {
+            return static_cast<T>(integers[index]);
+        } else {
+            return static_cast<T>(reals[index]);
+        }
+    }
+};
+```
+
+`Clamp<T>::parameters()` and `MaskedFill<T>::parameters()` fill `integers` for integer `T` and `reals` otherwise, and the device side reads them back with `parameters.get<T>(0)`. A round trip through `double` would round `2^53 + 1` to `2^53`, so an `i64` clamp bound or fill value would lose its low bits (`Cuda.IntegerClampAndMaskedFillKeepEveryBit`).
 
 An alternative design passes C++ functors to the device. That would force every operation file to be compiled by `nvcc`. With enums, only `backend.cu` needs the CUDA compiler, and the rest of kael stays plain C++20.
 
@@ -250,7 +268,7 @@ On the CPU, chapter 04 avoids this per-element division with a counter that carr
 
 With the layout from the `a + b` example, element 4 decomposes as `position = 4 % 3 = 1` in dimension 1 and `1 % 2 = 1` in dimension 0. The offsets are `out: 12 + 4 = 16`, `a: 16`, `b: 0 + 4 = 4` bytes, which address `out[1][1] = a[1][1] + b[1]`.
 
-`elementwise` switches on `ElementOp` and picks a typed runner: `run_same` (output type equals input type), `run_floating` (transcendental functions, `float` or `double` only), or `run_compare` (output `std::uint8_t`, kael's `bool`). `with_type` maps a runtime `DType` to a C++ type with a `switch`. `cast_value` converts the result, mapping any non-zero value to 1 for `bool` outputs.
+`elementwise` switches on `ElementOp` and picks a typed runner: `run_same` (output type equals input type), `run_floating` (transcendental functions, `float` or `double` only), or `run_compare` (output `std::uint8_t`, kael's `bool`). `with_type` maps a runtime `DType` to a C++ type with a `switch`. `cast_value` converts the result, mapping any non-zero value to 1 for `bool` outputs and calling `functions::saturating_cast` for float to integer, the device copy of the saturating conversion of chapter [02](02-memory-model.md).
 
 ### Reductions
 
@@ -268,7 +286,7 @@ merge 2: (p0+p1)+(p2+p3)  p4                                                 wid
 merge 3: ((p0+p1)+(p2+p3))+p4                                                width 1
 ```
 
-The order of additions is fixed by the block size, not by the number of GPU threads, so device sums are deterministic run to run (`Cuda.LongSumsMatchCpuAndAreDeterministic`). Sums accumulate in `double` for floating-point inputs and in `std::int64_t` for integers, matching the CPU. `Max` and `Min` use `nan_aware_max` and `nan_aware_min`.
+The order of additions is fixed by the block size, not by the number of GPU threads, so device sums are deterministic run to run (`Cuda.LongSumsMatchCpuAndAreDeterministic`). Sums accumulate in `double` for floating-point inputs and in `std::int64_t` for integers, matching the CPU. Integer sums use `functions::wrapping_add`, so overflow wraps around as on the CPU (`Cuda.IntegerSumWrapsAndFloatConversionSaturates`). `Max` and `Min` use `nan_aware_max` and `nan_aware_min`.
 
 The scratch buffers come from `allocate` and go back through `release`. Rows are processed one after another on the host side, with three or more launches per row. This is simple and correct. A production backend would reduce all rows in one launch with shared-memory trees.
 
@@ -283,13 +301,14 @@ for (std::int64_t k = 0; k < sizes.inner; ++k) {
     for (std::int64_t r = 0; r < row_count; ++r) {
         const T a_value = batch_a[(first_row + r) * sizes.inner + k];
         for (std::int64_t c = 0; c < column_count; ++c) {
-            accumulators[r][c] = static_cast<T>(accumulators[r][c] + a_value * b_row[c]);
+            accumulators[r][c] = functions::wrapping_add(
+                accumulators[r][c], functions::wrapping_multiply(a_value, b_row[c]));
         }
     }
 }
 ```
 
-The tile index encodes the batch, the tile row and the tile column. Edge tiles clip `row_count` and `column_count`. The result is written with `=`, not `+=`: unlike the CPU ladder, the device kernel owns its output tile. This kernel favors clarity. It reads every operand from global memory, with no shared-memory staging, so on real hardware it is expected to be far slower than cuBLAS. It also handles `i64` matrices, which cuBLAS does not.
+The tile index encodes the batch, the tile row and the tile column. Edge tiles clip `row_count` and `column_count`. The result is written with `=`, not `+=`: unlike the CPU ladder, the device kernel owns its output tile. This kernel favors clarity. It reads every operand from global memory, with no shared-memory staging, so on real hardware it is expected to be far slower than cuBLAS. It also handles `i64` matrices, which cuBLAS does not; `wrapping_add` and `wrapping_multiply` make their overflow wrap around as on the CPU.
 
 ### Gather and scatter
 
@@ -463,7 +482,7 @@ Run it on a machine with an NVIDIA GPU, `nvcc` and CMake 3.24 or newer:
 bash scripts/test_cuda.sh [architecture] [build-directory] [report-directory]
 ```
 
-The defaults are `native`, `build-cuda` and `cuda-report`. The script runs named steps, logs each one to `<report>/<step>.log`, and writes a PASS, FAIL or SKIP line per step to `<report>/summary.txt`:
+The defaults are `native`, `build-cuda` and `cuda-report`, and `-h` or `--help` prints this usage. The script runs named steps, logs each one to `<report>/<step>.log`, and writes a PASS, FAIL or SKIP line per step to `<report>/summary.txt`:
 
 1. `environment`, `cmake-version`, `gpu`: record `uname`, CMake, `nvcc`, compiler and `nvidia-smi` output; check that CMake is recent enough and `nvcc` is on `PATH`.
 2. `configure`, `build`: Release build with `KAEL_ENABLE_CUDA=ON`, examples and benchmarks.
@@ -479,7 +498,7 @@ The exit status is 0 when every step ran and passed, 1 when a step failed, and 3
 
 ### scripts/send_to_gpu.sh
 
-`scripts/send_to_gpu.sh user@host [--arch native] [--without-weights] [--no-run]` packs the current commit with `git archive` (uncommitted changes are not sent), adds `data/mnist`, `data/shakespeare` and, unless `--without-weights`, `data/gpt2`, copies them to `kael.cpp-<commit>` on the host over `scp`, runs `scripts/test_cuda.sh` there, and copies the `cuda-report` directory back as `cuda-report-<commit>-<timestamp>`. `--no-run` stops after the copy.
+`scripts/send_to_gpu.sh user@host [--arch native] [--without-weights] [--no-run]` packs the current commit with `git archive` (uncommitted changes are not sent), adds `data/mnist`, `data/shakespeare` and, unless `--without-weights`, `data/gpt2`, copies them to `kael.cpp-<commit>` on the host over `scp`, runs `scripts/test_cuda.sh` there, and copies the `cuda-report` directory back as `cuda-report-<commit>-<timestamp>`. `--no-run` stops after the copy. Without a host, or when the first argument starts with `-` (such as `--help`), the script prints its usage and exits with status 2.
 
 ## Edge cases and pitfalls
 
@@ -507,6 +526,7 @@ The exit status is 0 when every step ran and passed, 1 when a step failed, and 3
 | `HostOnlyAccessFailsClearly`, `ReadingValuesCopiesToHost`, `MixedDevicesAreRejected` | Device boundary rules |
 | `UnaryOpsMatchCpuOnEveryLayout`, `BinaryOpsMatchCpuWithBroadcast`, `DoublePrecisionMatchesCpu`, `IntegerOpsMatchCpu`, `BoolReductionsMatchCpu`, `NonFiniteValuesMatchCpu` | 43 unary and reduction ops on contiguous, transposed and strided inputs, and 19 binary ops with same-shape, row, column and 0-d broadcasts, match the CPU in `f32` and `f64` |
 | `LongSumsMatchCpuAndAreDeterministic`, `EmptyTensorsWork` | The block reduction and empty shapes |
+| `IntegerClampAndMaskedFillKeepEveryBit`, `IntegerSumWrapsAndFloatConversionSaturates` | `i64` clamp bounds and fill values above 2^53 stay exact; integer sums wrap and float to `i64` saturates as on the CPU |
 | `CudaMatmul.MatchesCpu`, `MatmulBatchesVectorsAndIntegersMatchCpu` | Matmul shapes, batches, vectors and `i64` |
 | `IndexingMatchesCpu`, `OutOfRangeIndicesStillThrow`, `SteppedIndicesWorkOnTheDevice` | Gather, scatter, index checks |
 | `BackwardMatchesCpuAndStaysOnTheDevice`, `GradientsCrossDevicesBackToTheOrigin`, `ViewAndIndexingGradientsMatchCpu`, `GradcheckRunsOnTheDevice` | Autograd on the device and across devices |

@@ -316,7 +316,7 @@ Tensor as_batch_of_matrices(const Tensor& matrix, const Shape& batch, std::int64
 The output starts as `zeros`. The CPU path then runs `parallel_for` over the batch with a grain chosen so each task does at least `kWorkPerParallelTask` (2^21) multiply-adds. Each matrix product calls:
 
 - `matmul_versions::multiply` for `float` and `double`, which picks BLAS when available and otherwise one of the hand-written kernels by problem size (chapter [08](08-cpu-performance.md));
-- `multiply_exact` for `std::int64_t`: a plain i-k-j loop. Integer products must be exact, and BLAS has no integer routines.
+- `multiply_exact` for `std::int64_t`: a plain i-k-j loop with `wrapping_add` and `wrapping_multiply`, so overflow wraps around instead of being undefined. Integer products must be exact, and BLAS has no integer routines.
 
 ### dot, outer, mm and bmm
 
@@ -570,6 +570,8 @@ The same idea appears at the Python level: `python/tests/test_ops.py` compares t
 
 - Integer division: `div` always returns a floating result, so integer `/` never truncates and never divides by zero in integer arithmetic. `floor_divide` throws on an integer zero divisor and handles `INT64_MIN // -1` by wrapping.
 - Integer overflow in `pow`: `integer_power` multiplies in the unsigned type, so overflow wraps instead of being undefined.
+- Signed integer overflow elsewhere: `add`, `sub`, `mul`, `neg`, `abs`, `sum`, `prod`, `matmul`, `cumsum` and `scatter_add_` go through `wrapping_add`, `wrapping_subtract` and `wrapping_multiply` from `src/internal/element_functions.h`, so `INT64_MAX + 1` is `INT64_MIN` in two's complement, as in PyTorch. On a real GPU, device `scatter_add_` wraps through an unsigned `atomicAdd`; the host emulation uses `wrapping_add` (`Cuda.IntegerScatterAddWrapsAround`).
+- Float to integer conversion: `to(DType::I64)` saturates out-of-range values to `INT64_MIN` or `INT64_MAX` and maps NaN to 0 (chapter [02](02-memory-model.md)).
 - In-place dtype: in-place ops never change `self.dtype()` and throw when the result needs a higher category (`InPlace.LosingCategoryThrows`).
 - NaN in reductions: `max`, `min` and the softmax maximum use NaN-aware comparisons; `argmax` returns the first NaN; `all` and `any` treat NaN as true.
 - Empty reductions: `sum` gives 0, `prod` gives 1, `mean` gives NaN, `max`, `min`, `argmax` and `argmin` throw for an empty reduced dimension.
@@ -593,6 +595,7 @@ The same idea appears at the Python level: `python/tests/test_ops.py` compares t
 | `tests/test_ops_indexing.cpp` | `Cat`, `Stack`, `Where`, `MaskedFill`, `IndexSelect`, `Gather`, `ScatterAdd` | shapes, promotion, broadcasting, index errors |
 | `tests/test_ops_nn.cpp` | `LogSumExp`, `Softmax`, `LogSoftmax`, `NnFunctions`, `FusedKernels` | no overflow, all `-inf`, integer inputs, fused path equals composed path |
 | `tests/test_sequence_ops.cpp` | `Cumsum`, `Sort`, `Topk`, `Triangular`, `IndexAdd`, `FastIndexing`, `Multinomial` | sequence semantics and NaN ordering |
+| `tests/test_integer_overflow.cpp` | `IntegerOverflow`, `FloatToInteger` | signed `add`, `sub`, `mul`, `neg`, `abs`, `sum`, `prod`, `matmul`, `cumsum` and `scatter_add_` wrap around; float to `I64` saturates, maps NaN to 0 and keeps the exact lower bound |
 | `tests/test_parallel_ops.cpp` | `ParallelReduce` | thread-count independence and accuracy of long sums |
 | `tests/test_golden.cpp` | `Golden.AllCasesMatchPyTorch` | 783 cases over 67 ops against PyTorch, including dtype |
 | `tests/test_golden_support.cpp` | `Allclose`, `Npy` | the comparison and the reader themselves: tolerance per dtype, NaN option, infinities, shape and dtype checks, failure message, every dtype, scalar and empty arrays, rejected files (missing, Fortran order, float16, not an npy file) |

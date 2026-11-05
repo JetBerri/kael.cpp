@@ -101,11 +101,12 @@ The order matters. `bind_tensor` creates the `Tensor` class. The later functions
 
 | Helper | Converts |
 |--------|----------|
-| `parse_device(name)` | `"cpu"` to `Device::CPU`; `"cuda"` or `"cuda:0"` to `Device::CUDA`; anything else raises `ValueError` |
 | `integers_from_args(args)` | `view(2, 3)` and `view((2, 3))` to one `std::vector<std::int64_t>` |
 | `dims_from(dim)` | `None` (all dimensions), an `int`, or an iterable of ints to `Dims` |
 | `maybe_operand(value)` | A `Tensor`, `bool`, `int`, `float`, an object with `__index__`, or a scalar with `__float__` and no `__len__`, to `Operand`; anything else to `std::nullopt` |
 | `operand_from`, `scalar_from` | Like `maybe_operand`, but raise `TypeError` |
+
+Device names go through `kael::parse_device` from `include/kael/device.h` (chapter [02](02-memory-model.md)): `"cpu"` gives `Device::CPU`, `"cuda"` or `"cuda:0"` gives `Device::CUDA`, and anything else raises `ValueError`. The C++ examples call the same function, so both accept the same names.
 
 The order of checks in `maybe_operand` matters. `bool` is tested before `int` because Python's `True` is also an `int`, and kael keeps `bool` as its own dtype. The `__float__` without `__len__` rule accepts NumPy scalars such as `np.float32(2)` but rejects NumPy arrays, which also define `__float__` for size-1 arrays.
 
@@ -115,9 +116,9 @@ The order of checks in `maybe_operand` matters. `bool` is tested before `int` be
 
 ```python
 x = kael.ones(2)
-y = kael.Tensor(x)   # nb::init<const Tensor&>: a second handle to the same TensorImpl
+y = kael.Tensor(x)  # nb::init<const Tensor&>: a second handle to the same TensorImpl
 y.add_(1)
-x.tolist()           # [2.0, 2.0]
+x.tolist()  # [2.0, 2.0]
 ```
 
 ### Properties and methods
@@ -219,7 +220,7 @@ def zeros(*shape, dtype=_DEFAULT_DTYPE, device="cpu"):
 
 `_shape` accepts `zeros(2, 3)` and `zeros((2, 3))`. `arange` infers `int64` when all of `start`, `end` and `step` are Python `int`, and `float32` otherwise. Random factories generate on the host and move the result with `.to(device)` in the binding.
 
-The runtime controls are bound as plain functions: `set_num_threads`, `get_num_threads`, `cuda_is_available`, `cuda_synchronize`, `empty_cache`, `allocator_stats(device="cpu")` (returned as a `dict`), and `manual_seed`.
+The runtime controls are bound as plain functions: `set_num_threads`, `get_num_threads`, `cuda_is_available`, `cuda_synchronize`, `empty_cache`, `allocator_stats(device="cpu")` (returned as a `dict`), and `manual_seed`. `set_num_threads` raises `ValueError` for a count outside `1..1024`, and the first call that starts the thread runtime, such as `get_num_threads()`, raises `ValueError` when `KAEL_NUM_THREADS` is not an integer in that range (chapter [08](08-cpu-performance.md)).
 
 ### The kael namespace
 
@@ -257,13 +258,13 @@ class Parameter(kael.Tensor):
 
 nanobind classes accept Python subclasses. The parameter shares the storage of `data` and is a leaf, because `detach()` cuts it from any graph.
 
-`Module` registers attributes in `__setattr__`: a `Parameter` goes into `_parameters`, a `Module` into `_modules`, and `register_buffer` adds non-trainable state. Assigning an attribute before `super().__init__()` raises `AttributeError` with a hint. `named_parameters` deduplicates by `id()`, so a weight shared by two layers appears once (`test_shared_parameters_appear_once`). `Module.to(device)` calls the private bindings `_move_to_` (which calls `Tensor::move_to_`) and `_set_grad_device`, so parameters keep their identity and the optimizer's references stay valid after a move.
+`Module` registers attributes in `__setattr__`: a `Parameter` goes into `_parameters`, a `Module` into `_modules`, and `register_buffer` adds non-trainable state. `state_dict` includes the buffers, and `load_state_dict` validates and restores them with the parameters (`test_load_state_dict_restores_buffers`). Assigning an attribute before `super().__init__()` raises `AttributeError` with a hint. `named_parameters` deduplicates by `id()`, so a weight shared by two layers appears once (`test_shared_parameters_appear_once`). `Module.to(device)` calls the private bindings `_move_to_` (which calls `Tensor::move_to_`) and `_set_grad_device`, so parameters keep their identity and the optimizer's references stay valid after a move.
 
-The layers are `Linear`, `ReLU`, `GELU`, `Sigmoid`, `Tanh`, `Softmax`, `Flatten`, `Dropout`, `LayerNorm`, `Embedding`, `Sequential`, `ModuleList`, `CrossEntropyLoss` and `MSELoss`. `LayerNorm.forward` calls `kael.standardize`, and `F.cross_entropy` calls `kael.cross_entropy_losses`, so Python models get the fused C++ kernels from chapter 08. `kael.nn.init` provides `uniform_`, `normal_`, `zeros_`, `ones_`, `xavier_uniform_`, `kaiming_uniform_` and `kaiming_normal_`, all under `no_grad`.
+The layers are `Linear`, `ReLU`, `GELU`, `Sigmoid`, `Tanh`, `Softmax`, `Flatten`, `Dropout`, `LayerNorm`, `Embedding`, `Sequential`, `ModuleList`, `CrossEntropyLoss` and `MSELoss`. `LayerNorm.forward` calls `kael.standardize`, and `F.cross_entropy` calls `kael.cross_entropy_losses`, so Python models get the fused C++ kernels from chapter 08. `F.binary_cross_entropy_with_logits` computes `max(x, 0)` with `kael.maximum(logits, kael.zeros_like(logits))` instead of `kael.relu`: `maximum` splits the gradient of a tie, so at `x = 0` the gradient is the analytic `sigmoid(x) - t`, as in the C++ loss, while `relu` would give 0 there (`test_binary_cross_entropy_gradient_at_zero_is_sigmoid_minus_target`). `kael.nn.init` provides `uniform_`, `normal_`, `zeros_`, `ones_`, `xavier_uniform_`, `kaiming_uniform_` and `kaiming_normal_`, all under `no_grad`.
 
 ### optim and data
 
-`kael.optim` defines `SGD` (momentum, weight decay), `Adam`, `AdamW`, `clip_grad_norm_`, and the schedulers `StepLR`, `CosineAnnealingLR` and `WarmupCosineLR`. `Optimizer.step` is decorated with `@kael.no_grad()` and updates parameters with in-place methods (`sub_`, `mul_`, `add_`), which bump the storage version as chapter 06 requires.
+`kael.optim` defines `SGD` (momentum, weight decay), `Adam`, `AdamW`, `clip_grad_norm_`, and the schedulers `StepLR`, `CosineAnnealingLR` and `WarmupCosineLR`. `clip_grad_norm_` raises `ValueError` on a NaN or infinite total norm, like the C++ version in chapter 07. `Optimizer.step` is decorated with `@kael.no_grad()` and updates parameters with in-place methods (`sub_`, `mul_`, `add_`), which bump the storage version as chapter 06 requires.
 
 `kael.data` defines `Dataset`, `TensorDataset`, `DataLoader` and `load_mnist`. For a `TensorDataset`, `DataLoader` builds each batch with one `index_select` per tensor instead of stacking per-sample tensors. `load_mnist` calls the C++ IDX reader through `_C._load_mnist`.
 
@@ -453,7 +454,7 @@ KAEL_BUILD_PYTHON = "ON"
 KAEL_BUILD_TESTS = "OFF"
 ```
 
-pip installs the build requirements in an isolated environment. scikit-build-core makes nanobind's CMake package findable, configures the root `CMakeLists.txt` with the defines above, builds `_C`, and assembles the wheel from `python/kael` plus the installed `_C` module and `_C.pyi`. The only runtime dependency is `numpy`.
+pip installs the build requirements in an isolated environment. scikit-build-core makes nanobind's CMake package findable, configures the root `CMakeLists.txt` with the defines above, builds `_C`, and assembles the wheel from `python/kael` plus the installed `_C` module and `_C.pyi`. The only runtime dependency is `numpy`. The `[project]` table declares `license = { text = "Apache-2.0" }`, so the wheel metadata names the license.
 
 Install from a checkout, with the test extras:
 
@@ -504,11 +505,11 @@ Tests that need optional packages skip themselves with `pytest.importorskip`: `t
 | `test_autograd.py` | 15 | Gradients against PyTorch, `retain_graph`, `no_grad` and `enable_grad` as context managers and decorators, `gradcheck` with a Python callback, in-place and version checks |
 | `test_indexing.py` | 18 | Every key form of `__getitem__` and `__setitem__` |
 | `test_interop.py` | 23 | `from_numpy`, `numpy()`, `__array__`, DLPack, lifetimes, GIL release, fork |
-| `test_errors.py` | 6 | `IndexError`, `ValueError`, `TypeError`, `RuntimeError` translation and messages |
-| `test_nn.py` | 28 | `Module` registration, layers, losses, optimizers and schedulers against PyTorch, training XOR |
+| `test_errors.py` | 7 | `IndexError`, `ValueError`, `TypeError`, `RuntimeError` translation and messages, an invalid `KAEL_NUM_THREADS` |
+| `test_nn.py` | 31 | `Module` registration, buffers in `load_state_dict`, layers, losses, the BCE gradient at zero, optimizers and schedulers against PyTorch, clipping a non-finite norm, training XOR |
 | `test_data.py` | 8 | `Dataset`, `TensorDataset`, `DataLoader` |
 | `test_cuda.py` | 10 | Device factories, transfers, `Module.to`, training on the device |
-| `test_gpt.py`, `test_tokenizer.py`, `test_server.py` | 9, 3, 23 | Covered in chapters 11 to 13 |
+| `test_gpt.py`, `test_tokenizer.py`, `test_server.py` | 9, 3, 26 | Covered in chapters 11 to 13 |
 
 ## Build it yourself
 

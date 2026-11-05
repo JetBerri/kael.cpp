@@ -133,7 +133,7 @@ async def generate(http_request: Request):
 ```
 
 1. `parse_request` reads the body chunk by chunk and stops with 413 as soon as it exceeds `MAX_BODY_BYTES`. Only then does pydantic parse it. A `ValidationError` becomes 422 with the error list, built with `include_input=False` so the response never echoes the prompt back. Both count as `rejected`.
-2. `prepare_prompt` reserves the generation slot, then tokenizes the prompt in a thread with `asyncio.to_thread`. Encoding 8,192 characters is not instant, and doing it on the loop would stall other requests (`test_the_event_loop_keeps_answering_while_a_prompt_is_encoded`). `prompt_tensor` rejects a prompt with no tokens (422) and a prompt whose token count plus `max_tokens` exceeds the context (413). Any failure here releases the slot.
+2. `prepare_prompt` reserves the generation slot, then tokenizes the prompt in a thread with `asyncio.to_thread`. Encoding 8,192 characters is not instant, and doing it on the loop would stall other requests (`test_the_event_loop_keeps_answering_while_a_prompt_is_encoded`). `prompt_tensor` rejects a prompt with no tokens (422) and a prompt whose token count plus `max_tokens` exceeds the context (413). Any failure here releases the slot. That includes `asyncio.CancelledError`, which reaches `prepare_prompt` when the request task is cancelled while the prompt is still being encoded. `CancelledError` derives from `BaseException`, not `Exception`, so it needs its own `except` clause; without it the slot would stay reserved and every later request would get 429 (`test_a_request_cancelled_while_encoding_frees_its_slot`).
 3. `start_generation` creates the queue and a `threading.Event` named `cancelled`, and starts a daemon thread that calls `generator.run`.
 4. Streaming requests return a `StreamingResponse` at once. Plain requests wait in `collect_tokens` and return JSON.
 
@@ -271,7 +271,7 @@ pip install . -r server/requirements.txt
 python server/app.py --data data/gpt2 --device cpu --host 127.0.0.1 --port 8000
 ```
 
-The four flags above are all the options, and the values shown are their defaults. `main` imports `uvicorn` inside the function, so importing `app.py` in tests does not require it.
+The four flags above are all the options, and the values shown are their defaults. `--device` accepts only `cpu` or `cuda`, and `python server/app.py --help` describes each flag. `main` imports `uvicorn` inside the function, so importing `app.py` in tests does not require it.
 
 ### The Docker image
 
@@ -374,12 +374,12 @@ digraph autograd {
 
 ### Backward tracing
 
-`set_backward_trace(&stream)` makes the engine print one line per node as it runs, with the shape of the incoming gradient and the sum of its squared elements. From `src/autograd/engine.cpp`:
+`set_backward_trace(&stream)` makes the engine print one line per node as it runs, with the shape of the incoming gradient and its L2 norm. From `src/autograd/engine.cpp`:
 
 ```cpp
 void trace_node(std::ostream& output, const Node& node, const Tensor& gradient) {
-    output << "backward " << node.name() << " shape=" << to_string(gradient.shape())
-           << " norm=" << kael::sum(gradient.to(DType::F64) * gradient.to(DType::F64)).item()
+    output << "backward " << node.name() << " shape=" << to_string(gradient.shape()) << " norm="
+           << std::sqrt(kael::sum(gradient.to(DType::F64) * gradient.to(DType::F64)).item())
            << '\n';
 }
 ```
@@ -388,11 +388,11 @@ For `sum(w * w).backward()` with `w = [3, 3]`:
 
 ```text
 backward SumBackward shape=[] norm=1
-backward MulBackward shape=[2] norm=2
-backward AccumulateGrad shape=[2] norm=72
+backward MulBackward shape=[2] norm=1.41421
+backward AccumulateGrad shape=[2] norm=8.48528
 ```
 
-The value labeled `norm` is the squared L2 norm: the gradient reaching `w` is `[6, 6]`, and `36 + 36 = 72`. The lines appear in the engine's execution order, which makes it easy to see where a gradient explodes or vanishes.
+The value labeled `norm` is the L2 norm: the gradient reaching `w` is `[6, 6]`, and `sqrt(36 + 36) = 8.48528`. It is the same quantity that `clip_grad_norm_` compares with `max_norm`. The lines appear in the engine's execution order, which makes it easy to see where a gradient explodes or vanishes.
 
 `set_backward_trace(nullptr)` turns tracing off. Setting the environment variable `KAEL_TRACE_BACKWARD` to any value turns it on at startup with output to standard error; the engine reads the variable once, the first time it checks the trace stream. Tracing computes a reduction per node and is slow; it is a debugging aid only.
 
@@ -417,7 +417,7 @@ void check_anomaly(const Node& node, const GradientList& gradients) {
 check '...' failed: Function SqrtBackward returned NaN in its gradient
 ```
 
-Infinite gradients are not flagged, only NaN. Both the trace stream and the anomaly flag are process-wide globals, not per-thread settings: turn them on around the code under investigation and off again afterwards. Anomaly detection adds a full pass over every gradient and is off by default (`IsOffByDefaultAndLeavesCleanGraphsAlone`).
+Infinite gradients are not flagged, only NaN. Both the trace stream and the anomaly flag are process-wide globals, not per-thread settings: turn them on around the code under investigation and off again afterwards. `autograd::detail::trace_output()` and `autograd::detail::anomaly_detection()` return references to a `std::atomic<std::ostream*>` and a `std::atomic<bool>`, so switching them from one thread while another runs backward is not a data race. The stream itself is not synchronized: two threads tracing into one stream interleave their lines. Anomaly detection adds a full pass over every gradient and is off by default (`IsOffByDefaultAndLeavesCleanGraphsAlone`).
 
 ## Fuzzing
 
@@ -596,7 +596,7 @@ flowchart LR
 | `cuda-compile-only` | In the `nvidia/cuda:12.6.2-devel-ubuntu22.04` container, configures with `KAEL_ENABLE_CUDA=ON` and `CMAKE_CUDA_ARCHITECTURES=86` and builds. It proves the real CUDA backend compiles; GitHub runners have no GPU, so nothing runs |
 | `python` | On Ubuntu and macOS with Python 3.12: `pip install ".[test]"` (pytest, hypothesis, torch, transformers, safetensors, tiktoken, fastapi, httpx) and `pytest python/tests -q`. Tests that need the downloaded GPT-2 files skip |
 | `fuzz` | Builds both fuzzers with Clang, `RelWithDebInfo`, ASan and UBSan, then runs each for 60 seconds on its corpus with a 2 GiB allocation limit |
-| `coverage` | Builds the tests with Clang's source-based coverage (`-fprofile-instr-generate -fcoverage-mapping`) and fake CUDA, runs `kael_tests`, and prints an `llvm-cov report` for `src` and `include/kael` |
+| `coverage` | Builds the tests with Clang's source-based coverage (`-fprofile-instr-generate -fcoverage-mapping`) and fake CUDA, runs `kael_tests`, and prints an `llvm-cov report` for `src` and `include/kael`. It calls the versioned tools `llvm-profdata-$version` and `llvm-cov-$version`, where `version` is the major version from `clang -dumpversion` |
 | `clang-tidy` | Exports a compilation database with fake CUDA and runs `run-clang-tidy` on every file under `src/` |
 
 `.github/workflows/wheels.yml` runs only on manual dispatch. It builds wheels with `cibuildwheel` on `ubuntu-latest`, `ubuntu-24.04-arm`, `macos-latest` and `macos-13`, builds a source distribution, and, if the `publish` input is `testpypi` or `pypi`, uploads them with trusted publishing (`id-token: write`, no stored token). Chapter 10 describes the wheel configuration.
@@ -628,7 +628,7 @@ flowchart LR
 | Slot | `test_only_one_generation_runs_at_a_time`, `test_an_exhausted_server_answers_429_and_recovers`, `test_slots_are_released_after_a_stream`, `test_a_client_that_never_reads_the_stream_does_not_keep_its_slot` |
 | Cancellation | `test_a_disconnected_plain_client_cancels_its_generation`, `test_shutdown_stops_a_running_generation` |
 | Limits and validation | `test_a_body_larger_than_the_limit_is_rejected_before_parsing`, `test_invalid_requests_are_rejected` (10 bodies), `test_a_lone_surrogate_is_a_rejected_request`, `test_a_large_top_k_is_clamped_to_the_vocabulary`, `test_a_prompt_longer_than_the_context_is_rejected`, `test_a_request_that_would_outgrow_the_context_is_rejected` |
-| Robustness | `test_the_event_loop_keeps_answering_while_a_prompt_is_encoded`, `test_a_failed_generation_answers_500_and_frees_its_slot` |
+| Robustness | `test_the_event_loop_keeps_answering_while_a_prompt_is_encoded`, `test_a_failed_generation_answers_500_and_frees_its_slot`, `test_a_failed_stream_sends_an_error_event_and_frees_its_slot`, `test_an_encoding_failure_answers_500_and_frees_its_slot`, `test_a_request_cancelled_while_encoding_frees_its_slot` |
 | Metrics | `test_health_and_prometheus_metrics` |
 | Callback binding | `test_python_callback_errors_reach_the_caller`, `test_truthy_or_missing_callback_answers_continue`, `test_falsy_callback_answers_stop` |
 
@@ -641,7 +641,7 @@ flowchart LR
 | `Explain.ShowsAutogradState` | `requires_grad`, `leaf` and `grad_fn: MulBackward` |
 | `GraphDot.HasOneNodePerOperationAndOneEdgePerInput` | four node types and exactly five edges for `sum(a * a + a)` |
 | `GraphDot.ATensorWithoutGraphIsAnEmptyDigraph` | no edges without a graph |
-| `BackwardTrace.PrintsEveryNodeWithShapeAndNorm`, `BackwardTrace.IsOffByDefault` | trace format and default |
+| `BackwardTrace.PrintsEveryNodeWithShapeAndNorm`, `BackwardTrace.ReportsTheL2NormOfEachGradient`, `BackwardTrace.IsOffByDefault` | trace format, the norm is the L2 norm (`2.82843` for `[2, 2]`), and default |
 | `AnomalyDetection.NamesTheNodeProducingNan`, `AnomalyDetection.IsOffByDefaultAndLeavesCleanGraphsAlone` | the error names `Sqrt` and `NaN`; off by default; no false positives |
 
 The fuzzers and the sanitizer configurations are themselves tests: CI runs the whole GoogleTest suite under ASan with UBSan and under TSan, and fuzzes both parsers on every push.

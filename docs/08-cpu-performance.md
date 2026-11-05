@@ -164,7 +164,7 @@ Three details matter:
 
 ### The pool
 
-`ThreadPool` owns `thread_count - 1` workers. The calling thread is the last participant, so `set_num_threads(4)` means four threads do the work, not five.
+`ThreadPool` owns `thread_count - 1` workers. The calling thread is the last participant, so `set_num_threads(4)` means four threads do the work, not five. If starting a worker throws, for example `std::system_error` when the system refuses a new thread, the constructor stops and joins the workers already started before it rethrows. Otherwise the destructors of joinable `std::thread` objects would call `std::terminate`. The `kMaxThreads` limit of 1024 keeps a mistyped count from asking the system for millions of threads.
 
 From `src/parallel.cpp`:
 
@@ -209,22 +209,26 @@ Nesting happens in practice. Batched `matmul` in `src/ops/linalg.cpp` splits bat
 From `src/parallel.cpp`:
 
 ```cpp
+constexpr std::int64_t kMaxThreads = 1024;
+
 std::int64_t default_thread_count() {
-    if (const char* configured = std::getenv("KAEL_NUM_THREADS")) {
-        char* end = nullptr;
-        const std::int64_t parsed = std::strtoll(configured, &end, 10);
-        if (parsed > 0 && *end == '\0') {
-            return parsed;
-        }
+    const char* configured = std::getenv("KAEL_NUM_THREADS");
+    if (configured == nullptr) {
+        return hardware_thread_count();
     }
-    return hardware_thread_count();
+    char* end = nullptr;
+    const std::int64_t parsed = std::strtoll(configured, &end, 10);
+    KAEL_CHECK_VALUE(end != configured && *end == '\0' && parsed > 0 && parsed <= kMaxThreads,
+                     "KAEL_NUM_THREADS must be an integer between 1 and "
+                         << kMaxThreads << ", got '" << configured << "'");
+    return parsed;
 }
 ```
 
 The order is:
 
-1. `set_num_threads(count)` at runtime. It rejects `count <= 0` with `ValueError`.
-2. `KAEL_NUM_THREADS`, read once when the runtime is first used. Invalid values such as `0`, `-2` or `4x` are ignored.
+1. `set_num_threads(count)` at runtime. It rejects a count outside `1..kMaxThreads` (1024) with `ValueError`.
+2. `KAEL_NUM_THREADS`, read once when the runtime is first used. Values such as `abc`, `0`, `-2`, `4x` or `100000` throw `ValueError` instead of being ignored, so a typo does not fall back to the hardware count unnoticed.
 3. `hardware_thread_count()`. On Apple platforms it reads `hw.perflevel0.physicalcpu`, the number of performance cores, because efficiency cores slow matmul and elementwise kernels down: a static split gives them the same share of work as a fast core. Elsewhere it uses `std::thread::hardware_concurrency()`, at least 1.
 
 ```bash
@@ -587,7 +591,7 @@ Rounding trades memory for hit rate. A `[1000, 1000]` `float` tensor (4 000 000 
 
 ### The cache
 
-`BlockCache` keeps one free list per capacity in an `unordered_map<std::int64_t, std::vector<std::byte*>>`, all guarded by one mutex. `allocate` pops a cached block (a hit) or calls the system allocator (a miss). `release` pushes the block back, unless caching is disabled or the cache would exceed `kMaxCachedBytes` (1 GiB), in which case the block goes back to the system.
+`BlockCache` keeps one free list per capacity in an `unordered_map<std::int64_t, std::vector<std::byte*>>`, all guarded by one mutex. `allocate` pops a cached block (a hit) or calls the system allocator (a miss). `release` pushes the block back, unless caching is disabled or the cache would exceed `kMaxCachedBytes` (1 GiB), in which case the block goes back to the system. `try_cache` also catches the `std::bad_alloc` that growing a free list can throw and frees the block instead: caching is optional, and `release` runs from a `noexcept` deleter.
 
 `Storage` holds the capacity in its deleter, so freeing a tensor releases its block to the right bucket. Host blocks come from `::operator new` with `std::align_val_t{Storage::kAlignment}`, 64 bytes, so cached blocks keep the alignment guarantee (`CachingAllocator.ReusedBlocksStayAligned`).
 
@@ -728,7 +732,7 @@ python benchmarks/compare.py --threads 8
 | `--data` | `data/mnist` |
 | `--threads` | `torch.get_num_threads()` |
 
-`--threads` sets the PyTorch thread count only. Set `KAEL_NUM_THREADS` to the same value so the comparison is fair. The repository does not store benchmark results: numbers depend on the machine, so generate them locally.
+`--threads` sets the PyTorch thread count and exports `KAEL_NUM_THREADS` with the same value before it starts `kael_bench` and `mnist_mlp`, so both libraries use the same number of threads. NumPy follows its BLAS environment variables. `python benchmarks/compare.py --help` describes every option. The repository does not store benchmark results: numbers depend on the machine, so generate them locally.
 
 ## Edge cases and pitfalls
 
@@ -748,7 +752,7 @@ python benchmarks/compare.py --threads 8
 | Suite | File | What it proves |
 |-------|------|----------------|
 | `ParallelThreads` | `tests/test_parallel.cpp` | Every index visited once, non-zero `begin`, grain respected, small ranges inline, exceptions propagate, grad mode copied, nested calls inline, concurrent callers complete, thread count readable but not writable inside a body |
-| `ParallelConfig` | `tests/test_parallel.cpp` | `set_num_threads` validation; one thread runs the whole range in one call |
+| `ParallelConfig` | `tests/test_parallel.cpp` | `set_num_threads` validation, including a count above `kMaxThreads`; one thread runs the whole range in one call |
 | `ParallelFork` | `tests/test_parallel.cpp` | A forked child runs `parallel_for` and allocates `Storage` without hanging, and the parent keeps working |
 | `ParallelIterator` | `tests/test_parallel_ops.cpp` | Large ranges split, small ranges do not, every layout writes every element in place, results independent of thread count |
 | `ParallelReduce` | `tests/test_parallel_ops.cpp` | Results independent of thread count, many outputs match hand-computed slices, long sums beat a running total in accuracy, empty reductions |

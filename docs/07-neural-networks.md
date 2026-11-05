@@ -244,10 +244,15 @@ From `src/nn/init.cpp`:
 ```cpp
 Fans fans_of(const Tensor& weight) {
     KAEL_CHECK_VALUE(weight.dim() >= 2, ...);
-    const std::int64_t receptive_field = weight.numel() / (weight.size(0) * weight.size(1));
+    std::int64_t receptive_field = 1;
+    for (std::int64_t dim = 2; dim < weight.dim(); ++dim) {
+        receptive_field *= weight.size(dim);
+    }
     return {weight.size(1) * receptive_field, weight.size(0) * receptive_field};
 }
 ```
+
+The product runs over the trailing dimensions instead of dividing `numel()` by `size(0) * size(1)`, because that division fails for a weight with an empty leading dimension. A `[0, 3, 2]` weight has fan in `6` and fan out `0` (`NnInit.FansOfAnEmptyWeightAreZero`).
 
 | Function | Distribution | Parameter |
 |----------|--------------|-----------|
@@ -427,7 +432,7 @@ if (options_.weight_decay > 0.0) {
 
 With a zero gradient, one `AdamW` step at the defaults multiplies the weight by `1 - 1e-3 * 0.01`: `1.0` becomes `0.99999`.
 
-`step_count_` is shared by all parameters of one optimizer and increments once per `step()`, as in PyTorch with a single parameter group.
+`steps_` holds one step count per parameter, and a parameter's count increments only on the steps where it has a gradient, as in PyTorch. A parameter that receives its first gradient late still gets the bias correction of a first step, so it moves by `lr` (`Optimizer.AdamCorrectsTheFirstStepOfALateParameter`). A single shared counter would divide its first moment by `1 - beta1^t` for a large `t` and shrink that first update.
 
 ### Learning rate schedulers
 
@@ -452,8 +457,8 @@ Each subclass constructor calls `apply_schedule()`, so the learning rate for ste
 |-----------|---------------|
 | `StepLR(step_size, gamma)` | `base * gamma^(floor(step / step_size))` |
 | `CosineAnnealingLR(total, min_lr = 0)` | `min + (base - min) * (1 + cos(pi * min(step, total) / total)) / 2` |
-| `LinearWarmup(warmup)` | `base * min(1, step / warmup)` |
-| `WarmupCosineLR(warmup, total, min_lr = 0)` | linear warmup until `warmup`, then cosine from `base` to `min_lr` over the remaining `total - warmup` steps |
+| `LinearWarmup(warmup)` | `base * min(1, (step + 1) / warmup)` |
+| `WarmupCosineLR(warmup, total, min_lr = 0)` | `base * (step + 1) / warmup` while `step < warmup`, then cosine from `base` to `min_lr` over the remaining `total - warmup` steps |
 
 Worked values:
 
@@ -462,10 +467,10 @@ CosineAnnealingLR, base 0.001, total 10, after 5 steps:
   0.5 * 0.001 * (1 + cos(pi/2)) = 0.0005
 
 LinearWarmup, base 0.1, warmup 4, steps 0..5:
-  0, 0.025, 0.05, 0.075, 0.1, 0.1
+  0.025, 0.05, 0.075, 0.1, 0.1, 0.1
 ```
 
-`LinearWarmup` and `WarmupCosineLR` set the learning rate to `0` at construction, so the first optimizer step after construction is a no-op update. The cosine schedules clamp the step at `total`, so the rate stays at `min_lr` afterwards. Invalid lengths (a non-positive step size or total, a warmup that does not fit in the total) throw (`Schedulers.InvalidLengthsThrow`).
+The warmup schedules count `step + 1`, so the rate set at construction is `base / warmup` (`base` for a `WarmupCosineLR` without warmup), not `0`, and the first optimizer step already updates the parameters. The rate reaches `base` at step `warmup - 1`. The cosine schedules clamp the step at `total`, so the rate stays at `min_lr` afterwards. Invalid lengths (a non-positive step size or total, a warmup that does not fit in the total) throw (`Schedulers.InvalidLengthsThrow`).
 
 ### Gradient clipping
 
@@ -475,6 +480,8 @@ From `src/optim/optimizer.cpp`:
 
 ```cpp
 const double total = std::sqrt(squared_total);
+KAEL_CHECK_VALUE(std::isfinite(total),
+                 "the total gradient norm is " << total << ", so it cannot be clipped");
 const double coefficient = max_norm / (total + 1e-6);
 if (coefficient < 1.0) {
     for (const Tensor& parameter : parameters) {
@@ -487,6 +494,8 @@ return total;
 ```
 
 `grad()` returns a handle to the stored gradient, so `mul_` on it updates the parameter's gradient. The function returns the norm before clipping, which is the value worth logging. Two gradients `[3]` and `[4]` have total norm `5`; with `max_norm = 1` each is multiplied by about `0.2`. Clipping preserves the direction of the full gradient, unlike per-element clamping. Call it between `backward()` and `optimizer.step()`.
+
+A NaN or infinite gradient makes the total norm non-finite, and the coefficient would then be 0 or NaN. Scaling by it would hide the problem or spread NaN to every gradient, so `clip_grad_norm_` throws `ValueError` instead (`ClipGradNorm.RejectsANonFiniteNorm`). The Python `kael.optim.clip_grad_norm_` raises the same error.
 
 ## Data
 
@@ -610,7 +619,7 @@ for (const auto& [images, labels] : kael::data::DataLoader(dataset, {.batch_size
 
 `NoGradGuard` saves memory and time: no nodes and no saved activations. `eval()` does not change this model's output (it has no dropout) but is the correct habit.
 
-Arguments: a positional data directory (default `data/mnist`), `--device cpu|cuda` and `--hidden N` (default 128). The seed is fixed at `42`.
+Arguments: a positional data directory (default `data/mnist`), `--device cpu|cuda` and `--hidden N` (default 128). `--help` prints the usage line. An unknown option, a missing value or a device name other than `cpu`, `cuda` or `cuda:0` ends the program with an error instead of being ignored; the device goes through `kael::parse_device` (chapter [02](02-memory-model.md)). The seed is fixed at `42`.
 
 ```bash
 scripts/download_mnist.sh
@@ -631,7 +640,7 @@ epoch 5 test accuracy 97.42% in 8.22106 s
 
 The first logged loss is `2.40`, close to `log(10) = 2.30` as expected from a fresh classifier. No unit test runs the example, because CI does not download MNIST. `scripts/test_cuda.sh` runs it on CPU and on CUDA (hidden 128 and 1024) and fails if the final accuracy is below `minimum_mnist_accuracy="97"`. Timings depend on the machine and build type.
 
-`examples/mnist.py` is the same program through the Python bindings, described in [10. Python bindings](10-python-bindings.md).
+`examples/mnist.py` is the same program through the Python bindings, described in [10. Python bindings](10-python-bindings.md). Its options are `--data`, `--device` (`cpu` or `cuda`, enforced by `argparse`), `--epochs` (default 5) and `--hidden` (default 128), and `--help` describes them.
 
 ## Edge cases and pitfalls
 
@@ -641,7 +650,8 @@ The first logged loss is `2.40`, close to `log(10) = 2.30` as expected from a fr
 - **Dropout probability.** `p` must be in `[0, 1)`. `Dropout(1.0)` and `Dropout(-0.1)` throw.
 - **Targets.** Class targets must be `I64`, 1-D, as long as the batch, and inside `[0, C)`. A float label tensor is a type error, not a silent cast.
 - **Large logits.** Use `cross_entropy` and `binary_cross_entropy_with_logits` on raw scores. Both are written to avoid overflow; composing `softmax` then `log` is not.
-- **Warmup schedulers start at zero.** The first update after constructing `LinearWarmup` or `WarmupCosineLR` uses learning rate `0`.
+- **Warmup schedulers start below the base rate.** The first update after constructing `LinearWarmup` or `WarmupCosineLR` uses `base / warmup`, not `0`.
+- **Non-finite gradients.** `clip_grad_norm_` throws `ValueError` when the total norm is NaN or infinite. Catch it to skip the batch, or enable anomaly detection (chapter [13](13-serving-and-tooling.md)) to find the node that produced it.
 - **DataLoader lifetime.** `DataLoader` stores `const Dataset&`. Constructing it from a temporary dataset leaves a dangling reference.
 - **Tied parameters in `state_dict`.** A tensor registered under two names appears once in `parameters()` but twice in `state_dict()`. `load_state_dict` copies both entries into the same storage, so the second wins.
 - **Empty batches.** `cross_entropy` on zero rows skips the target range check and its gradient is an empty tensor (`CrossEntropyFusedGraph.GradientOfAnEmptyBatchIsEmpty`).
@@ -652,8 +662,8 @@ The first logged loss is `2.40`, close to `log(10) = 2.30` as expected from a fr
 | Test file | Suites | What it proves |
 |-----------|--------|----------------|
 | `tests/test_nn_module.cpp` | `NnModule`, `NnSequential` | Recursive collection, dotted names in registration order, registered parameters require grad, training flag propagation, `zero_grad`, `state_dict` round trip between two models, detached entries, shape and name checks in `load_state_dict`, tied parameters listed once, null child rejected, `Sequential` naming and order |
-| `tests/test_nn_layers.cpp` | `NnInit`, `NnLinear`, `NnActivation`, `NnDropout`, `NnLayerNorm`, `NnEmbedding`, `NnFlatten`, `NnLoss`, `CrossEntropyFusedGraph` | Fans, initializer ranges and moments, PyTorch default bounds for `Linear`, layer outputs against PyTorch golden data, gradcheck for `Linear`, `LayerNorm`, `Embedding` and every loss, dropout statistics, stable BCE, target validation, the fused cross entropy node on contiguous and non-contiguous logits |
-| `tests/test_optim.cpp` | `OptimGolden`, `Optimizer`, `ClipGradNorm`, `Schedulers` | SGD (plain, momentum, Nesterov, weight decay) and Adam, Adam with decay, AdamW trajectories match PyTorch after steps 1 and 5; Adam's first step size; in-place update keeps the tensor; skipping parameters without grad; clipping above and below the limit; every scheduler against PyTorch or hand values |
+| `tests/test_nn_layers.cpp` | `NnInit`, `NnLinear`, `NnActivation`, `NnDropout`, `NnLayerNorm`, `NnEmbedding`, `NnFlatten`, `NnLoss`, `CrossEntropyFusedGraph` | Fans, including an empty weight, initializer ranges and moments, PyTorch default bounds for `Linear`, layer outputs against PyTorch golden data, gradcheck for `Linear`, `LayerNorm`, `Embedding` and every loss, dropout statistics, stable BCE and its gradient `sigmoid(x) - t` at `x = 0`, target validation, the fused cross entropy node on contiguous and non-contiguous logits |
+| `tests/test_optim.cpp` | `OptimGolden`, `Optimizer`, `ClipGradNorm`, `Schedulers` | SGD (plain, momentum, Nesterov, weight decay) and Adam, Adam with decay, AdamW trajectories match PyTorch after steps 1 and 5; Adam's first step size, also for a parameter whose first gradient arrives late; in-place update keeps the tensor; skipping parameters without grad; clipping above and below the limit and rejecting a non-finite norm; every scheduler against PyTorch or hand values |
 | `tests/test_data.cpp` | `Idx`, `TensorDataset`, `Dataset`, `DataLoader` | IDX parsing of synthetic files written by the test (including big-endian sizes and every malformed case), dataset indexing, default `get_batch` stacking, batch counts, order, `drop_last`, shuffle coverage and reproducibility |
 | `tests/test_training.cpp` | `Training` | A `20 -> 64 -> 4` MLP overfits 32 random examples (initial loss near `log 4`, final loss below `0.02` after 200 Adam steps); `Linear(1, 1)` with SGD recovers `y = 3x + 2` within `0.05`; a `2 -> 8 -> 2` tanh MLP solves XOR; the same seed gives bit-identical losses and a different seed does not |
 

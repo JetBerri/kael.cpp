@@ -115,6 +115,7 @@ const std::uint64_t header_size = text.size();
 - Each tensor is detached, copied to the CPU and made contiguous. A view is saved by value: a transposed `[3, 2]` view of a `[2, 3]` tensor is written as a `[3, 2]` tensor in row-major order (`SavesViewsByValue`).
 - The JSON text is padded with spaces to a multiple of `kHeaderAlignment = 8`. Since the length prefix is also 8 bytes, the data section starts at a multiple of 8 in the file, and every tensor whose offset is a multiple of its element size is naturally aligned. That matters for mapped loading below.
 - A tensor named `__metadata__` is rejected, because it would collide with the metadata entry.
+- The header is JSON, which must be valid UTF-8. `dump_header` catches the `nlohmann::json::type_error` that serializing an invalid string throws and raises `ValueError` ("tensor names and metadata must be valid UTF-8"), before any file is created (`SavingANameThatIsNotUtf8IsAValueError`).
 
 ### Atomic save
 
@@ -123,7 +124,8 @@ Writing directly to the target file has two failure modes. A crash or a full dis
 ```cpp
 // Mapped tensors may read from the file being replaced: truncating it would invalidate them.
 std::filesystem::path temporary = path;
-temporary += ".tmp" + std::to_string(next_temporary_suffix());
+temporary +=
+    ".tmp" + std::to_string(::getpid()) + "." + std::to_string(next_temporary_suffix());
 TemporaryFileRemover remover{temporary};
 std::ofstream file(temporary, std::ios::binary);
 KAEL_CHECK(file.is_open(), "cannot write safetensors file " << temporary);
@@ -137,22 +139,26 @@ for (const Tensor& payload : payloads) {
 }
 file.close();
 KAEL_CHECK(file.good(), "failed writing safetensors file " << temporary);
+flush_to_disk(temporary);
 std::filesystem::rename(temporary, path);
 remover.path.clear();
+flush_to_disk(path.parent_path().empty() ? std::filesystem::path(".") : path.parent_path());
 ```
 
 ```mermaid
 flowchart LR
-    A["write path.tmpNNN"] --> B{"write ok"}
-    B -- no --> C["TemporaryFileRemover deletes path.tmpNNN, path untouched"]
-    B -- yes --> D["rename path.tmpNNN to path"]
-    D --> E["old inode lives on while mapped"]
+    A["write path.tmpPID.NNN"] --> B{"write ok"}
+    B -- no --> C["TemporaryFileRemover deletes path.tmpPID.NNN, path untouched"]
+    B -- yes --> F["fsync path.tmpPID.NNN"]
+    F --> D["rename path.tmpPID.NNN to path"]
+    D --> G["fsync the directory"]
+    G --> E["old inode lives on while mapped"]
 ```
 
-- The suffix comes from `next_temporary_suffix`: the steady clock count plus an atomic counter, so two concurrent saves to the same path in one process never share a temporary name.
+- The suffix is the process id followed by `next_temporary_suffix`: the steady clock count plus an atomic counter. The counter keeps two concurrent saves to the same path in one process apart, and the process id keeps saves from different processes apart.
 - `TemporaryFileRemover` is an RAII guard. If anything throws before the rename, its destructor deletes the temporary file. After a successful rename, clearing its path disarms it.
 - On POSIX, `rename` replaces the directory entry atomically. A reader sees either the old file or the new one, never a mix. A process that mapped the old file keeps its pages, because the old inode is only freed when its last mapping goes away.
-- The function does not call `fsync`. The replacement is atomic with respect to other processes, but not guaranteed durable across a power loss.
+- `flush_to_disk` opens a path read-only and calls `fsync` on it. The temporary file is flushed before the rename, so a crash after the rename cannot leave a renamed but empty or partial file. The directory is flushed after the rename, so the new directory entry itself survives a power loss. A failed `fsync` throws `kael::Error`.
 - The length prefix and the tensor bytes are written in host byte order. On the little-endian hosts kael targets (x86-64 and ARM64), that is the format's byte order.
 
 ## Reading a file
@@ -622,6 +628,8 @@ It then decodes `output.select(0, 0)` and prints the text to standard output and
 | `--data` | `data/gpt2` |
 | `--device` | `cpu` (`cuda` selects the CUDA device) |
 
+`--help` prints the usage. An unknown option, an option without its value or an unknown device name is an error, not a silent fallback to the defaults. The device name goes through `kael::parse_device`.
+
 ```bash
 build/examples/gpt2_generate --tokens 20
 ```
@@ -645,7 +653,7 @@ model.eval()
 prompt = kael.tensor([encoding.encode(arguments.prompt)]).to(arguments.device)
 ```
 
-Its arguments mirror the C++ example, except that `--weights` (default `data/gpt2/model.safetensors`) replaces `--data`. With `--benchmark`, it runs greedy generation (temperature 0) twice, with and without the KV cache, and prints the rate of each:
+Its arguments mirror the C++ example, except that `--weights` (default `data/gpt2/model.safetensors`) replaces `--data`. `argparse` restricts `--device` to `cpu` or `cuda`, and `--help` describes every option. With `--benchmark`, it runs greedy generation (temperature 0) twice, with and without the KV cache, and prints the rate of each:
 
 ```bash
 python examples/gpt2_generate.py --benchmark --tokens 60
@@ -681,7 +689,7 @@ To use kael's own tokenizer from Python instead of `tiktoken`, create `kael.BpeT
 | `ReadsAFileWithPadding` | trailing spaces in the header are accepted |
 | `MissingFile`, `TruncatedLengthPrefix`, `HeaderLongerThanFile`, `HugeHeaderLengthDoesNotOverflow` | framing errors |
 | `BadHeader.IsRejected` | 26 malformed headers, each raises `ValueError` |
-| `InvalidBoolBytesAreRejected`, `UnsupportedDtypeIsATypeError`, `NamesCannotBeTheMetadataKey` | content errors |
+| `InvalidBoolBytesAreRejected`, `UnsupportedDtypeIsATypeError`, `NamesCannotBeTheMetadataKey`, `SavingANameThatIsNotUtf8IsAValueError` | content errors |
 | `MappedLoadMatchesTheCopyingLoad`, `MappedLoadRejectsCorruptFilesLikeTheCopyingLoad` | the two modes agree |
 | `MappedTensorsOutliveTheMap`, `WritingToAMappedTensorDoesNotChangeTheFile` | lifetime and copy-on-write |
 | `MappedLoadSharesTheFilePagesWhenAligned`, `MappedLoadCopiesMisalignedTensors` | aligned tensors point into one mapping 4 floats apart; misaligned ones are copied and aligned |

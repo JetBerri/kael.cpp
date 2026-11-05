@@ -147,7 +147,7 @@ The other CI jobs:
 | `cuda-compile-only` | Configures with `-DKAEL_ENABLE_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=86` in the `nvidia/cuda:12.6.2-devel-ubuntu22.04` container and builds. No tests run, because the runner has no GPU. |
 | `python` | `pip install ".[test]"` and `pytest python/tests -q` on Linux and macOS with Python 3.12. |
 | `fuzz` | Builds `fuzz_safetensors` and `fuzz_idx` with sanitizers and runs each for 60 seconds on its corpus. |
-| `coverage` | Runs `kael_tests` with Clang source-based coverage and prints an `llvm-cov report` for `src` and `include/kael`. |
+| `coverage` | Runs `kael_tests` with Clang source-based coverage and prints an `llvm-cov report` for `src` and `include/kael`. It calls `llvm-profdata-<version>` and `llvm-cov-<version>`, with the major version taken from `clang -dumpversion`, so the tools match the Clang that built the tests. |
 | `clang-tidy` | Runs `run-clang-tidy` over every `.cpp` file under `src/` with the repository `.clang-tidy`. |
 
 Build and test the Python package:

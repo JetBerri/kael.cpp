@@ -188,11 +188,15 @@ Bool is stored as `std::uint8_t`. The comment in `dtype.h` gives the reason: `si
 template <typename To, typename From> constexpr To convert_value(From value) {
     if constexpr (std::is_same_v<To, std::uint8_t>) {
         return value != From{0} ? To{1} : To{0};
+    } else if constexpr (std::is_integral_v<To> && std::is_floating_point_v<From>) {
+        return saturating_cast<To>(value);
     } else {
         return static_cast<To>(value);
     }
 }
 ```
+
+The second branch handles float to `I64`. A plain `static_cast` of an out-of-range float or of NaN to an integer is undefined behavior, so `saturating_cast` clamps to the integer range and maps NaN to 0, as Rust's `as` does. Chapter [02](02-memory-model.md) shows it.
 
 Conversion between two runtime dtypes, as in `to(DType)`, needs a double dispatch. `convert_strided` in `src/copy.cpp` nests one `dispatch` for `From` inside one for `To`, producing 16 instantiations of the copy loop (chapter [03](03-views.md)).
 
@@ -483,18 +487,25 @@ template <ElementOp Op> struct Tagged {
 };
 
 struct Plus : Tagged<ElementOp::Plus> {
-    template <typename T> KAEL_HD auto operator()(T a, T b) const { return a + b; }
+    template <typename T> KAEL_HD auto operator()(T a, T b) const {
+        if constexpr (kWraps<T>) {
+            return wrapping_add(a, b);
+        } else {
+            return a + b;
+        }
+    }
 };
 ```
 
 `KAEL_HD` expands to `__host__ __device__` under `nvcc` and to nothing otherwise, so the CPU loop and the CUDA kernel compile the same arithmetic. Functors are structs instead of lambdas for that reason and because the `kOp` tag gives the device backend a value it can switch on.
 
-Functors with runtime arguments store them as members and return them from `parameters()`: `Clamp<T>` holds `low` and `high`, `MaskedFill<T>` holds `replacement`.
+Functors with runtime arguments store them as members and return them from `parameters()`: `Clamp<T>` holds `low` and `high`, `MaskedFill<T>` holds `replacement`. `ElementParameters` keeps integer arguments in an `std::int64_t` array apart from the `double` array for real ones, because a `double` cannot hold every `int64` exactly (chapter [09](09-cuda-backend.md)).
 
 Several functors encode numerical or semantic decisions:
 
 - `Sigmoid` uses `1 / (1 + exp(-x))` for `x >= 0` and `exp(x) / (1 + exp(x))` for `x < 0`, so `exp` never receives a large positive argument.
 - `Maximum` and `Minimum` call `nan_aware_max` and `nan_aware_min`: if either value is NaN, the result is NaN. A plain `a < b ? b : a` would return the second argument whenever the first is NaN, making the result depend on argument order. `src/internal/nan_aware.h` has a host-only copy of the same functions used by reductions and softmax.
+- `Plus`, `Minus`, `Times` and `Negate` compute signed integers through `wrapping_add`, `wrapping_subtract` and `wrapping_multiply`, which cast to the unsigned type, operate there and cast back. Signed overflow is undefined behavior in C++; the unsigned detour makes it wrap around in two's complement, as PyTorch does. `Absolute` negates the same way, so `abs(INT64_MIN)` is `INT64_MIN`. The reductions, `matmul`, `cumsum` and `scatter_add_` (through `Plus` on the CPU, an unsigned `atomicAdd` on CUDA and `wrapping_add` in the host emulation) call the same helpers.
 - `Power` uses `std::pow` for floating types and `integer_power` for integers: exponentiation by squaring in the unsigned type, so overflow wraps instead of being undefined. A negative integer exponent gives `1` for base 1, `±1` for base -1, and `0` otherwise.
 - `Absolute` and `Sign` return their input unchanged for `std::uint8_t`, because Bool values are already 0 or 1.
 - `Clamp` returns NaN if either bound is NaN.

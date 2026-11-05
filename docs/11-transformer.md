@@ -586,7 +586,7 @@ Tensor batch_loss(kael::nn::GPT& model, const Batch& batch, std::int64_t vocabul
 
 Each step samples a batch, computes the loss, zeroes the gradients, runs backward, clips the global gradient norm to 1.0 with `clip_grad_norm_`, steps `AdamW` (weight decay 0.01 by default) and steps a `WarmupCosineLR` schedule: linear warmup over 200 steps, then a cosine decay to the end. Every 250 steps it averages the loss of 20 validation batches under `NoGradGuard` and in eval mode, and when the validation loss improves it saves the `state_dict()` to `best.safetensors` in the data directory (chapter 12 explains the format). At the end it reloads the best checkpoint and generates 500 characters from the prompt `"ROMEO:\n"` with temperature 0.8 and `top_k = 40`.
 
-The arguments are `--steps N`, `--device cuda` and an optional data directory. The seed is fixed with `manual_seed(1337)`.
+The arguments are `--steps N`, `--device cpu|cuda` and an optional data directory, and `--help` prints the usage line. An unknown option or device name is an error. The seed is fixed with `manual_seed(1337)`.
 
 ## Edge cases and pitfalls
 
@@ -600,7 +600,7 @@ The arguments are `--steps N`, `--device cuda` and an optional data directory. T
 - The first cached call stores views. On the first call the cache holds `select` and `transpose` views of the `qkv` output, so the whole `[B, T, 3C]` projection buffer stays alive until the next `cat` replaces them.
 - A cache across models or prompts. A `KvCache` is valid only for the model and the token prefix that filled it. Reusing it with a different prompt silently attends to stale keys. `generate` creates a fresh cache per call.
 - Temperature near zero. A positive temperature small enough to overflow the scaled logits to infinity makes softmax return NaN, which `multinomial` rejects with `ValueError`. The server in chapter 13 accepts only 0 or at least 0.001.
-- Warmup longer than the run. `WarmupCosineLR` requires `warmup_steps < total_steps`, so `char_gpt --steps 200` or fewer throws `ValueError` at startup.
+- Warmup longer than the run. `WarmupCosineLR` requires `warmup_steps < total_steps`. `char_gpt` checks `--steps` against its 200 warmup steps while parsing the arguments, so `char_gpt --steps 200` or fewer stops with "--steps must exceed the 200 warmup steps" before it loads any data.
 - Training mode. `generate` turns dropout off and restores the previous mode afterwards, even on an exception. Calling `model(...)` directly for evaluation still needs `model.eval()`.
 
 ## How it is tested

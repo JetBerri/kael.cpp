@@ -7,7 +7,7 @@ This chapter turns the shape arithmetic of chapter 01 into real tensors. It maps
 | `include/kael/error.h` | `kael::Error`, `IndexError`, `ValueError`, `TypeError` and the `KAEL_CHECK_*` macros |
 | `include/kael/dtype.h` | `DType`, `Device`, element sizes, type traits, `convert_value`, `promote_types` and the `dispatch` family |
 | `include/kael/scalar.h` | `Scalar`, a number with a dtype category, for factories and operations with a constant |
-| `include/kael/device.h`, `src/device.cpp` | `cuda_is_available` and `cuda_synchronize` |
+| `include/kael/device.h`, `src/device.cpp` | `parse_device`, `cuda_is_available` and `cuda_synchronize` |
 | `include/kael/storage.h`, `src/storage.cpp` | `Storage`: an owned or borrowed block of bytes on one device |
 | `include/kael/allocator.h`, `src/allocator.cpp` | The caching block allocator behind `Storage` (phase 9, covered in depth in chapter 08) |
 | `include/kael/tensor_impl.h`, `src/tensor_impl.cpp` | `TensorImpl`: storage plus shape, strides, offset, dtype, device; metadata validation |
@@ -76,7 +76,7 @@ enum class Device { CPU, CUDA };
 
 The dtype lives in the metadata, not in the C++ type. There is one class, `kael::Tensor`, instead of `Tensor<float>`, `Tensor<double>` and so on. A `std::vector<Tensor>` can hold mixed types, the autograd graph can store any tensor in its nodes, and the Python bindings expose one `Tensor` type, as PyTorch does. [ADR 0001](adr/0001-runtime-dtype.md) records the alternatives.
 
-`Device` sits next to `DType` in the same header because both are plain enums used by every layer. `include/kael/device.h` only declares `cuda_is_available()` and `cuda_synchronize()`, which forward to the backend described in chapter 09.
+`Device` sits next to `DType` in the same header because both are plain enums used by every layer. `include/kael/device.h` declares `parse_device(name)`, which maps `"cpu"` to `Device::CPU`, `"cuda"` or `"cuda:0"` to `Device::CUDA` and throws `ValueError` for anything else, plus `cuda_is_available()` and `cuda_synchronize()`, which forward to the backend described in chapter 09. The Python bindings and the C++ examples share `parse_device`, so both accept the same device names.
 
 ### Type tables
 
@@ -156,6 +156,8 @@ From `include/kael/dtype.h`:
 template <typename To, typename From> constexpr To convert_value(From value) {
     if constexpr (std::is_same_v<To, std::uint8_t>) {
         return value != From{0} ? To{1} : To{0};
+    } else if constexpr (std::is_integral_v<To> && std::is_floating_point_v<From>) {
+        return saturating_cast<To>(value);
     } else {
         return static_cast<To>(value);
     }
@@ -164,7 +166,27 @@ template <typename To, typename From> constexpr To convert_value(From value) {
 
 Every conversion into a tensor goes through it: `full(shape, 2.5, DType::Bool)` fills ones, `to(DType::Bool)` maps every non-zero to 1, and `from_vector(std::vector<std::uint8_t>{2, 0})` stores `{1, 0}`. NaN converts to true, because `NaN != 0` is true. That matches PyTorch.
 
-Conversions from floating point to `I64` use `static_cast`, which truncates toward zero (`-2.7` becomes `-2`). The `TensorTo.FloatToIntTruncatesTowardsZero` test pins that down.
+Conversions from floating point to `I64` go through `saturating_cast`. A `static_cast` of NaN or of a value outside the integer range is undefined behavior, so `saturating_cast` checks first:
+
+```cpp
+// Casting an out-of-range float to an integer is undefined behavior. Saturate instead, and map
+// NaN to zero, as Rust's `as` does.
+template <typename To, typename From> constexpr To saturating_cast(From value) {
+    if (value != value) {
+        return To{0};
+    }
+    constexpr auto lowest = static_cast<From>(std::numeric_limits<To>::min());
+    if (value <= lowest) {
+        return std::numeric_limits<To>::min();
+    }
+    if (value >= -lowest) {
+        return std::numeric_limits<To>::max();
+    }
+    return static_cast<To>(value);
+}
+```
+
+`-lowest` is `2^63`, which is exact in `float` and `double`, while `INT64_MAX` is not. In range, the cast truncates toward zero (`-2.7` becomes `-2`), as `TensorTo.FloatToIntTruncatesTowardsZero` pins down. Out of range, `1e30` becomes `INT64_MAX`, `-inf` becomes `INT64_MIN`, and NaN becomes 0 (`FloatToInteger.*` in `tests/test_integer_overflow.cpp`). The CUDA copy kernel calls a device copy of the same function from `src/internal/element_functions.h`, which cannot use `std::numeric_limits`.
 
 ### Type promotion
 
@@ -285,7 +307,7 @@ flowchart TD
     M -- CUDA --> D["device::allocate(capacity)"]
 ```
 
-When a `Storage` dies, `BlockDeleter` calls `detail::release_block`, which puts the block back in the free list of its capacity if the cache is enabled and the cached total stays at or below 1 GiB, and frees it otherwise. Host blocks are allocated and freed with the aligned forms of `operator new` and `operator delete`, which must always be paired: freeing aligned memory with the plain `operator delete` is undefined behavior. The `std::unique_ptr` with a custom deleter makes the right pairing the only possible one.
+When a `Storage` dies, `BlockDeleter` calls `detail::release_block`, which puts the block back in the free list of its capacity if the cache is enabled and the cached total stays at or below 1 GiB, and frees it otherwise. It also frees the block when the free list itself cannot grow: `release_block` runs in a `noexcept` deleter, so a `std::bad_alloc` from caching would terminate the process. Host blocks are allocated and freed with the aligned forms of `operator new` and `operator delete`, which must always be paired: freeing aligned memory with the plain `operator delete` is undefined behavior. The `std::unique_ptr` with a custom deleter makes the right pairing the only possible one.
 
 Why a cache: training loops allocate tensors of the same sizes on every step. Reusing blocks avoids a system allocation per intermediate result, and on a GPU it avoids repeated `cudaMalloc` and `cudaFree` calls, which are expensive and can synchronize the device. Phase 3 allocated directly with aligned `operator new`. Phase 9 added the cache. Chapter 08 covers the bucket policy, the statistics in `allocator_stats()`, `empty_cache()`, fork safety and thread safety.
 
@@ -708,6 +730,7 @@ A macro is used instead of a function because only a macro can capture the condi
 - **Empty tensors.** Storage of 0 bytes has a null pointer. `validate` skips the fit check, `first_element` avoids pointer arithmetic on null, and `print` writes `tensor([], ...)`.
 - **Byte count overflow.** `empty` checks `numel * element_size`, and `validate` checks every term of the extent, so a huge shape or stride throws `ValueError` instead of allocating a wrapped-around size.
 - **Bool bytes.** Any path that writes a Bool element goes through `convert_value`, so a Bool tensor never holds a byte other than 0 or 1.
+- **Float to integer.** NaN and out-of-range floats would be undefined behavior in a `static_cast`. `convert_value` saturates them to `INT64_MIN` or `INT64_MAX` and maps NaN to 0.
 - **`to` may alias.** `to(dtype())` and `to(device())` return the same tensor. Writing to the result writes to the source.
 - **Device memory on the host.** `data_ptr` and `at` throw for CUDA tensors. `device_data()` is the only way to get a device address, and its comment states that only device code may dereference it.
 - **Platform-dependent random numbers.** The same seed gives different `randn` values on libstdc++ and libc++. Tests must not hard-code sampled values.
@@ -719,7 +742,7 @@ A macro is used instead of a function because only a macro can capture the condi
 
 | File | Suites | What they prove |
 |------|--------|-----------------|
-| `tests/test_dtype.cpp` | `DType`, `Version` | Element sizes, names, stream output, traits in both directions, `dispatch` selects the matching type and supports `void` lambdas, the restricted variants reject the wrong dtypes, the version string |
+| `tests/test_dtype.cpp` | `DType`, `Version`, `Device` | Element sizes, names, stream output, traits in both directions, `dispatch` selects the matching type and supports `void` lambdas, the restricted variants reject the wrong dtypes, the version string, `parse_device` accepts `cpu`, `cuda` and `cuda:0` and rejects other names |
 | `tests/test_storage.cpp` | `Storage` | Allocation, 64-byte alignment for several sizes, every byte writable, zero bytes is null, negative size throws, CUDA throws without a backend, moves, external memory released with its owner and never passed to the allocator |
 | `tests/test_tensor_impl.cpp` | `TensorImpl`, `TensorImplValidate` | Contiguity for normal and transposed strides, 0-d impls, the exact byte limit and one byte short, offset past the end, negative strides and offsets, size mismatches, null storage, empty tensors, dtype size, stride overflow |
 | `tests/test_tensor.cpp` | `Tensor`, `TensorItem`, `TensorAt`, `TensorPrint`, `TensorTo` | Copy shares and clone does not, clone of an offset tensor starts at 0, `data_ptr` type checks and offset, negative `size` and `stride` dims, `item` rules, negative indices in `at`, printing of every dtype, summaries and stream flags, conversion rounding, truncation and Bool rules |
