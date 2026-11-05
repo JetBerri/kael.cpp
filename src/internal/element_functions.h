@@ -72,6 +72,23 @@ template <typename T> KAEL_HD T wrapping_multiply(T a, T b) {
     }
 }
 
+// Mirrors kael::saturating_cast for device code, which cannot call std::numeric_limits.
+template <typename To, typename From> KAEL_HD To saturating_cast(From value) {
+    if (value != value) {
+        return To{0};
+    }
+    using Bits = std::make_unsigned_t<To>;
+    constexpr auto lowest = static_cast<To>(Bits{1} << (sizeof(To) * 8 - 1));
+    constexpr auto highest = static_cast<To>(~static_cast<Bits>(lowest));
+    if (value <= static_cast<From>(lowest)) {
+        return lowest;
+    }
+    if (value >= -static_cast<From>(lowest)) {
+        return highest;
+    }
+    return static_cast<To>(value);
+}
+
 template <typename T> KAEL_HD T power_of_negative_exponent(T base, T exponent) {
     if (base == T{1}) {
         return base;

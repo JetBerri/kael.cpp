@@ -5,6 +5,8 @@ namespace kael::device::tasks {
 template <typename To, typename From> KAEL_HD To cast_value(From value) {
     if constexpr (std::is_same_v<To, std::uint8_t>) {
         return value != From{0} ? std::uint8_t{1} : std::uint8_t{0};
+    } else if constexpr (std::is_integral_v<To> && std::is_floating_point_v<From>) {
+        return functions::saturating_cast<To>(value);
     } else {
         return static_cast<To>(value);
     }

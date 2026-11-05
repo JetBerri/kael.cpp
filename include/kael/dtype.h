@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <limits>
 #include <ostream>
 #include <type_traits>
 
@@ -126,10 +127,28 @@ template <> struct cpp_type<DType::Bool> {
 
 template <DType D> using cpp_type_t = typename cpp_type<D>::type;
 
+// Casting an out-of-range float to an integer is undefined behavior. Saturate instead, and map
+// NaN to zero, as Rust's `as` does.
+template <typename To, typename From> constexpr To saturating_cast(From value) {
+    if (value != value) {
+        return To{0};
+    }
+    constexpr auto lowest = static_cast<From>(std::numeric_limits<To>::min());
+    if (value <= lowest) {
+        return std::numeric_limits<To>::min();
+    }
+    if (value >= -lowest) {
+        return std::numeric_limits<To>::max();
+    }
+    return static_cast<To>(value);
+}
+
 // A plain static_cast would turn 2.5 into the invalid bool value 2.
 template <typename To, typename From> constexpr To convert_value(From value) {
     if constexpr (std::is_same_v<To, std::uint8_t>) {
         return value != From{0} ? To{1} : To{0};
+    } else if constexpr (std::is_integral_v<To> && std::is_floating_point_v<From>) {
+        return saturating_cast<To>(value);
     } else {
         return static_cast<To>(value);
     }

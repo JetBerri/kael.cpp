@@ -1,5 +1,6 @@
 #include <cstdint>
 #include <functional>
+#include <limits>
 #include <string>
 #include <utility>
 #include <vector>
@@ -464,6 +465,17 @@ TEST_F(Cuda, ModuleToMovesExistingGradients) {
     layer.to(Device::CUDA);
     ASSERT_TRUE(layer.weight().grad().has_value());
     EXPECT_EQ(layer.weight().grad()->device(), Device::CUDA);
+}
+
+TEST_F(Cuda, IntegerSumWrapsAndFloatConversionSaturates) {
+    constexpr std::int64_t kMax = std::numeric_limits<std::int64_t>::max();
+    const Tensor longs = kael::from_vector(std::vector<std::int64_t>{kMax, 1}).to(Device::CUDA);
+    EXPECT_EQ(kael::sum(longs).item<std::int64_t>(), std::numeric_limits<std::int64_t>::min());
+    const Tensor floats =
+        kael::from_vector(std::vector<double>{std::nan(""), 1e300}).to(Device::CUDA);
+    const Tensor converted = floats.to(DType::I64).cpu();
+    EXPECT_EQ(converted.data_ptr<std::int64_t>()[0], 0);
+    EXPECT_EQ(converted.data_ptr<std::int64_t>()[1], kMax);
 }
 
 TEST_F(Cuda, LayersMatchCpu) {

@@ -67,4 +67,17 @@ TEST(IntegerOverflow, ScatterAddWrapsAround) {
     EXPECT_EQ(values_of(target), std::vector<std::int64_t>{kMin});
 }
 
+TEST(FloatToInteger, SaturatesOutOfRangeValuesAndMapsNanToZero) {
+    const double infinity = std::numeric_limits<double>::infinity();
+    const Tensor floats = kael::from_vector(
+        std::vector<double>{std::nan(""), infinity, -infinity, 1e300, -1e300, 2.7, -2.7});
+    EXPECT_EQ(values_of(floats.to(DType::I64)),
+              (std::vector<std::int64_t>{0, kMax, kMin, kMax, kMin, 2, -2}));
+}
+
+TEST(FloatToInteger, KeepsTheExactLowerBound) {
+    const Tensor lowest = kael::from_vector(std::vector<double>{-9223372036854775808.0});
+    EXPECT_EQ(values_of(lowest.to(DType::I64)), std::vector<std::int64_t>{kMin});
+}
+
 } // namespace
