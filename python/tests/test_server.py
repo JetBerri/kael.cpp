@@ -275,6 +275,31 @@ def test_the_event_loop_keeps_answering_while_a_prompt_is_encoded(model, tokeniz
     assert asyncio.run(scenario()) < 0.2
 
 
+def test_a_request_cancelled_while_encoding_frees_its_slot(model, tokenizer):
+    class SlowTokenizer:
+        def encode(self, text):
+            time.sleep(0.2)
+            return [1]
+
+        def decode(self, ids):
+            return b""
+
+    generator = server.Generator(model, SlowTokenizer(), "cpu", 64)
+    endpoint = generate_endpoint(generator)
+    body = json.dumps({"prompt": "hi", "max_tokens": 1})
+
+    async def scenario():
+        request = asyncio.create_task(endpoint(FakeHttpRequest(body)))
+        await asyncio.sleep(0.05)
+        request.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await request
+
+    asyncio.run(scenario())
+    assert generator.metrics.in_flight == 0
+    assert not generator.slot.locked()
+
+
 def test_a_failed_generation_answers_500_and_frees_its_slot(tokenizer):
     class Broken:
         def generate(self, *args, **kwargs):

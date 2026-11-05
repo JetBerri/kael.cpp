@@ -203,6 +203,10 @@ def create_app(generator):
             generator.metrics.count_request("error")
             generator.release()
             raise HTTPException(500, "generation failed") from error
+        except asyncio.CancelledError:
+            generator.metrics.count_request("cancelled")
+            generator.release()
+            raise
 
     def start_generation(prompt, request):
         loop = asyncio.get_running_loop()
