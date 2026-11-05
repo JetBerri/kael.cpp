@@ -9,6 +9,7 @@
 #include <iterator>
 #include <limits>
 #include <map>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -37,20 +38,31 @@ struct Options {
     std::filesystem::path directory = "data/shakespeare";
     std::int64_t steps = 5000;
     kael::Device device = kael::Device::CPU;
+    bool help = false;
 };
+
+constexpr const char* kUsage = "usage: char_gpt [DATA_DIR] [--steps N] [--device cpu|cuda]\n";
 
 Options parse_options(int argc, char** argv) {
     Options options;
     for (int i = 1; i < argc; ++i) {
         const std::string argument = argv[i];
-        if (argument == "--steps" && i + 1 < argc) {
+        if (argument == "--help" || argument == "-h") {
+            options.help = true;
+        } else if (argument == "--steps" && i + 1 < argc) {
             options.steps = std::stoll(argv[++i]);
         } else if (argument == "--device" && i + 1 < argc) {
-            options.device =
-                std::string(argv[++i]) == "cuda" ? kael::Device::CUDA : kael::Device::CPU;
+            options.device = kael::parse_device(argv[++i]);
+        } else if (argument.starts_with("-")) {
+            throw std::invalid_argument("unknown option or missing value: " + argument + "\n" +
+                                        kUsage);
         } else {
             options.directory = argument;
         }
+    }
+    if (!options.help && options.steps <= kWarmupSteps) {
+        throw std::invalid_argument("--steps must exceed the " + std::to_string(kWarmupSteps) +
+                                    " warmup steps, got " + std::to_string(options.steps));
     }
     return options;
 }
@@ -206,7 +218,12 @@ void run(const Options& options) {
 
 int main(int argc, char** argv) {
     try {
-        run(parse_options(argc, argv));
+        const Options options = parse_options(argc, argv);
+        if (options.help) {
+            std::cout << kUsage;
+            return EXIT_SUCCESS;
+        }
+        run(options);
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return EXIT_FAILURE;

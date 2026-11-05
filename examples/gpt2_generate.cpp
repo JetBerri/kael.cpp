@@ -3,6 +3,7 @@
 #include <exception>
 #include <filesystem>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -22,14 +23,21 @@ struct Options {
     double temperature = 0.8;
     std::int64_t top_k = 40;
     std::uint64_t seed = 42;
+    bool help = false;
 };
+
+constexpr const char* kUsage =
+    "usage: gpt2_generate [PROMPT] [--data DIR] [--device cpu|cuda] [--tokens N]\n"
+    "                     [--temperature T] [--top-k K] [--seed S]\n";
 
 Options parse_options(int argc, char** argv) {
     Options options;
     for (int i = 1; i < argc; ++i) {
         const std::string argument = argv[i];
         const bool has_value = i + 1 < argc;
-        if (argument == "--tokens" && has_value) {
+        if (argument == "--help" || argument == "-h") {
+            options.help = true;
+        } else if (argument == "--tokens" && has_value) {
             options.tokens = std::stoll(argv[++i]);
         } else if (argument == "--temperature" && has_value) {
             options.temperature = std::stod(argv[++i]);
@@ -40,8 +48,10 @@ Options parse_options(int argc, char** argv) {
         } else if (argument == "--data" && has_value) {
             options.directory = argv[++i];
         } else if (argument == "--device" && has_value) {
-            options.device =
-                std::string(argv[++i]) == "cuda" ? kael::Device::CUDA : kael::Device::CPU;
+            options.device = kael::parse_device(argv[++i]);
+        } else if (argument.starts_with("-")) {
+            throw std::invalid_argument("unknown option or missing value: " + argument + "\n" +
+                                        kUsage);
         } else {
             options.prompt = argument;
         }
@@ -80,7 +90,12 @@ void run(const Options& options) {
 
 int main(int argc, char** argv) {
     try {
-        run(parse_options(argc, argv));
+        const Options options = parse_options(argc, argv);
+        if (options.help) {
+            std::cout << kUsage;
+            return 0;
+        }
+        run(options);
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

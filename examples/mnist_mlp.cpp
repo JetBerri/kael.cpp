@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <iostream>
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 #include "kael/data/dataloader.h"
@@ -29,17 +30,24 @@ struct Options {
     std::filesystem::path directory = "data/mnist";
     kael::Device device = kael::Device::CPU;
     std::int64_t hidden = 128;
+    bool help = false;
 };
+
+constexpr const char* kUsage = "usage: mnist_mlp [DATA_DIR] [--device cpu|cuda] [--hidden N]\n";
 
 Options parse_options(int argc, char** argv) {
     Options options;
     for (int i = 1; i < argc; ++i) {
         const std::string argument = argv[i];
-        if (argument == "--device" && i + 1 < argc) {
-            options.device =
-                std::string(argv[++i]) == "cuda" ? kael::Device::CUDA : kael::Device::CPU;
+        if (argument == "--help" || argument == "-h") {
+            options.help = true;
+        } else if (argument == "--device" && i + 1 < argc) {
+            options.device = kael::parse_device(argv[++i]);
         } else if (argument == "--hidden" && i + 1 < argc) {
             options.hidden = std::stoll(argv[++i]);
+        } else if (argument.starts_with("-")) {
+            throw std::invalid_argument("unknown option or missing value: " + argument + "\n" +
+                                        kUsage);
         } else {
             options.directory = argument;
         }
@@ -103,7 +111,12 @@ void run(const Options& options) {
 
 int main(int argc, char** argv) {
     try {
-        run(parse_options(argc, argv));
+        const Options options = parse_options(argc, argv);
+        if (options.help) {
+            std::cout << kUsage;
+            return EXIT_SUCCESS;
+        }
+        run(options);
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return EXIT_FAILURE;
