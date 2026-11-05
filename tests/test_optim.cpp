@@ -113,6 +113,18 @@ TEST(Optimizer, AdamFirstStepMovesByLearningRate) {
     EXPECT_NEAR(parameter.at<double>({0}), 1.0 - 0.001, 1e-9);
 }
 
+TEST(Optimizer, AdamCorrectsTheFirstStepOfALateParameter) {
+    Tensor early = parameter_from(kael::from_vector<double>({1.0}));
+    Tensor late = parameter_from(kael::from_vector<double>({1.0}));
+    Adam optimizer({early, late}, AdamOptions{.learning_rate = 0.001});
+    kael::sum(early * 0.5).backward();
+    optimizer.step();
+    optimizer.zero_grad();
+    kael::sum(late * 0.5).backward();
+    optimizer.step();
+    EXPECT_NEAR(late.at<double>({0}), 1.0 - 0.001, 1e-9);
+}
+
 TEST(Optimizer, StepCreatesNoGraphAndKeepsTheSameTensor) {
     Tensor parameter = parameter_from(kael::from_vector<double>({1.0, 2.0}));
     const auto storage = parameter.impl()->storage;

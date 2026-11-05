@@ -27,7 +27,7 @@ private:
 
     AdamOptions options_;
     WeightDecayMode mode_;
-    std::int64_t step_count_ = 0;
+    std::vector<std::int64_t> steps_;
     std::vector<Tensor> first_moments_;
     std::vector<Tensor> second_moments_;
 };

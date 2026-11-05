@@ -84,21 +84,22 @@ AdamBase::AdamBase(std::vector<Tensor> parameters, const AdamOptions& options, W
     for (const Tensor& parameter : this->parameters()) {
         first_moments_.push_back(zeros_like(parameter));
         second_moments_.push_back(zeros_like(parameter));
+        steps_.push_back(0);
     }
 }
 
+// Steps are counted per parameter, as in PyTorch: a parameter that gets its first gradient late
+// still needs the full bias correction of a first step.
 void AdamBase::update() {
-    ++step_count_;
-    const auto step = static_cast<double>(step_count_);
-    const double first_correction = 1.0 - std::pow(options_.beta1, step);
-    const double second_correction = 1.0 - std::pow(options_.beta2, step);
-
     for (std::size_t i = 0; i < parameters().size(); ++i) {
         Tensor& parameter = parameters()[i];
         const std::optional<Tensor> stored = parameter.grad();
         if (!stored) {
             continue;
         }
+        const auto step = static_cast<double>(++steps_[i]);
+        const double first_correction = 1.0 - std::pow(options_.beta1, step);
+        const double second_correction = 1.0 - std::pow(options_.beta2, step);
         Tensor gradient = *stored;
         if (options_.weight_decay > 0.0) {
             if (mode_ == WeightDecayMode::Coupled) {
