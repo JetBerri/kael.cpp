@@ -265,3 +265,22 @@ TEST(AutogradVersion, ModifyingSavedOutputThroughDetachThrows) {
     alias.add_(1);
     EXPECT_THROW(y.sum().backward(), kael::Error);
 }
+
+TEST(AutogradDetach, InPlaceOnALeafInTheGraphSkipsItsGradient) {
+    Tensor x = leaf({1, 2});
+    const Tensor y = (x * 2).sum();
+    x.detach_();
+    y.backward();
+    EXPECT_FALSE(x.grad().has_value());
+}
+
+TEST(AutogradDetach, InPlaceOnARetainedOutputSkipsItsGradient) {
+    const Tensor x = leaf({1, 2});
+    Tensor y = x * 2;
+    y.retain_grad();
+    const Tensor z = (y * 3).sum();
+    y.detach_();
+    z.backward();
+    EXPECT_FALSE(y.grad().has_value());
+    EXPECT_TRUE(allclose(*x.grad(), doubles({6, 6})));
+}

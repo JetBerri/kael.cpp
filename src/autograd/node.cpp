@@ -9,6 +9,9 @@ namespace kael::autograd {
 namespace {
 
 void accumulate(TensorImpl& target, const Tensor& gradient) {
+    if (!target.autograd) {
+        return;
+    }
     std::optional<Tensor>& stored = target.autograd->grad;
     if (stored) {
         stored->add_(gradient);
