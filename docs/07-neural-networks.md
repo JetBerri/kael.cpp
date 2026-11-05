@@ -545,7 +545,7 @@ num_batches = drop_last ? size / batch_size : ceil(size / batch_size)
 
 ### MNIST and the IDX format
 
-MNIST ships as four IDX files. `scripts/download/mnist.sh` fetches them into `data/mnist` (or the directory given as its argument), checks their MD5 sums and decompresses them. An IDX file is a big-endian header followed by raw bytes.
+MNIST ships as four IDX files. `scripts/download/mnist.sh` fetches them into `data/mnist` (or the directory given as its argument), decompresses them and verifies the SHA-256 of each decompressed file. Files already present with the right checksum are kept. An IDX file is a big-endian header followed by raw bytes.
 
 ```text
 offset  bytes  content

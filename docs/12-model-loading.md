@@ -11,7 +11,7 @@ This chapter connects the transformer from chapter 11 to the real GPT-2 small ch
 | `src/text/bpe.cpp` | UTF-8 decoding, the pretokenizer, byte-to-unicode mapping, merges |
 | `src/text/unicode_classes.inc` | Generated tables of Unicode letter and number ranges |
 | `scripts/generate/unicode_classes.py` | Generates `unicode_classes.inc` from Python's `unicodedata` |
-| `scripts/download/gpt2.sh` | Downloads weights, config, vocabulary and merges |
+| `scripts/download/gpt2.sh` | Downloads the weights, vocabulary and merges and verifies their checksums |
 | `examples/gpt2_generate.cpp` | Text generation from C++ |
 | `examples/gpt2_generate.py` | Text generation from Python, with a cache benchmark |
 | `fuzz/fuzz_safetensors.cpp` | libFuzzer target for the reader (chapter 13) |
@@ -580,17 +580,16 @@ From `scripts/download/gpt2.sh`:
 ```bash
 directory="${1:-data/gpt2}"
 base="https://huggingface.co/gpt2/resolve/main"
-expected="248dfc3911869ec493c76e65bf2fcf7f615828b0254c12b473182f0f81d3a707"
 
-mkdir -p "$directory"
-curl --fail --location --continue-at - --output "$directory/model.safetensors" "$base/model.safetensors"
-curl --fail --location --output "$directory/config.json" "$base/config.json"
-curl --fail --location --output "$directory/vocab.json" "$base/vocab.json"
-curl --fail --location --output "$directory/merges.txt" "$base/merges.txt"
-echo "$expected  $directory/model.safetensors" | shasum -a 256 --check
+fetch "$base/model.safetensors" "$directory/model.safetensors" \
+    248dfc3911869ec493c76e65bf2fcf7f615828b0254c12b473182f0f81d3a707
+fetch "$base/vocab.json" "$directory/vocab.json" \
+    196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783
+fetch "$base/merges.txt" "$directory/merges.txt" \
+    1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5
 ```
 
-`--continue-at -` resumes an interrupted download of the 548 MB weights file. The SHA-256 check covers the weights; the three small files are not checked. kael's loaders do not read `config.json`: the configuration comes from `GptConfig::gpt2_small()`.
+`fetch` comes from `scripts/download/common.sh`. It keeps a file that already matches its SHA-256 checksum, resumes an interrupted download from a `.partial` file, and moves the file into place only after its checksum matches, so a corrupt or truncated download never reaches the loaders. kael does not read the checkpoint's `config.json`: the configuration comes from `GptConfig::gpt2_small()`.
 
 ### 2. Generate from C++
 
