@@ -1,3 +1,5 @@
+import pathlib
+
 import pytest
 
 import kael
@@ -63,7 +65,7 @@ def test_messages_name_the_problem():
 
 def test_only_kael_errors_are_translated():
     with pytest.raises(FileNotFoundError):
-        open("/nonexistent/file")
+        pathlib.Path("/nonexistent/file").read_bytes()
     with pytest.raises(RuntimeError):
         from kael import data
 

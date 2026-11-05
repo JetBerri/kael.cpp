@@ -28,7 +28,9 @@ server = load_server()
 
 
 def byte_symbols():
-    printable = list(range(0x21, 0x7F)) + list(range(0xA1, 0xAD)) + list(range(0xAE, 0x100))
+    printable = (
+        list(range(0x21, 0x7F)) + list(range(0xA1, 0xAD)) + list(range(0xAE, 0x100))
+    )
     symbols = {byte: chr(byte) for byte in printable}
     next_symbol = 256
     for byte in range(256):
@@ -44,7 +46,9 @@ def tokenizer(tmp_path_factory):
     vocabulary = {symbol: byte for byte, symbol in byte_symbols().items()}
     (directory / "vocab.json").write_text(json.dumps(vocabulary), encoding="utf-8")
     (directory / "merges.txt").write_text("#version: 0.2\n", encoding="utf-8")
-    return kael.BpeTokenizer(str(directory / "vocab.json"), str(directory / "merges.txt"))
+    return kael.BpeTokenizer(
+        str(directory / "vocab.json"), str(directory / "merges.txt")
+    )
 
 
 @pytest.fixture(scope="module")
@@ -70,7 +74,11 @@ def wait_until_idle(generator):
 
 
 def events_of(response):
-    return [line[len("data: ") :] for line in response.text.splitlines() if line.startswith("data: ")]
+    return [
+        line[len("data: ") :]
+        for line in response.text.splitlines()
+        if line.startswith("data: ")
+    ]
 
 
 def test_generate_returns_the_requested_token_count(model, tokenizer):
@@ -83,7 +91,10 @@ def test_generate_returns_the_requested_token_count(model, tokenizer):
 def test_temperature_zero_is_deterministic(model, tokenizer):
     client, _ = client_for(model, tokenizer)
     body = {"prompt": "hi", "max_tokens": 6, "temperature": 0.0}
-    assert client.post("/generate", json=body).json()["text"] == client.post("/generate", json=body).json()["text"]
+    assert (
+        client.post("/generate", json=body).json()["text"]
+        == client.post("/generate", json=body).json()["text"]
+    )
 
 
 def test_stream_sends_the_same_text_as_a_plain_request(model, tokenizer):
@@ -131,14 +142,20 @@ def test_an_exhausted_server_answers_429_and_recovers(model, tokenizer):
     assert response.status_code == 429
     assert response.headers["retry-after"] == "1"
     generator.release()
-    assert client.post("/generate", json={"prompt": "hi", "max_tokens": 1}).status_code == 200
+    assert (
+        client.post("/generate", json={"prompt": "hi", "max_tokens": 1}).status_code
+        == 200
+    )
 
 
 def test_slots_are_released_after_a_stream(model, tokenizer):
     client, generator = client_for(model, tokenizer)
     client.post("/generate", json={"prompt": "hi", "max_tokens": 2, "stream": True})
     wait_until_idle(generator)
-    assert client.post("/generate", json={"prompt": "hi", "max_tokens": 1}).status_code == 200
+    assert (
+        client.post("/generate", json={"prompt": "hi", "max_tokens": 1}).status_code
+        == 200
+    )
 
 
 class FakeHttpRequest:
@@ -155,7 +172,11 @@ class FakeHttpRequest:
 
 def generate_endpoint(generator):
     app = server.create_app(generator)
-    return next(route.endpoint for route in app.routes if getattr(route, "path", "") == "/generate")
+    return next(
+        route.endpoint
+        for route in app.routes
+        if getattr(route, "path", "") == "/generate"
+    )
 
 
 def test_a_client_that_never_reads_the_stream_does_not_keep_its_slot(model, tokenizer):
@@ -292,14 +313,18 @@ def test_invalid_requests_are_rejected(model, tokenizer, body):
 def test_a_lone_surrogate_is_a_rejected_request(model, tokenizer):
     client, _ = client_for(model, tokenizer)
     response = client.post(
-        "/generate", content=b'{"prompt": "\\ud800 x"}', headers={"content-type": "application/json"}
+        "/generate",
+        content=b'{"prompt": "\\ud800 x"}',
+        headers={"content-type": "application/json"},
     )
     assert response.status_code == 422
 
 
 def test_a_large_top_k_is_clamped_to_the_vocabulary(model, tokenizer):
     client, _ = client_for(model, tokenizer)
-    response = client.post("/generate", json={"prompt": "hi", "max_tokens": 1, "top_k": 100000})
+    response = client.post(
+        "/generate", json={"prompt": "hi", "max_tokens": 1, "top_k": 100000}
+    )
     assert response.status_code == 200
 
 
@@ -311,8 +336,14 @@ def test_a_prompt_longer_than_the_context_is_rejected(model, tokenizer):
 
 def test_a_request_that_would_outgrow_the_context_is_rejected(model, tokenizer):
     client, generator = client_for(model, tokenizer)
-    assert client.post("/generate", json={"prompt": "hi", "max_tokens": 63}).status_code == 413
-    assert client.post("/generate", json={"prompt": "hi", "max_tokens": 62}).status_code == 200
+    assert (
+        client.post("/generate", json={"prompt": "hi", "max_tokens": 63}).status_code
+        == 413
+    )
+    assert (
+        client.post("/generate", json={"prompt": "hi", "max_tokens": 62}).status_code
+        == 200
+    )
     assert generator.metrics.in_flight == 0
 
 
@@ -369,4 +400,6 @@ def test_cross_entropy_is_exported_and_matches_the_composed_loss():
     logits = kael.tensor([[1.0, 2.0, 3.0], [0.5, 0.1, -1.0]])
     targets = kael.tensor([2, 0])
     composed = kael.nn.functional.nll_loss(kael.log_softmax(logits, 1), targets)
-    assert kael.nn.functional.cross_entropy(logits, targets).item() == pytest.approx(composed.item())
+    assert kael.nn.functional.cross_entropy(logits, targets).item() == pytest.approx(
+        composed.item()
+    )

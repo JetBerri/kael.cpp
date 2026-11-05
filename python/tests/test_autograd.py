@@ -13,7 +13,9 @@ def pair(array):
 
 
 def assert_grads_match(k, t):
-    np.testing.assert_allclose(np.array(k.grad.tolist()), t.grad.numpy(), rtol=1e-9, atol=1e-10)
+    np.testing.assert_allclose(
+        np.array(k.grad.tolist()), t.grad.numpy(), rtol=1e-9, atol=1e-10
+    )
 
 
 CASES = {
@@ -81,9 +83,8 @@ def test_no_grad_context_manager():
 
 
 def test_no_grad_restores_after_exception():
-    with pytest.raises(ZeroDivisionError):
-        with kael.no_grad():
-            1 / 0
+    with pytest.raises(ZeroDivisionError), kael.no_grad():
+        raise ZeroDivisionError
     assert kael.is_grad_enabled()
 
 
@@ -127,7 +128,9 @@ def test_requires_grad_is_writable():
 
 def test_gradcheck_from_python():
     x = kael.randn(3, dtype=kael.float64).requires_grad_()
-    passed, report = kael.gradcheck(lambda inputs: kael.tanh(inputs[0]) * inputs[0], [x])
+    passed, report = kael.gradcheck(
+        lambda inputs: kael.tanh(inputs[0]) * inputs[0], [x]
+    )
     assert passed, report
 
 

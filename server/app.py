@@ -91,8 +91,10 @@ class Metrics:
                 f"kael_request_seconds_sum {self.latency_sum}",
                 f"kael_request_seconds_count {self.latency_total}",
                 "# TYPE kael_peak_memory_bytes gauge",
-                "kael_peak_memory_bytes "
-                f"{resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * PEAK_RSS_UNIT}",
+                (
+                    "kael_peak_memory_bytes "
+                    f"{resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * PEAK_RSS_UNIT}"
+                ),
             ]
         return "\n".join(lines) + "\n"
 
@@ -176,13 +178,17 @@ def create_app(generator):
             size += len(chunk)
             if size > MAX_BODY_BYTES:
                 generator.metrics.count_request("rejected")
-                raise HTTPException(413, f"the request is larger than {MAX_BODY_BYTES} bytes")
+                raise HTTPException(
+                    413, f"the request is larger than {MAX_BODY_BYTES} bytes"
+                )
             chunks.append(chunk)
         try:
             return GenerateRequest.model_validate_json(b"".join(chunks))
         except ValidationError as error:
             generator.metrics.count_request("rejected")
-            details = error.errors(include_url=False, include_input=False, include_context=False)
+            details = error.errors(
+                include_url=False, include_input=False, include_context=False
+            )
             raise HTTPException(422, details) from error
 
     async def prepare_prompt(request):
@@ -211,7 +217,7 @@ def create_app(generator):
             try:
                 generator.run(prompt, request, on_token)
                 outcome = None
-            except Exception as error:
+            except Exception as error:  # noqa: BLE001
                 outcome = error
             loop.call_soon_threadsafe(queue.put_nowait, outcome)
 
@@ -272,7 +278,9 @@ def create_app(generator):
         started = time.perf_counter()
         queue, cancelled = start_generation(prompt, request)
         if request.stream:
-            return StreamingResponse(stream_tokens(queue, cancelled), media_type="text/event-stream")
+            return StreamingResponse(
+                stream_tokens(queue, cancelled), media_type="text/event-stream"
+            )
 
         tokens = await collect_tokens(queue, cancelled, http_request)
         if tokens is None:

@@ -6,12 +6,34 @@ import numpy as np
 import torch
 
 GOLDEN_DIR = Path(__file__).resolve().parents[1] / "tests" / "golden"
-DTYPES = {"f32": torch.float32, "f64": torch.float64, "i64": torch.int64, "bool": torch.bool}
-SPECIAL_VALUES = [float("nan"), float("inf"), -float("inf"), 0.0, -0.0, 1.0, -1.0, 1e-10, 1000.0, -1000.0]
+DTYPES = {
+    "f32": torch.float32,
+    "f64": torch.float64,
+    "i64": torch.int64,
+    "bool": torch.bool,
+}
+SPECIAL_VALUES = [
+    float("nan"),
+    float("inf"),
+    -float("inf"),
+    0.0,
+    -0.0,
+    1.0,
+    -1.0,
+    1e-10,
+    1000.0,
+    -1000.0,
+]
 
 
 def spec(shape, dtype="f32", kind="normal", view="none", values=None):
-    return {"shape": shape, "dtype": dtype, "kind": kind, "view": view, "values": values}
+    return {
+        "shape": shape,
+        "dtype": dtype,
+        "kind": kind,
+        "view": view,
+        "values": values,
+    }
 
 
 def make_base(input_spec):
@@ -124,7 +146,10 @@ def write_mlp_fixture():
 def save_all(directory, **arrays):
     directory.mkdir(parents=True, exist_ok=True)
     for name, array in arrays.items():
-        np.save(directory / f"{name}.npy", array.detach().numpy() if torch.is_tensor(array) else array)
+        np.save(
+            directory / f"{name}.npy",
+            array.detach().numpy() if torch.is_tensor(array) else array,
+        )
 
 
 def write_nn_fixtures():
@@ -135,7 +160,13 @@ def write_nn_fixtures():
     x = torch.randn(4, 3, dtype=torch.float64)
     weight = torch.randn(2, 3, dtype=torch.float64)
     bias = torch.randn(2, dtype=torch.float64)
-    save_all(directory, linear_x=x, linear_weight=weight, linear_bias=bias, linear_out=f.linear(x, weight, bias))
+    save_all(
+        directory,
+        linear_x=x,
+        linear_weight=weight,
+        linear_bias=bias,
+        linear_out=f.linear(x, weight, bias),
+    )
 
     x = torch.randn(2, 3, 4, dtype=torch.float64)
     weight = torch.randn(3, 4, dtype=torch.float64)
@@ -145,7 +176,12 @@ def write_nn_fixtures():
 
     weight = torch.randn(5, 3, dtype=torch.float64)
     indices = torch.tensor([[0, 4, 2], [1, 1, 3]], dtype=torch.int64)
-    save_all(directory, embedding_weight=weight, embedding_indices=indices, embedding_out=f.embedding(indices, weight))
+    save_all(
+        directory,
+        embedding_weight=weight,
+        embedding_indices=indices,
+        embedding_out=f.embedding(indices, weight),
+    )
 
     prediction = torch.randn(4, 3, dtype=torch.float64)
     target = torch.randn(4, 3, dtype=torch.float64)
@@ -167,8 +203,12 @@ def write_nn_fixtures():
             directory,
             **{
                 f"mse_{reduction}": f.mse_loss(prediction, target, reduction=reduction),
-                f"nll_{reduction}": f.nll_loss(f.log_softmax(logits, dim=1), classes, reduction=reduction),
-                f"cross_entropy_{reduction}": f.cross_entropy(logits, classes, reduction=reduction),
+                f"nll_{reduction}": f.nll_loss(
+                    f.log_softmax(logits, dim=1), classes, reduction=reduction
+                ),
+                f"cross_entropy_{reduction}": f.cross_entropy(
+                    logits, classes, reduction=reduction
+                ),
                 f"bce_{reduction}": f.binary_cross_entropy_with_logits(
                     binary_logits, binary_targets, reduction=reduction
                 ),
@@ -199,15 +239,21 @@ def write_optim_fixtures():
     optimizers = {
         "sgd": lambda p: torch.optim.SGD(p, lr=0.1),
         "sgd_momentum": lambda p: torch.optim.SGD(p, lr=0.1, momentum=0.9),
-        "sgd_nesterov": lambda p: torch.optim.SGD(p, lr=0.1, momentum=0.9, nesterov=True),
-        "sgd_decay": lambda p: torch.optim.SGD(p, lr=0.1, momentum=0.5, weight_decay=0.01),
+        "sgd_nesterov": lambda p: torch.optim.SGD(
+            p, lr=0.1, momentum=0.9, nesterov=True
+        ),
+        "sgd_decay": lambda p: torch.optim.SGD(
+            p, lr=0.1, momentum=0.5, weight_decay=0.01
+        ),
         "adam": lambda p: torch.optim.Adam(p, lr=0.01),
         "adam_decay": lambda p: torch.optim.Adam(p, lr=0.01, weight_decay=0.1),
         "adamw": lambda p: torch.optim.AdamW(p, lr=0.01),
     }
     for name, make_optimizer in optimizers.items():
         snapshots = run_optimizer(make_optimizer, start, coefficients, 5)
-        save_all(directory, **{f"{name}_{step}": value for step, value in snapshots.items()})
+        save_all(
+            directory, **{f"{name}_{step}": value for step, value in snapshots.items()}
+        )
 
     def learning_rates(make_scheduler, steps):
         optimizer = torch.optim.SGD([torch.zeros(1, requires_grad=True)], lr=0.1)
@@ -222,8 +268,12 @@ def write_optim_fixtures():
     schedulers = torch.optim.lr_scheduler
     save_all(
         directory,
-        step_lr=learning_rates(lambda o: schedulers.StepLR(o, step_size=3, gamma=0.5), 10),
-        cosine_lr=learning_rates(lambda o: schedulers.CosineAnnealingLR(o, T_max=10, eta_min=0.001), 10),
+        step_lr=learning_rates(
+            lambda o: schedulers.StepLR(o, step_size=3, gamma=0.5), 10
+        ),
+        cosine_lr=learning_rates(
+            lambda o: schedulers.CosineAnnealingLR(o, T_max=10, eta_min=0.001), 10
+        ),
     )
 
 
@@ -245,7 +295,11 @@ BROADCAST_PATTERNS = [
     ("transposed", {"a": spec((4, 3), view="transpose:0:1"), "b": spec((3, 4))}, {}),
     ("stepped", {"a": spec((3, 8), view="slice:1:0:8:2"), "b": spec((3, 4))}, {}),
     ("expanded", {"a": spec((4,), view="expand:3:4"), "b": spec((3, 4))}, {}),
-    ("permuted_broadcast", {"a": spec((4, 2, 3), view="permute:1:2:0"), "b": spec((3, 1))}, {}),
+    (
+        "permuted_broadcast",
+        {"a": spec((4, 2, 3), view="permute:1:2:0"), "b": spec((3, 1))},
+        {},
+    ),
     ("scalar_tensor", {"a": spec(()), "b": spec((3,))}, {}),
     ("scalar_scalar", {"a": spec(()), "b": spec(())}, {}),
     ("empty", {"a": spec((0, 3)), "b": spec((3,))}, {}),
@@ -260,7 +314,11 @@ PROMOTION_PATTERNS = [
     ("i64_i64", {"a": spec((5,), "i64"), "b": spec((5,), "i64")}, {}),
 ]
 SPECIAL_PATTERN = [
-    ("special", {"a": spec((100,), values=SPECIAL_A), "b": spec((100,), values=SPECIAL_B)}, {}),
+    (
+        "special",
+        {"a": spec((100,), values=SPECIAL_A), "b": spec((100,), values=SPECIAL_B)},
+        {},
+    ),
 ]
 BOOL_PATTERNS = [
     ("bools", {"a": spec((6,), "bool"), "b": spec((6,), "bool")}, {}),
@@ -296,7 +354,14 @@ add_cases(
     [
         ("positive_base", {"a": spec((3, 4), kind="positive"), "b": spec((3, 4))}, {}),
         ("broadcast", {"a": spec((2, 3), kind="positive"), "b": spec((3,))}, {}),
-        ("transposed", {"a": spec((4, 3), kind="positive", view="transpose:0:1"), "b": spec((3, 4))}, {}),
+        (
+            "transposed",
+            {
+                "a": spec((4, 3), kind="positive", view="transpose:0:1"),
+                "b": spec((3, 4)),
+            },
+            {},
+        ),
         (
             "i64",
             {
@@ -341,13 +406,24 @@ INTEGER_INPUT = ("i64", {"x": spec((5,), "i64", values=[1, 2, 3, 4, 5])}, {})
 
 for function in [torch.neg, torch.abs, torch.sign]:
     add_cases(function.__name__, function, UNARY_PATTERNS + [INTEGER_INPUT])
-for function in [torch.exp, torch.expm1, torch.sin, torch.cos, torch.tanh, torch.sigmoid]:
+for function in [
+    torch.exp,
+    torch.expm1,
+    torch.sin,
+    torch.cos,
+    torch.tanh,
+    torch.sigmoid,
+]:
     add_cases(function.__name__, function, UNARY_PATTERNS + [INTEGER_INPUT])
 for function in [torch.log, torch.log1p, torch.sqrt, torch.rsqrt]:
     add_cases(function.__name__, function, POSITIVE_PATTERNS + [INTEGER_INPUT])
 add_cases("relu", torch.relu, UNARY_PATTERNS)
 add_cases("gelu", torch.nn.functional.gelu, UNARY_PATTERNS)
-add_cases("gelu_tanh", lambda x: torch.nn.functional.gelu(x, approximate="tanh"), UNARY_PATTERNS)
+add_cases(
+    "gelu_tanh",
+    lambda x: torch.nn.functional.gelu(x, approximate="tanh"),
+    UNARY_PATTERNS,
+)
 add_cases(
     "clamp",
     torch.clamp,
@@ -360,7 +436,11 @@ add_cases(
 INPLACE_PATTERNS = [
     ("same", {"a": spec((3, 4)), "b": spec((3, 4))}, {}),
     ("broadcast_other", {"a": spec((2, 3)), "b": spec((3,))}, {}),
-    ("transposed_self", {"a": spec((4, 3), view="transpose:0:1"), "b": spec((3, 4))}, {}),
+    (
+        "transposed_self",
+        {"a": spec((4, 3), view="transpose:0:1"), "b": spec((3, 4))},
+        {},
+    ),
     ("stepped_self", {"a": spec((3, 8), view="slice:1:0:8:2"), "b": spec((4,))}, {}),
     ("f32_i64", {"a": spec((5,)), "b": spec((5,), "i64")}, {}),
     ("f64", {"a": spec((3,), "f64"), "b": spec((3,), "f64")}, {}),
@@ -375,14 +455,25 @@ add_cases(
     lambda a, b: a.pow_(b),
     [
         ("same", {"a": spec((3, 4), kind="positive"), "b": spec((3, 4))}, {}),
-        ("transposed_self", {"a": spec((4, 3), kind="positive", view="transpose:0:1"), "b": spec((3, 4))}, {}),
+        (
+            "transposed_self",
+            {
+                "a": spec((4, 3), kind="positive", view="transpose:0:1"),
+                "b": spec((3, 4)),
+            },
+            {},
+        ),
     ],
 )
 add_cases(
     "clamp_",
     lambda a, min, max: a.clamp_(min, max),
     [
-        ("transposed", {"a": spec((4, 3), view="transpose:0:1")}, {"min": -0.5, "max": 0.5}),
+        (
+            "transposed",
+            {"a": spec((4, 3), view="transpose:0:1")},
+            {"min": -0.5, "max": 0.5},
+        ),
         ("stepped", {"a": spec((6,), view="slice:0:0:6:2")}, {"min": -0.5, "max": 0.5}),
     ],
 )
@@ -419,35 +510,62 @@ EMPTY_ALL = ("empty_all", {"x": spec((0, 3))}, {})
 
 def over_dims(function):
     def compute(x, dims=None, keepdim=False, **extra):
-        return function(x, dim=list(range(x.dim())) if dims is None else dims, keepdim=keepdim, **extra)
+        return function(
+            x,
+            dim=list(range(x.dim())) if dims is None else dims,
+            keepdim=keepdim,
+            **extra,
+        )
 
     return compute
 
 
-add_cases("sum", over_dims(torch.sum), REDUCTION_PATTERNS + INTEGER_REDUCTIONS + BOOL_REDUCTIONS + [EMPTY_ALL])
+add_cases(
+    "sum",
+    over_dims(torch.sum),
+    REDUCTION_PATTERNS + INTEGER_REDUCTIONS + BOOL_REDUCTIONS + [EMPTY_ALL],
+)
 add_cases(
     "prod",
     lambda x, dims=None, keepdim=False: (
         x.prod() if dims is None else x.prod(dim=dims[0], keepdim=keepdim)
     ),
-    [p for p in REDUCTION_PATTERNS if len(p[2].get("dims", [])) == 1 or "keepdim" not in p[2] and "dims" not in p[2]],
+    [
+        p
+        for p in REDUCTION_PATTERNS
+        if len(p[2].get("dims", [])) == 1
+        or "keepdim" not in p[2]
+        and "dims" not in p[2]
+    ],
 )
 add_cases("mean", over_dims(torch.mean), REDUCTION_PATTERNS + [EMPTY_ALL])
 add_cases("max", over_dims(torch.amax), REDUCTION_PATTERNS + INTEGER_REDUCTIONS)
 add_cases("min", over_dims(torch.amin), REDUCTION_PATTERNS + INTEGER_REDUCTIONS)
-add_cases("all", over_dims(torch.all), REDUCTION_PATTERNS + BOOL_REDUCTIONS + [EMPTY_ALL])
-add_cases("any", over_dims(torch.any), REDUCTION_PATTERNS + BOOL_REDUCTIONS + [EMPTY_ALL])
+add_cases(
+    "all", over_dims(torch.all), REDUCTION_PATTERNS + BOOL_REDUCTIONS + [EMPTY_ALL]
+)
+add_cases(
+    "any", over_dims(torch.any), REDUCTION_PATTERNS + BOOL_REDUCTIONS + [EMPTY_ALL]
+)
 add_cases("var", over_dims(torch.var), REDUCTION_PATTERNS)
 add_cases("std", over_dims(torch.std), REDUCTION_PATTERNS)
 add_cases(
     "var_correction0",
-    lambda x, dims=None, keepdim=False: over_dims(torch.var)(x, dims, keepdim, correction=0),
+    lambda x, dims=None, keepdim=False: over_dims(torch.var)(
+        x, dims, keepdim, correction=0
+    ),
     REDUCTION_PATTERNS,
 )
 add_cases(
     "norm",
-    lambda x, dims=None, keepdim=False: torch.linalg.vector_norm(x, dim=dims, keepdim=keepdim),
-    [p for p in REDUCTION_PATTERNS if p[0] not in ("scalar", "keepdim_all", "empty_kept")],
+    lambda x, dims=None, keepdim=False: torch.linalg.vector_norm(
+        x, dim=dims, keepdim=keepdim
+    ),
+    [
+        p
+        for p in REDUCTION_PATTERNS
+        if p[0] not in ("scalar", "keepdim_all", "empty_kept")
+    ],
 )
 ARG_PATTERNS = [
     ("flat", {"x": spec((2, 3, 4))}, {}),
@@ -459,8 +577,16 @@ ARG_PATTERNS = [
     ("nan", {"x": spec((4,), values=[1.0, float("nan"), 3.0, float("nan")])}, {}),
     ("scalar", {"x": spec(())}, {}),
 ]
-add_cases("argmax", lambda x, dim=None, keepdim=False: torch.argmax(x, dim=dim, keepdim=keepdim), ARG_PATTERNS)
-add_cases("argmin", lambda x, dim=None, keepdim=False: torch.argmin(x, dim=dim, keepdim=keepdim), ARG_PATTERNS)
+add_cases(
+    "argmax",
+    lambda x, dim=None, keepdim=False: torch.argmax(x, dim=dim, keepdim=keepdim),
+    ARG_PATTERNS,
+)
+add_cases(
+    "argmin",
+    lambda x, dim=None, keepdim=False: torch.argmin(x, dim=dim, keepdim=keepdim),
+    ARG_PATTERNS,
+)
 
 MATMUL_PATTERNS = [
     ("vector_vector", {"a": spec((4,)), "b": spec((4,))}, {}),
@@ -471,7 +597,14 @@ MATMUL_PATTERNS = [
     ("batch_broadcast", {"a": spec((2, 1, 3, 4)), "b": spec((5, 4, 2))}, {}),
     ("batch_vector", {"a": spec((3,)), "b": spec((5, 3, 2))}, {}),
     ("batch_matrix_vector", {"a": spec((5, 2, 3)), "b": spec((3,))}, {}),
-    ("transposed", {"a": spec((3, 2), view="transpose:0:1"), "b": spec((4, 3), view="transpose:0:1")}, {}),
+    (
+        "transposed",
+        {
+            "a": spec((3, 2), view="transpose:0:1"),
+            "b": spec((4, 3), view="transpose:0:1"),
+        },
+        {},
+    ),
     ("stepped", {"a": spec((2, 6), view="slice:1:0:6:2"), "b": spec((3, 2))}, {}),
     ("expanded", {"a": spec((3,), view="expand:2:3"), "b": spec((3, 2))}, {}),
     ("empty_inner", {"a": spec((2, 0)), "b": spec((0, 3))}, {}),
@@ -497,8 +630,16 @@ add_cases(
         ("dim0", {"a": spec((2, 3)), "b": spec((1, 3))}, {"dim": 0}),
         ("dim1", {"a": spec((2, 3)), "b": spec((2, 2))}, {"dim": 1}),
         ("negative", {"a": spec((2, 3)), "b": spec((2, 2))}, {"dim": -1}),
-        ("transposed", {"a": spec((3, 2), view="transpose:0:1"), "b": spec((2, 2))}, {"dim": 1}),
-        ("stepped", {"a": spec((6,), view="slice:0:0:6:2"), "b": spec((2,))}, {"dim": 0}),
+        (
+            "transposed",
+            {"a": spec((3, 2), view="transpose:0:1"), "b": spec((2, 2))},
+            {"dim": 1},
+        ),
+        (
+            "stepped",
+            {"a": spec((6,), view="slice:0:0:6:2"), "b": spec((2,))},
+            {"dim": 0},
+        ),
         ("promotes", {"a": spec((2,)), "b": spec((2,), "i64")}, {"dim": 0}),
         ("empty_part", {"a": spec((0, 3)), "b": spec((2, 3))}, {"dim": 0}),
     ],
@@ -510,7 +651,11 @@ add_cases(
         ("dim0", {"a": spec((2, 3)), "b": spec((2, 3))}, {"dim": 0}),
         ("dim_last", {"a": spec((2, 3)), "b": spec((2, 3))}, {"dim": 2}),
         ("negative", {"a": spec((2, 3)), "b": spec((2, 3))}, {"dim": -1}),
-        ("transposed", {"a": spec((3, 2), view="transpose:0:1"), "b": spec((2, 3))}, {"dim": 1}),
+        (
+            "transposed",
+            {"a": spec((3, 2), view="transpose:0:1"), "b": spec((2, 3))},
+            {"dim": 1},
+        ),
     ],
 )
 add_cases(
@@ -518,9 +663,25 @@ add_cases(
     torch.where,
     [
         ("same", {"c": spec((3, 4), "bool"), "a": spec((3, 4)), "b": spec((3, 4))}, {}),
-        ("broadcast_all", {"c": spec((2, 1), "bool"), "a": spec((3,)), "b": spec((2, 3))}, {}),
-        ("transposed", {"c": spec((4, 3), "bool", view="transpose:0:1"), "a": spec((3, 4)), "b": spec(())}, {}),
-        ("promotes", {"c": spec((3,), "bool"), "a": spec((3,), "i64"), "b": spec((3,))}, {}),
+        (
+            "broadcast_all",
+            {"c": spec((2, 1), "bool"), "a": spec((3,)), "b": spec((2, 3))},
+            {},
+        ),
+        (
+            "transposed",
+            {
+                "c": spec((4, 3), "bool", view="transpose:0:1"),
+                "a": spec((3, 4)),
+                "b": spec(()),
+            },
+            {},
+        ),
+        (
+            "promotes",
+            {"c": spec((3,), "bool"), "a": spec((3,), "i64"), "b": spec((3,))},
+            {},
+        ),
         ("empty", {"c": spec((0,), "bool"), "a": spec((0,)), "b": spec((0,))}, {}),
     ],
 )
@@ -529,9 +690,21 @@ add_cases(
     lambda x, m, value: x.masked_fill(m, value),
     [
         ("same", {"x": spec((3, 4)), "m": spec((3, 4), "bool")}, {"value": 7.5}),
-        ("broadcast_mask", {"x": spec((2, 3)), "m": spec((3,), "bool")}, {"value": -1.0}),
-        ("transposed", {"x": spec((4, 3), view="transpose:0:1"), "m": spec((3, 4), "bool")}, {"value": 2.0}),
-        ("minus_infinity", {"x": spec((3,)), "m": spec((3,), "bool")}, {"value": -float("inf")}),
+        (
+            "broadcast_mask",
+            {"x": spec((2, 3)), "m": spec((3,), "bool")},
+            {"value": -1.0},
+        ),
+        (
+            "transposed",
+            {"x": spec((4, 3), view="transpose:0:1"), "m": spec((3, 4), "bool")},
+            {"value": 2.0},
+        ),
+        (
+            "minus_infinity",
+            {"x": spec((3,)), "m": spec((3,), "bool")},
+            {"value": -float("inf")},
+        ),
         ("wider_mask", {"x": spec((3,)), "m": spec((2, 3), "bool")}, {"value": 1.5}),
         ("i64", {"x": spec((4,), "i64"), "m": spec((4,), "bool")}, {"value": 9}),
     ],
@@ -544,7 +717,11 @@ add_cases(
         ("dim0", {"x": spec((3, 4)), "i": INDICES_1D}, {"dim": 0}),
         ("dim1", {"x": spec((2, 3)), "i": INDICES_1D}, {"dim": 1}),
         ("negative", {"x": spec((2, 3)), "i": INDICES_1D}, {"dim": -1}),
-        ("transposed", {"x": spec((4, 3), view="transpose:0:1"), "i": INDICES_1D}, {"dim": 0}),
+        (
+            "transposed",
+            {"x": spec((4, 3), view="transpose:0:1"), "i": INDICES_1D},
+            {"dim": 0},
+        ),
         ("empty", {"x": spec((3, 4)), "i": spec((0,), "i64", values=[])}, {"dim": 0}),
     ],
 )
@@ -556,7 +733,11 @@ add_cases(
         ("dim0", {"x": spec((2, 3)), "i": GATHER_INDEX}, {"dim": 0}),
         ("dim1", {"x": spec((2, 4)), "i": GATHER_INDEX}, {"dim": 1}),
         ("negative", {"x": spec((2, 4)), "i": GATHER_INDEX}, {"dim": -1}),
-        ("transposed", {"x": spec((3, 2), view="transpose:0:1"), "i": GATHER_INDEX}, {"dim": 1}),
+        (
+            "transposed",
+            {"x": spec((3, 2), view="transpose:0:1"), "i": GATHER_INDEX},
+            {"dim": 1},
+        ),
         ("smaller_index", {"x": spec((5, 4)), "i": GATHER_INDEX}, {"dim": 1}),
         ("i64", {"x": spec((2, 3), "i64"), "i": GATHER_INDEX}, {"dim": 1}),
     ],
@@ -565,9 +746,17 @@ add_cases(
     "scatter_add_",
     lambda x, i, s, dim: x.scatter_add_(dim, i, s),
     [
-        ("dim1_repeated", {"x": spec((2, 4)), "i": GATHER_INDEX, "s": spec((2, 3))}, {"dim": 1}),
+        (
+            "dim1_repeated",
+            {"x": spec((2, 4)), "i": GATHER_INDEX, "s": spec((2, 3))},
+            {"dim": 1},
+        ),
         ("dim0", {"x": spec((2, 3)), "i": GATHER_INDEX, "s": spec((2, 3))}, {"dim": 0}),
-        ("larger_source", {"x": spec((2, 4)), "i": GATHER_INDEX, "s": spec((3, 5))}, {"dim": 1}),
+        (
+            "larger_source",
+            {"x": spec((2, 4)), "i": GATHER_INDEX, "s": spec((3, 5))},
+            {"dim": 1},
+        ),
     ],
 )
 
@@ -577,22 +766,44 @@ NN_PATTERNS = [
     ("negative", {"x": spec((2, 3, 4))}, {"dim": -1}),
     ("transposed", {"x": spec((4, 3), view="transpose:0:1")}, {"dim": 1}),
     ("stepped", {"x": spec((3, 8), view="slice:1:0:8:2")}, {"dim": 1}),
-    ("large_values", {"x": spec((4,), values=[1000.0, 1000.0, -1000.0, 999.0])}, {"dim": 0}),
-    ("some_minus_infinity", {"x": spec((3,), values=[-float("inf"), 0.0, 1.0])}, {"dim": 0}),
+    (
+        "large_values",
+        {"x": spec((4,), values=[1000.0, 1000.0, -1000.0, 999.0])},
+        {"dim": 0},
+    ),
+    (
+        "some_minus_infinity",
+        {"x": spec((3,), values=[-float("inf"), 0.0, 1.0])},
+        {"dim": 0},
+    ),
     ("empty", {"x": spec((0, 3))}, {"dim": 1}),
     ("scalar", {"x": spec(())}, {"dim": 0}),
     ("f64", {"x": spec((3, 4), "f64")}, {"dim": 1}),
 ]
-ALL_MINUS_INFINITY = ("all_minus_infinity", {"x": spec((2,), values=[-float("inf"), -float("inf")])}, {"dim": 0})
-PLUS_INFINITY = ("plus_infinity", {"x": spec((2,), values=[float("inf"), 1.0])}, {"dim": 0})
+ALL_MINUS_INFINITY = (
+    "all_minus_infinity",
+    {"x": spec((2,), values=[-float("inf"), -float("inf")])},
+    {"dim": 0},
+)
+PLUS_INFINITY = (
+    "plus_infinity",
+    {"x": spec((2,), values=[float("inf"), 1.0])},
+    {"dim": 0},
+)
 add_cases(
     "logsumexp",
     torch.logsumexp,
     NN_PATTERNS
-    + [ALL_MINUS_INFINITY, PLUS_INFINITY, ("keepdim", {"x": spec((3, 4))}, {"dim": 1, "keepdim": True})],
+    + [
+        ALL_MINUS_INFINITY,
+        PLUS_INFINITY,
+        ("keepdim", {"x": spec((3, 4))}, {"dim": 1, "keepdim": True}),
+    ],
 )
 add_cases("softmax", torch.softmax, NN_PATTERNS + [ALL_MINUS_INFINITY, PLUS_INFINITY])
-add_cases("log_softmax", torch.log_softmax, NN_PATTERNS + [ALL_MINUS_INFINITY, PLUS_INFINITY])
+add_cases(
+    "log_softmax", torch.log_softmax, NN_PATTERNS + [ALL_MINUS_INFINITY, PLUS_INFINITY]
+)
 
 
 def main():

@@ -5,14 +5,18 @@ import kael
 
 def _fans(tensor):
     if tensor.ndim < 2:
-        raise ValueError(f"fans need a tensor with at least 2 dimensions, got {tensor.shape}")
+        raise ValueError(
+            f"fans need a tensor with at least 2 dimensions, got {tensor.shape}"
+        )
     receptive_field = tensor.numel() // (tensor.shape[0] * tensor.shape[1])
     return tensor.shape[1] * receptive_field, tensor.shape[0] * receptive_field
 
 
 @kael.no_grad()
 def uniform_(tensor, low=0.0, high=1.0):
-    return tensor.copy_(kael.rand(tensor.shape, dtype=tensor.dtype) * (high - low) + low)
+    return tensor.copy_(
+        kael.rand(tensor.shape, dtype=tensor.dtype) * (high - low) + low
+    )
 
 
 @kael.no_grad()

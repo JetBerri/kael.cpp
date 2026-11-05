@@ -82,7 +82,9 @@ def test_integer_tensor_key_matches_numpy():
     array = base()
     indices = [2, 0, 0]
     assert kael.tensor(array)[kael.tensor(indices)].tolist() == array[indices].tolist()
-    assert kael.tensor(array)[:, kael.tensor([1, 3])].tolist() == array[:, [1, 3]].tolist()
+    assert (
+        kael.tensor(array)[:, kael.tensor([1, 3])].tolist() == array[:, [1, 3]].tolist()
+    )
     assert kael.tensor(array)[kael.tensor(1)].tolist() == array[1].tolist()
 
 

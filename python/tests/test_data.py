@@ -23,7 +23,9 @@ def test_loader_batches_in_order():
 
 def test_loader_drop_last():
     data = TensorDataset(kael.arange(5))
-    batches = [batch.tolist() for (batch,) in DataLoader(data, batch_size=2, drop_last=True)]
+    batches = [
+        batch.tolist() for (batch,) in DataLoader(data, batch_size=2, drop_last=True)
+    ]
     assert batches == [[0, 1], [2, 3]]
     assert len(DataLoader(data, batch_size=2, drop_last=True)) == 2
 
@@ -31,7 +33,11 @@ def test_loader_drop_last():
 def test_loader_shuffle_covers_everything():
     kael.manual_seed(1)
     data = TensorDataset(kael.arange(50))
-    seen = [value for (batch,) in DataLoader(data, batch_size=7, shuffle=True) for value in batch.tolist()]
+    seen = [
+        value
+        for (batch,) in DataLoader(data, batch_size=7, shuffle=True)
+        for value in batch.tolist()
+    ]
     assert sorted(seen) == list(range(50))
     assert seen != list(range(50))
 

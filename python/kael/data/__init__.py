@@ -13,7 +13,9 @@ class Dataset:
 class TensorDataset(Dataset):
     def __init__(self, *tensors):
         if not tensors or any(t.shape[0] != tensors[0].shape[0] for t in tensors):
-            raise ValueError("TensorDataset needs tensors with the same first dimension")
+            raise ValueError(
+                "TensorDataset needs tensors with the same first dimension"
+            )
         self.tensors = tensors
 
     def __len__(self):
@@ -49,7 +51,9 @@ class DataLoader:
             if self.drop_last and batch.numel() < self.batch_size:
                 return
             if isinstance(self.dataset, TensorDataset):
-                yield tuple(kael.index_select(t, 0, batch) for t in self.dataset.tensors)
+                yield tuple(
+                    kael.index_select(t, 0, batch) for t in self.dataset.tensors
+                )
             else:
                 yield self._collate([self.dataset[int(i)] for i in batch.tolist()])
 

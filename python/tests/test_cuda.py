@@ -48,7 +48,11 @@ def test_bool_mask_and_tensor_index_on_device():
 def test_module_to_and_training_match_cpu():
     def run(device):
         kael.manual_seed(9)
-        model = nn.Sequential(nn.Linear(4, 8, dtype=kael.float64), nn.ReLU(), nn.Linear(8, 3, dtype=kael.float64)).to(device)
+        model = nn.Sequential(
+            nn.Linear(4, 8, dtype=kael.float64),
+            nn.ReLU(),
+            nn.Linear(8, 3, dtype=kael.float64),
+        ).to(device)
         optimizer = optim.AdamW(model.parameters())
         x = kael.randn(16, 4, dtype=kael.float64).to(device)
         y = kael.randint(0, 3, (16,)).to(device)
@@ -81,7 +85,11 @@ def test_generate_reports_tokens_from_the_device():
     model = kael.GPT(vocab_size=32, max_positions=16, layers=1, heads=2, dimension=8)
     model.to("cuda")
     seen = []
-    model.generate(kael.tensor([[1, 2]]).to("cuda"), 3, on_token=lambda token: seen.append(token.item()))
+    model.generate(
+        kael.tensor([[1, 2]]).to("cuda"),
+        3,
+        on_token=lambda token: seen.append(token.item()),
+    )
     assert len(seen) == 3
 
 

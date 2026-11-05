@@ -75,7 +75,10 @@ def measure_kael(binary):
         capture_output=True,
         text=True,
     ).stdout
-    times = {b["name"].split("/")[0]: b["real_time"] for b in json.loads(output)["benchmarks"]}
+    times = {
+        b["name"].split("/")[0]: b["real_time"]
+        for b in json.loads(output)["benchmarks"]
+    }
     return {op: times[name] for op, name in KAEL_BENCHMARKS.items()}
 
 
@@ -83,14 +86,21 @@ def read_idx(path):
     data = Path(path).read_bytes()
     dims = data[3]
     shape = struct.unpack(f">{dims}I", data[4 : 4 + 4 * dims])
-    return np.frombuffer(data, dtype=np.uint8, offset=4 + 4 * dims).reshape(shape).copy()
+    return (
+        np.frombuffer(data, dtype=np.uint8, offset=4 + 4 * dims).reshape(shape).copy()
+    )
 
 
 def torch_mnist_epoch_seconds(data_dir, epochs=5):
-    images = torch.from_numpy(read_idx(Path(data_dir) / "train-images-idx3-ubyte")).float() / 255.0
+    images = (
+        torch.from_numpy(read_idx(Path(data_dir) / "train-images-idx3-ubyte")).float()
+        / 255.0
+    )
     images = (images - 0.1307) / 0.3081
     images = images.view(-1, 784)
-    labels = torch.from_numpy(read_idx(Path(data_dir) / "train-labels-idx1-ubyte")).long()
+    labels = torch.from_numpy(
+        read_idx(Path(data_dir) / "train-labels-idx1-ubyte")
+    ).long()
     model = torch.nn.Sequential(
         torch.nn.Linear(784, 128), torch.nn.ReLU(), torch.nn.Linear(128, 10)
     )
@@ -102,7 +112,9 @@ def torch_mnist_epoch_seconds(data_dir, epochs=5):
         for first in range(0, images.shape[0], 64):
             batch = order[first : first + 64]
             optimizer.zero_grad()
-            loss = torch.nn.functional.cross_entropy(model(images[batch]), labels[batch])
+            loss = torch.nn.functional.cross_entropy(
+                model(images[batch]), labels[batch]
+            )
             loss.backward()
             optimizer.step()
         timings.append(timeit.default_timer() - started)
@@ -110,7 +122,9 @@ def torch_mnist_epoch_seconds(data_dir, epochs=5):
 
 
 def kael_mnist_epoch_seconds(binary, data_dir):
-    output = subprocess.run([binary, data_dir], check=True, capture_output=True, text=True).stdout
+    output = subprocess.run(
+        [binary, data_dir], check=True, capture_output=True, text=True
+    ).stdout
     return statistics.median(float(t) for t in re.findall(r"in ([0-9.]+) s", output))
 
 
@@ -133,7 +147,9 @@ def main():
     numpy_times = measure_numpy()
     torch_times = measure_torch()
 
-    print(f"threads: {arguments.threads}  numpy {np.__version__}  torch {torch.__version__}\n")
+    print(
+        f"threads: {arguments.threads}  numpy {np.__version__}  torch {torch.__version__}\n"
+    )
     print("| Operation | kael | NumPy | PyTorch |")
     print("|---|---|---|---|")
     for operation in OPERATIONS:

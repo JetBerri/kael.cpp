@@ -57,7 +57,11 @@ class _AdamBase(Optimizer):
 
     def _moments(self, index, parameter):
         if index not in self._state:
-            self._state[index] = [0, kael.zeros_like(parameter), kael.zeros_like(parameter)]
+            self._state[index] = [
+                0,
+                kael.zeros_like(parameter),
+                kael.zeros_like(parameter),
+            ]
         return self._state[index]
 
     def _adam_step(self, index, parameter, gradient):
@@ -69,11 +73,15 @@ class _AdamBase(Optimizer):
         second.mul_(beta2).add_(gradient * gradient * (1 - beta2))
         corrected_first = first / (1 - beta1**step)
         corrected_second = second / (1 - beta2**step)
-        parameter.sub_(corrected_first / (kael.sqrt(corrected_second) + self.eps) * self.lr)
+        parameter.sub_(
+            corrected_first / (kael.sqrt(corrected_second) + self.eps) * self.lr
+        )
 
 
 class Adam(_AdamBase):
-    def __init__(self, parameters, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.0):
+    def __init__(
+        self, parameters, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.0
+    ):
         super().__init__(parameters, lr, betas, eps, weight_decay)
 
     def _update(self, index, parameter, gradient):
@@ -83,7 +91,9 @@ class Adam(_AdamBase):
 
 
 class AdamW(_AdamBase):
-    def __init__(self, parameters, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.01):
+    def __init__(
+        self, parameters, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.01
+    ):
         super().__init__(parameters, lr, betas, eps, weight_decay)
 
     def _update(self, index, parameter, gradient):
@@ -137,20 +147,26 @@ class StepLR(LRScheduler):
 class CosineAnnealingLR(LRScheduler):
     def __init__(self, optimizer, total_steps, min_lr=0.0):
         if total_steps <= 0:
-            raise ValueError(f"cosine schedule length must be positive, got {total_steps}")
+            raise ValueError(
+                f"cosine schedule length must be positive, got {total_steps}"
+            )
         self.total_steps = total_steps
         self.min_lr = min_lr
         super().__init__(optimizer)
 
     def get_lr(self):
         progress = min(self.steps, self.total_steps) / self.total_steps
-        return self.min_lr + (self.base_lr - self.min_lr) * 0.5 * (1 + math.cos(math.pi * progress))
+        return self.min_lr + (self.base_lr - self.min_lr) * 0.5 * (
+            1 + math.cos(math.pi * progress)
+        )
 
 
 class WarmupCosineLR(LRScheduler):
     def __init__(self, optimizer, warmup_steps, total_steps, min_lr=0.0):
         if not 0 <= warmup_steps < total_steps:
-            raise ValueError(f"warmup of {warmup_steps} does not fit a schedule of {total_steps}")
+            raise ValueError(
+                f"warmup of {warmup_steps} does not fit a schedule of {total_steps}"
+            )
         self.warmup_steps = warmup_steps
         self.total_steps = total_steps
         self.min_lr = min_lr
@@ -161,4 +177,6 @@ class WarmupCosineLR(LRScheduler):
             return self.base_lr * (self.steps + 1) / self.warmup_steps
         span = self.total_steps - self.warmup_steps
         progress = min(self.steps - self.warmup_steps, span) / span
-        return self.min_lr + (self.base_lr - self.min_lr) * 0.5 * (1 + math.cos(math.pi * progress))
+        return self.min_lr + (self.base_lr - self.min_lr) * 0.5 * (
+            1 + math.cos(math.pi * progress)
+        )

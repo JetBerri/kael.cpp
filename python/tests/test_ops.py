@@ -45,13 +45,21 @@ def test_positive_domain_ops_match_torch(name):
 @pytest.mark.parametrize("approximate", [False, True])
 def test_gelu_matches_torch(approximate):
     k, t = both(np.random.randn(5, 4))
-    expected = torch.nn.functional.gelu(t, approximate="tanh" if approximate else "none")
+    expected = torch.nn.functional.gelu(
+        t, approximate="tanh" if approximate else "none"
+    )
     assert_same(kael.gelu(k, approximate), expected)
 
 
 @pytest.mark.parametrize(
     "shape_a, shape_b",
-    [((3, 4), (3, 4)), ((3, 4), (4,)), ((3, 1), (1, 4)), ((2, 3, 4), (3, 1)), ((3,), ())],
+    [
+        ((3, 4), (3, 4)),
+        ((3, 4), (4,)),
+        ((3, 1), (1, 4)),
+        ((2, 3, 4), (3, 1)),
+        ((3,), ()),
+    ],
 )
 def test_binary_operators_match_torch_with_broadcast(shape_a, shape_b):
     ka, ta = both(np.random.randn(*shape_a) + 3)
@@ -64,7 +72,9 @@ def test_binary_operators_match_torch_with_broadcast(shape_a, shape_b):
     assert_same(ka**2, ta**2)
 
 
-@pytest.mark.parametrize("op", ["__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__"])
+@pytest.mark.parametrize(
+    "op", ["__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__"]
+)
 def test_comparisons_match_torch(op):
     ka, ta = both(np.random.randint(0, 3, (4, 4)).astype(float))
     kb, tb = both(np.random.randint(0, 3, (4, 4)).astype(float))
@@ -108,7 +118,9 @@ def test_var_std_norm_match_torch():
     assert_same(k.norm(1), t.norm(dim=1))
 
 
-@pytest.mark.parametrize("shapes", [((3, 4), (4, 5)), ((4,), (4,)), ((2, 3, 4), (4, 2)), ((4,), (4, 2))])
+@pytest.mark.parametrize(
+    "shapes", [((3, 4), (4, 5)), ((4,), (4,)), ((2, 3, 4), (4, 2)), ((4,), (4, 2))]
+)
 def test_matmul_matches_torch(shapes):
     ka, ta = both(np.random.randn(*shapes[0]))
     kb, tb = both(np.random.randn(*shapes[1]))
@@ -128,7 +140,10 @@ def test_where_cat_stack_clamp_match_torch():
     ka, ta = both(np.random.randn(3, 4))
     kb, tb = both(np.random.randn(3, 4))
     assert_same(kael.where(ka > 0, ka, kb), torch.where(ta > 0, ta, tb))
-    assert_same(kael.where(ka > 0, 1.0, kb), torch.where(ta > 0, torch.tensor(1.0, dtype=torch.float64), tb))
+    assert_same(
+        kael.where(ka > 0, 1.0, kb),
+        torch.where(ta > 0, torch.tensor(1.0, dtype=torch.float64), tb),
+    )
     assert_same(kael.cat([ka, kb], 1), torch.cat([ta, tb], 1))
     assert_same(kael.stack([ka, kb], 1), torch.stack([ta, tb], 1))
     assert_same(ka.clamp(-0.5, 0.5), ta.clamp(-0.5, 0.5))
@@ -139,7 +154,8 @@ def test_indexing_ops_match_torch():
     k, t = both(np.random.randn(4, 5))
     indices = [3, 0, 0]
     assert_same(
-        kael.index_select(k, 0, kael.tensor(indices)), t.index_select(0, torch.tensor(indices))
+        kael.index_select(k, 0, kael.tensor(indices)),
+        t.index_select(0, torch.tensor(indices)),
     )
     picks = np.random.randint(0, 5, (4, 2))
     assert_same(kael.gather(k, 1, kael.tensor(picks)), t.gather(1, torch.tensor(picks)))

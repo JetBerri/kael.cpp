@@ -74,7 +74,16 @@ def reshape(a):
     return a.reshape(-1), ("Reshape", [-1])
 
 
-OPERATIONS = [transpose, permute, slice_dim, select, unsqueeze, squeeze, expand, reshape]
+OPERATIONS = [
+    transpose,
+    permute,
+    slice_dim,
+    select,
+    unsqueeze,
+    squeeze,
+    expand,
+    reshape,
+]
 
 
 def cpp_list(values):

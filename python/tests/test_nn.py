@@ -20,7 +20,10 @@ def t_tensor(array):
 
 def assert_close(actual, expected, tolerance=1e-9):
     np.testing.assert_allclose(
-        np.array(actual.tolist()), expected.detach().numpy(), rtol=tolerance, atol=tolerance
+        np.array(actual.tolist()),
+        expected.detach().numpy(),
+        rtol=tolerance,
+        atol=tolerance,
     )
 
 
@@ -202,16 +205,22 @@ def test_losses_match_torch(reduction):
     targets = np.random.randint(0, 4, 6)
     assert_close(
         F.cross_entropy(k_tensor(logits), kael.tensor(targets), reduction),
-        torch.nn.functional.cross_entropy(t_tensor(logits), torch.tensor(targets), reduction=reduction),
+        torch.nn.functional.cross_entropy(
+            t_tensor(logits), torch.tensor(targets), reduction=reduction
+        ),
     )
     other = np.random.randn(6, 4)
     assert_close(
         F.mse_loss(k_tensor(logits), k_tensor(other), reduction),
-        torch.nn.functional.mse_loss(t_tensor(logits), t_tensor(other), reduction=reduction),
+        torch.nn.functional.mse_loss(
+            t_tensor(logits), t_tensor(other), reduction=reduction
+        ),
     )
     probabilities = np.random.rand(6, 4)
     assert_close(
-        F.binary_cross_entropy_with_logits(k_tensor(logits), k_tensor(probabilities), reduction),
+        F.binary_cross_entropy_with_logits(
+            k_tensor(logits), k_tensor(probabilities), reduction
+        ),
         torch.nn.functional.binary_cross_entropy_with_logits(
             t_tensor(logits), t_tensor(probabilities), reduction=reduction
         ),
@@ -313,7 +322,9 @@ def test_schedulers_match_torch():
     k_sched = optim.CosineAnnealingLR(k_opt, 8)
     t_sched = torch.optim.lr_scheduler.CosineAnnealingLR(t_opt, 8)
     for _ in range(9):
-        assert math.isclose(k_opt.lr, t_opt.param_groups[0]["lr"], rel_tol=1e-9, abs_tol=1e-12)
+        assert math.isclose(
+            k_opt.lr, t_opt.param_groups[0]["lr"], rel_tol=1e-9, abs_tol=1e-12
+        )
         k_sched.step()
         t_opt.step()
         t_sched.step()

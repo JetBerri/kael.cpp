@@ -14,19 +14,33 @@ WEIGHTS = Path(__file__).resolve().parents[2] / "data" / "gpt2" / "model.safeten
 
 
 def assert_close(actual, expected, tolerance):
-    np.testing.assert_allclose(actual.detach().numpy(), expected.detach().numpy(), atol=tolerance, rtol=tolerance)
+    np.testing.assert_allclose(
+        actual.detach().numpy(),
+        expected.detach().numpy(),
+        atol=tolerance,
+        rtol=tolerance,
+    )
 
 
 def tiny_hf_model():
     torch.manual_seed(0)
     config = transformers.GPT2Config(
-        vocab_size=50, n_positions=32, n_embd=24, n_layer=3, n_head=4, resid_pdrop=0.0, embd_pdrop=0.0, attn_pdrop=0.0
+        vocab_size=50,
+        n_positions=32,
+        n_embd=24,
+        n_layer=3,
+        n_head=4,
+        resid_pdrop=0.0,
+        embd_pdrop=0.0,
+        attn_pdrop=0.0,
     )
     return transformers.GPT2LMHeadModel(config).eval()
 
 
 def save_for_kael(model, path):
-    state = {name: tensor.clone().contiguous() for name, tensor in model.state_dict().items()}
+    state = {
+        name: tensor.clone().contiguous() for name, tensor in model.state_dict().items()
+    }
     state.pop("lm_head.weight", None)
     safetensors_torch.save_file(state, str(path))
 
@@ -47,7 +61,9 @@ def test_logits_match_a_small_huggingface_model(tmp_path):
     with torch.no_grad():
         expected = reference(torch.tensor(tokens)).logits
     actual = model(kael.tensor(tokens))
-    np.testing.assert_allclose(np.array(actual.tolist()), expected.numpy(), atol=2e-5, rtol=2e-4)
+    np.testing.assert_allclose(
+        np.array(actual.tolist()), expected.numpy(), atol=2e-5, rtol=2e-4
+    )
 
 
 def test_greedy_generation_matches_huggingface(tmp_path):
@@ -61,7 +77,9 @@ def test_greedy_generation_matches_huggingface(tmp_path):
             torch.tensor(prompt), max_new_tokens=10, do_sample=False, pad_token_id=0
         )
     for use_cache in (True, False):
-        actual = model.generate(kael.tensor(prompt), 10, temperature=0.0, use_cache=use_cache)
+        actual = model.generate(
+            kael.tensor(prompt), 10, temperature=0.0, use_cache=use_cache
+        )
         assert actual.tolist() == expected.tolist()
 
 
@@ -113,7 +131,11 @@ def test_sequence_ops_match_torch():
     k = kael.tensor(array, dtype=kael.float64)
     t = torch.tensor(array)
     for dim in (0, 1, -1):
-        assert_close(torch.tensor(kael.cumsum(k, dim).tolist(), dtype=torch.float64), torch.cumsum(t, dim), 1e-12)
+        assert_close(
+            torch.tensor(kael.cumsum(k, dim).tolist(), dtype=torch.float64),
+            torch.cumsum(t, dim),
+            1e-12,
+        )
         values, indices = kael.sort(k, dim)
         expected = torch.sort(t, dim)
         assert indices.tolist() == expected.indices.tolist()
@@ -157,7 +179,9 @@ def test_real_gpt2_logits_match_huggingface():
     config = transformers.GPT2Config.from_pretrained(str(WEIGHTS.parent))
     reference = transformers.GPT2LMHeadModel(config).eval()
     state = safetensors_torch.load_file(str(WEIGHTS))
-    state = {name.removeprefix("transformer."): tensor for name, tensor in state.items()}
+    state = {
+        name.removeprefix("transformer."): tensor for name, tensor in state.items()
+    }
     reference.transformer.load_state_dict(state, strict=False)
     reference.tie_weights()
     with torch.no_grad():

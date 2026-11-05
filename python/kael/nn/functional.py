@@ -70,5 +70,7 @@ def cross_entropy(logits, targets, reduction="mean"):
 
 
 def binary_cross_entropy_with_logits(logits, targets, reduction="mean"):
-    losses = kael.relu(logits) - logits * targets + kael.log1p(kael.exp(-kael.abs(logits)))
+    losses = (
+        kael.relu(logits) - logits * targets + kael.log1p(kael.exp(-kael.abs(logits)))
+    )
     return _reduce(losses, reduction)
