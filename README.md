@@ -8,20 +8,6 @@ A deep learning framework from scratch in C++. 🚧 Work in progress.
 
 kael is a deep learning framework written from zero in modern C++, with no dependencies beyond the standard library and GoogleTest. The goal is didactic: understand how a framework like PyTorch works by building one. Each phase ships three things together: the code, the tests that prove it, and a chapter that explains it.
 
-## Status
-
-| Phase | What | Status |
-|-------|------|--------|
-| 1 | Project skeleton: CMake, GoogleTest, `kael::Error`, CI | ✅ |
-| 2 | Shapes, strides, indexing and broadcasting | ✅ [chapter](docs/01-shapes-and-strides.md) |
-| 3 | Storage and Tensor | ✅ [chapter](docs/02-memory-model.md) |
-| 4 | Views: reshape, transpose and slicing without copying | ⬜ |
-| 5 | Elementwise ops with broadcasting | ⬜ |
-| 6 | Matmul and reductions | ⬜ |
-| 7 | Autograd | ⬜ |
-| 8 | Layers, losses and optimizers | ⬜ |
-| 9 | Train MNIST | ⬜ |
-
 ## Usage
 
 ```cpp
