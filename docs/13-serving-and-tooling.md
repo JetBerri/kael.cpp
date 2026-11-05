@@ -599,7 +599,7 @@ flowchart LR
 | `coverage` | Builds the tests with Clang's source-based coverage (`-fprofile-instr-generate -fcoverage-mapping`) and fake CUDA, runs `kael_tests`, and prints an `llvm-cov report` for `src` and `include/kael`. It calls the versioned tools `llvm-profdata-$version` and `llvm-cov-$version`, where `version` is the major version from `clang -dumpversion` |
 | `clang-tidy` | Exports a compilation database with fake CUDA and runs `run-clang-tidy` on every file under `src/` |
 
-`.github/workflows/wheels.yml` runs only on manual dispatch. It builds wheels with `cibuildwheel` on `ubuntu-latest`, `ubuntu-24.04-arm`, `macos-latest` and `macos-13`, builds a source distribution, and, if the `publish` input is `testpypi` or `pypi`, uploads them with trusted publishing (`id-token: write`, no stored token). Chapter 10 describes the wheel configuration.
+`.github/workflows/wheels.yml` runs only on manual dispatch. It builds wheels with `cibuildwheel` on `ubuntu-latest`, `ubuntu-24.04-arm`, `macos-latest` and `macos-15-intel`, builds a source distribution, and, if the `publish` input is `testpypi` or `pypi`, uploads them with trusted publishing (`id-token: write`, no stored token). Chapter 10 describes the wheel configuration.
 
 ## Edge cases and pitfalls
 
