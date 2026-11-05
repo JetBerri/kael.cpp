@@ -172,7 +172,7 @@ else
 fi
 
 if [[ -d data/shakespeare ]]; then
-    step char-gpt-cuda "$build/examples/char_gpt" --steps 200 --device cuda
+    step char-gpt-cuda "$build/examples/char_gpt" --steps 300 --device cuda
 else
     skip char-gpt-cuda "data/shakespeare is missing: run scripts/download_shakespeare.sh"
 fi
