@@ -62,8 +62,8 @@ public:
         {
             const std::lock_guard lock(mutex_);
             stats_.in_use_bytes -= capacity;
-            if (enabled_ && stats_.cached_bytes + capacity <= kMaxCachedBytes) {
-                free_blocks_[capacity].push_back(block);
+            if (enabled_ && stats_.cached_bytes + capacity <= kMaxCachedBytes &&
+                try_cache(block, capacity)) {
                 stats_.cached_bytes += capacity;
                 return;
             }
@@ -99,6 +99,16 @@ public:
     }
 
 private:
+    // Caching is optional: when the free list cannot grow, the block goes back to the system.
+    bool try_cache(std::byte* block, std::int64_t capacity) noexcept {
+        try {
+            free_blocks_[capacity].push_back(block);
+            return true;
+        } catch (const std::bad_alloc&) {
+            return false;
+        }
+    }
+
     std::byte* take_cached(std::int64_t capacity) {
         const std::lock_guard lock(mutex_);
         auto& blocks = free_blocks_[capacity];
