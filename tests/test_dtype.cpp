@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 
+#include "kael/device.h"
 #include "kael/dtype.h"
 #include "kael/error.h"
 #include "kael/version.h"
@@ -88,4 +89,14 @@ TEST(DType, DispatchNoBoolRejectsBool) {
 
 TEST(Version, MatchesTheProjectVersion) {
     EXPECT_EQ(kael::version(), KAEL_EXPECTED_VERSION);
+}
+
+TEST(Device, ParsesKnownNames) {
+    EXPECT_EQ(kael::parse_device("cpu"), Device::CPU);
+    EXPECT_EQ(kael::parse_device("cuda"), Device::CUDA);
+    EXPECT_EQ(kael::parse_device("cuda:0"), Device::CUDA);
+}
+
+TEST(Device, RejectsUnknownNames) {
+    EXPECT_THROW((void)kael::parse_device("cdua"), kael::ValueError);
 }

@@ -4,16 +4,6 @@
 
 namespace kael::python {
 
-Device parse_device(const std::string& name) {
-    if (name == "cpu") {
-        return Device::CPU;
-    }
-    if (name == "cuda" || name == "cuda:0") {
-        return Device::CUDA;
-    }
-    throw ValueError("unknown device '" + name + "', expected 'cpu' or 'cuda'");
-}
-
 std::string device_name(Device device) {
     return to_string(device);
 }

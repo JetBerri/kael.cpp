@@ -11,7 +11,6 @@ namespace kael::python {
 
 namespace nb = nanobind;
 
-[[nodiscard]] Device parse_device(const std::string& name);
 [[nodiscard]] std::string device_name(Device device);
 [[nodiscard]] std::vector<std::int64_t> integers_from_args(const nb::args& args);
 [[nodiscard]] Dims dims_from(const nb::object& dim);
