@@ -18,7 +18,7 @@ template <typename Task> void for_each(std::int64_t count, const Task& task) {
 }
 
 template <typename T> void atomic_add(T* target, T value) {
-    *target = static_cast<T>(*target + value);
+    *target = static_cast<T>(functions::wrapping_add(*target, value));
 }
 
 } // namespace

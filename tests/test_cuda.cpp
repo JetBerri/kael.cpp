@@ -479,6 +479,15 @@ TEST_F(Cuda, IntegerClampAndMaskedFillKeepEveryBit) {
     EXPECT_EQ(filled.cpu().data_ptr<std::int64_t>()[0], large);
 }
 
+TEST_F(Cuda, IntegerScatterAddWrapsAround) {
+    constexpr std::int64_t kMax = std::numeric_limits<std::int64_t>::max();
+    Tensor target = kael::from_vector(std::vector<std::int64_t>{kMax}).to(Device::CUDA);
+    const Tensor indices = kael::from_vector(std::vector<std::int64_t>{0}).to(Device::CUDA);
+    const Tensor source = kael::from_vector(std::vector<std::int64_t>{1}).to(Device::CUDA);
+    target.scatter_add_(0, indices, source);
+    EXPECT_EQ(target.cpu().data_ptr<std::int64_t>()[0], std::numeric_limits<std::int64_t>::min());
+}
+
 TEST_F(Cuda, IntegerSumWrapsAndFloatConversionSaturates) {
     constexpr std::int64_t kMax = std::numeric_limits<std::int64_t>::max();
     const Tensor longs = kael::from_vector(std::vector<std::int64_t>{kMax, 1}).to(Device::CUDA);
