@@ -304,6 +304,12 @@ def test_clip_grad_norm_rejects_a_non_finite_norm():
         optim.clip_grad_norm_([parameter], 1.0)
 
 
+def test_binary_cross_entropy_gradient_at_zero_is_sigmoid_minus_target():
+    logits = kael.tensor([0.0]).requires_grad_()
+    F.binary_cross_entropy_with_logits(logits, kael.tensor([0.0]), "sum").backward()
+    assert logits.grad.tolist() == [0.5]
+
+
 def run_schedule(scheduler, optimizer, steps):
     rates = []
     for _ in range(steps):

@@ -322,6 +322,14 @@ TEST(NnLoss, BinaryCrossEntropyIsStableForLargeLogits) {
     EXPECT_NEAR(kael::nn::binary_cross_entropy_with_logits(logits, targets).item(), 0.0, 1e-12);
 }
 
+TEST(NnLoss, BinaryCrossEntropyGradientAtZeroIsSigmoidMinusTarget) {
+    const Tensor logits = kael::from_vector<double>({0.0}).requires_grad_();
+    const Tensor targets = kael::from_vector<double>({0.0});
+    kael::nn::binary_cross_entropy_with_logits(logits, targets, kael::nn::Reduction::Sum)
+        .backward();
+    EXPECT_NEAR(logits.grad()->at<double>({0}), 0.5, 1e-12);
+}
+
 TEST(NnLoss, Gradcheck) {
     kael::manual_seed(9);
     const Tensor classes = kael::from_vector<std::int64_t>({0, 2});
