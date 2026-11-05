@@ -52,6 +52,17 @@ Tensor to_anything(const Tensor& t, const nb::args& args, const nb::kwargs& kwar
     return result;
 }
 
+std::int64_t to_python_int(const Tensor& t) {
+    if (t.dtype() == DType::I64) {
+        return t.item<std::int64_t>();
+    }
+    const double value = t.item();
+    constexpr double kInt64Bound = 0x1p63;
+    KAEL_CHECK_VALUE(value >= -kInt64Bound && value < kInt64Bound,
+                     "cannot convert " << value << " to a 64-bit integer");
+    return static_cast<std::int64_t>(value);
+}
+
 Shape expand_target(const Tensor& t, const nb::args& args) {
     (void)t;
     return integers_from_args(args);
@@ -203,7 +214,7 @@ void bind_tensor(nb::module_& m) {
                  return t.item() != 0.0;
              })
         .def("__float__", [](const Tensor& t) { return t.item(); })
-        .def("__int__", [](const Tensor& t) { return static_cast<std::int64_t>(t.item()); })
+        .def("__int__", &to_python_int)
         .def("__index__",
              [](const Tensor& t) {
                  KAEL_CHECK_TYPE(t.dtype() == DType::I64, "only integer tensors can be an index");

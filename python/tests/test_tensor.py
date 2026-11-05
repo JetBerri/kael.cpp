@@ -246,3 +246,40 @@ def test_tensor_rejects_absurd_nesting():
         deep = [deep]
     with pytest.raises(ValueError):
         kael.tensor(deep)
+
+
+def test_int_keeps_every_bit_of_an_integer_tensor():
+    assert int(kael.tensor(2**53 + 1, dtype=kael.int64)) == 2**53 + 1
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), 1e300])
+def test_int_rejects_a_float_it_cannot_represent(value):
+    with pytest.raises(ValueError):
+        int(kael.tensor(value, dtype=kael.float64))
+
+
+def test_int_accepts_the_int64_bounds_of_a_float():
+    assert int(kael.tensor(-(2.0**63), dtype=kael.float64)) == -(2**63)
+    assert int(kael.tensor(-2.7, dtype=kael.float64)) == -2
+
+
+def test_int_rejects_a_float_at_the_upper_int64_bound():
+    with pytest.raises(ValueError):
+        int(kael.tensor(2.0**63, dtype=kael.float64))
+
+
+def test_a_nested_integer_tensor_keeps_every_bit():
+    element = kael.tensor(2**53 + 1, dtype=kael.int64)
+    assert int(kael.tensor([element])[0]) == 2**53 + 1
+
+
+def test_a_nested_nan_stays_a_float():
+    built = kael.tensor([kael.tensor(float("nan"), dtype=kael.float64)])
+    assert built.dtype == kael.float32
+    assert np.isnan(built.numpy()).all()
+
+
+def test_a_nested_bool_tensor_stays_a_bool():
+    built = kael.tensor([kael.tensor(True), kael.tensor(False)])
+    assert built.dtype == kael.bool
+    assert built.numpy().tolist() == [True, False]

@@ -264,6 +264,13 @@ struct Flattened {
     bool has_bool = false;
 };
 
+std::int64_t sequence_integer(const Tensor& t) {
+    if (is_floating_point(t.dtype())) {
+        return 0;
+    }
+    return t.dtype() == DType::I64 ? t.item<std::int64_t>() : static_cast<std::int64_t>(t.item());
+}
+
 void flatten_python(nb::handle data, Flattened& out, std::size_t depth) {
     if (nb::isinstance<nb::list>(data) || nb::isinstance<nb::tuple>(data)) {
         KAEL_CHECK_VALUE(depth < kMaxNesting,
@@ -290,7 +297,7 @@ void flatten_python(nb::handle data, Flattened& out, std::size_t depth) {
         const Tensor& t = nb::cast<const Tensor&>(data);
         KAEL_CHECK_VALUE(t.dim() == 0, "only 0-d tensors can be elements of a nested sequence");
         out.reals.push_back(t.item());
-        out.integers.push_back(static_cast<std::int64_t>(t.item()));
+        out.integers.push_back(sequence_integer(t));
         out.has_float = out.has_float || is_floating_point(t.dtype());
         out.has_integer = out.has_integer || t.dtype() == DType::I64;
         out.has_bool = out.has_bool || t.dtype() == DType::Bool;
