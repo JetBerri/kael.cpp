@@ -2,8 +2,8 @@ import math
 
 import kael
 
-from . import functional, init
 from . import functional as F
+from . import init
 
 
 class Parameter(kael.Tensor):
@@ -87,7 +87,9 @@ class Module:
         return self
 
     def state_dict(self):
-        state = {name: parameter.detach() for name, parameter in self._walk_parameters("")}
+        state = {
+            name: parameter.detach() for name, parameter in self._walk_parameters("")
+        }
         for prefix, module in self._named_modules(""):
             for name, buffer in module._buffers.items():
                 state[prefix + name] = buffer
