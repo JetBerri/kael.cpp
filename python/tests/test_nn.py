@@ -297,6 +297,13 @@ def test_clip_grad_norm_matches_torch():
     assert optim.clip_grad_norm_([], 1.0) == 0.0
 
 
+def test_clip_grad_norm_rejects_a_non_finite_norm():
+    parameter = nn.Parameter(kael.tensor([1.0]))
+    (parameter * float("nan")).sum().backward()
+    with pytest.raises(ValueError):
+        optim.clip_grad_norm_([parameter], 1.0)
+
+
 def run_schedule(scheduler, optimizer, steps):
     rates = []
     for _ in range(steps):

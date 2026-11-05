@@ -107,8 +107,10 @@ def clip_grad_norm_(parameters, max_norm):
     if not gradients:
         return 0.0
     total = math.sqrt(sum(kael.sum(g * g).item() for g in gradients))
-    if total > max_norm:
-        scale = max_norm / (total + 1e-6)
+    if not math.isfinite(total):
+        raise ValueError(f"the total gradient norm is {total}, so it cannot be clipped")
+    scale = max_norm / (total + 1e-6)
+    if scale < 1.0:
         for gradient in gradients:
             gradient.mul_(scale)
     return total

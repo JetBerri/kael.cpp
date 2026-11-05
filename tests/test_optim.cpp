@@ -179,6 +179,12 @@ TEST(ClipGradNorm, LeavesSmallGradientsAlone) {
     EXPECT_EQ(a.grad()->at<double>({0}), 0.5);
 }
 
+TEST(ClipGradNorm, RejectsANonFiniteNorm) {
+    Tensor a = parameter_from(kael::from_vector<double>({1.0}));
+    kael::sum(a * std::nan("")).backward();
+    EXPECT_THROW((void)kael::optim::clip_grad_norm_({a}, 1.0), kael::ValueError);
+}
+
 TEST(Schedulers, StepLrMatchesPyTorch) {
     SGD optimizer(one_parameter(), {.learning_rate = 0.1});
     kael::optim::StepLR scheduler(optimizer, 3, 0.5);

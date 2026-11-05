@@ -129,6 +129,8 @@ double clip_grad_norm_(const std::vector<Tensor>& parameters, double max_norm) {
         }
     }
     const double total = std::sqrt(squared_total);
+    KAEL_CHECK_VALUE(std::isfinite(total),
+                     "the total gradient norm is " << total << ", so it cannot be clipped");
     const double coefficient = max_norm / (total + 1e-6);
     if (coefficient < 1.0) {
         for (const Tensor& parameter : parameters) {
