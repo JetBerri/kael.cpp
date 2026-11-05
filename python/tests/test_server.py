@@ -313,6 +313,40 @@ def test_a_failed_generation_answers_500_and_frees_its_slot(tokenizer):
     assert generator.metrics.in_flight == 0
 
 
+def test_a_failed_stream_sends_an_error_event_and_frees_its_slot(tokenizer):
+    class Broken:
+        def generate(self, *args, **kwargs):
+            raise RuntimeError("secret detail")
+
+    generator = server.Generator(Broken(), tokenizer, "cpu", 64)
+    client = TestClient(server.create_app(generator))
+    response = client.post(
+        "/generate", json={"prompt": "hi", "max_tokens": 1, "stream": True}
+    )
+    events = events_of(response)
+    assert events == [json.dumps({"error": "generation failed"})]
+    assert "secret" not in response.text
+    wait_until_idle(generator)
+    assert generator.metrics.requests.get("error") == 1
+
+
+def test_an_encoding_failure_answers_500_and_frees_its_slot(model):
+    class BrokenTokenizer:
+        def encode(self, text):
+            raise RuntimeError("secret detail")
+
+        def decode(self, ids):
+            return b""
+
+    generator = server.Generator(model, BrokenTokenizer(), "cpu", 64)
+    client = TestClient(server.create_app(generator), raise_server_exceptions=False)
+    response = client.post("/generate", json={"prompt": "hi", "max_tokens": 1})
+    assert response.status_code == 500
+    assert "secret" not in response.text
+    assert generator.metrics.in_flight == 0
+    assert generator.metrics.requests.get("error") == 1
+
+
 @pytest.mark.parametrize(
     "body",
     [
