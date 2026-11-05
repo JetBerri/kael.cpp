@@ -255,7 +255,8 @@ void multiply_packed(const T* a, const T* b, T* out, const Sizes& sizes) {
     const std::int64_t column_block = std::min(blocks.columns, columns);
     const std::int64_t inner_block = std::min(blocks.inner, inner);
     const std::int64_t packed_b_size = rounded_up<Kernel::kColumns>(column_block) * inner_block;
-    const std::int64_t packed_a_size = rounded_up<Kernel::kRows>(std::min(row_block, rows)) * inner_block;
+    const std::int64_t packed_a_size =
+        rounded_up<Kernel::kRows>(std::min(row_block, rows)) * inner_block;
     const PackBuffer<T> packed_b = allocate_pack<T>(packed_b_size);
 
     for (std::int64_t jc = 0; jc < columns; jc += blocks.columns) {
@@ -266,11 +267,12 @@ void multiply_packed(const T* a, const T* b, T* out, const Sizes& sizes) {
 
             const std::int64_t panel_count = rounded_up<Kernel::kColumns>(nc) / Kernel::kColumns;
             const std::int64_t panel_elements = kc * Kernel::kColumns;
-            run_blocks<Threaded>(panel_count, std::max<std::int64_t>(1, kElementGrain / panel_elements),
-                                 [&](std::int64_t first, std::int64_t last) {
-                                     pack_column_panels<T, Kernel>(b + pc * columns + jc, columns, kc,
-                                                                   nc, first, last, packed_b.get());
-                                 });
+            run_blocks<Threaded>(
+                panel_count, std::max<std::int64_t>(1, kElementGrain / panel_elements),
+                [&](std::int64_t first, std::int64_t last) {
+                    pack_column_panels<T, Kernel>(b + pc * columns + jc, columns, kc, nc, first,
+                                                  last, packed_b.get());
+                });
 
             const std::int64_t block_count = (rows + row_block - 1) / row_block;
             run_blocks<Threaded>(block_count, worthwhile ? 1 : block_count,

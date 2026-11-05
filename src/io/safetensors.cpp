@@ -7,8 +7,8 @@
 #include <cstring>
 #include <fstream>
 #include <limits>
-#include <nlohmann/json.hpp>
 #include <memory>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <system_error>
 #include <vector>
@@ -160,7 +160,7 @@ std::shared_ptr<void> map_file(const std::filesystem::path& path, std::uint64_t 
 #else
     const int descriptor = ::open(path.c_str(), O_RDONLY | O_CLOEXEC);
     KAEL_CHECK(descriptor >= 0, "cannot open safetensors file " << path);
-    struct stat status {};
+    struct stat status{};
     const bool same_size = ::fstat(descriptor, &status) == 0 &&
                            static_cast<std::uint64_t>(status.st_size) == expected_size;
     void* address = same_size ? ::mmap(nullptr, static_cast<std::size_t>(expected_size),
@@ -181,8 +181,8 @@ Tensor tensor_over_mapping(const std::shared_ptr<void>& mapping, std::uint64_t p
                            const Entry& entry) {
     auto impl = std::make_shared<TensorImpl>();
     auto* first = static_cast<std::byte*>(mapping.get()) + position;
-    impl->storage = std::make_shared<Storage>(
-        Storage::external(first, entry.end - entry.begin, mapping));
+    impl->storage =
+        std::make_shared<Storage>(Storage::external(first, entry.end - entry.begin, mapping));
     impl->shape = entry.shape;
     impl->strides = contiguous_strides(entry.shape);
     impl->dtype = entry.dtype;
@@ -280,8 +280,8 @@ SafetensorsFile read_safetensors(const std::filesystem::path& path, LoadMode mod
         const auto position = static_cast<std::uint64_t>(data_start + entry.begin);
         const auto alignment = static_cast<std::uint64_t>(element_size(entry.dtype));
         const bool over_mapping = mapping && entry.end > entry.begin && position % alignment == 0;
-        Tensor tensor =
-            over_mapping ? tensor_over_mapping(mapping, position, entry) : empty(entry.shape, entry.dtype);
+        Tensor tensor = over_mapping ? tensor_over_mapping(mapping, position, entry)
+                                     : empty(entry.shape, entry.dtype);
         if (!over_mapping && tensor.nbytes() > 0) {
             file.seekg(data_start + entry.begin);
             file.read(reinterpret_cast<char*>(tensor.data_ptr_raw()),

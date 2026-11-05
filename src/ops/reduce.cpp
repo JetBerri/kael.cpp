@@ -140,8 +140,8 @@ Reduction plan_reduction(const Tensor& t, const Dims& dims, bool keepdim) {
     if (!permuted.is_contiguous() && reduced_sizes.size() == 1 && t.device() == Device::CPU) {
         const std::int64_t chunk_stride = permuted.strides().back();
         Strides kept_strides(permuted.strides().begin(), permuted.strides().end() - 1);
-        return {std::move(permuted), reduced_sizes.front(), numel(kept_sizes),
-                std::move(output_shape), chunk_stride, std::move(kept_sizes),
+        return {std::move(permuted),     reduced_sizes.front(), numel(kept_sizes),
+                std::move(output_shape), chunk_stride,          std::move(kept_sizes),
                 std::move(kept_strides)};
     }
     return {permuted.contiguous(), numel(reduced_sizes), numel(kept_sizes),
@@ -170,7 +170,8 @@ Tensor reduce_chunks(const Reduction& reduction, DType dtype, F f) {
     const In* in = reduction.data.data_ptr<In>();
     Out* results = out.data_ptr<Out>();
     const std::int64_t size = reduction.chunk_size;
-    const std::int64_t grain = std::max<std::int64_t>(1, kElementGrain / std::max<std::int64_t>(1, size));
+    const std::int64_t grain =
+        std::max<std::int64_t>(1, kElementGrain / std::max<std::int64_t>(1, size));
     const bool strided = !reduction.kept_sizes.empty() || reduction.chunk_stride != 1;
     parallel_for(0, reduction.output_count, grain, [&](std::int64_t first, std::int64_t last) {
         for (std::int64_t i = first; i < last; ++i) {
@@ -361,11 +362,11 @@ Tensor prod(const Tensor& t, const Dims& dims, bool keepdim) {
 }
 
 Tensor mean(const Tensor& t, const Dims& dims, bool keepdim) {
-    Tensor out = on_device(t) ? device_mean(t, dims, keepdim)
-                              : reduce_floating(t, dims, keepdim, "mean",
-                                                [](auto chunk, std::int64_t size) {
-                                                    return chunk_mean(chunk, size);
-                                                });
+    Tensor out = on_device(t)
+                     ? device_mean(t, dims, keepdim)
+                     : reduce_floating(t, dims, keepdim, "mean", [](auto chunk, std::int64_t size) {
+                           return chunk_mean(chunk, size);
+                       });
     autograd::record_mean(out, t, dims, keepdim);
     return out;
 }
@@ -418,15 +419,14 @@ Tensor var(const Tensor& t, const Dims& dims, bool keepdim, std::int64_t correct
         autograd::record_var(out, t, dims, keepdim, correction);
         return out;
     }
-    Tensor out =
-        reduce_floating(t, dims, keepdim, "var", [&](auto chunk, std::int64_t size) {
-            const double center = chunk_mean(chunk, size);
-            const double squares = sum_in_blocks(size, [&](std::int64_t i) {
-                const double deviation = static_cast<double>(chunk[i]) - center;
-                return deviation * deviation;
-            });
-            return squares / static_cast<double>(std::max<std::int64_t>(size - correction, 0));
+    Tensor out = reduce_floating(t, dims, keepdim, "var", [&](auto chunk, std::int64_t size) {
+        const double center = chunk_mean(chunk, size);
+        const double squares = sum_in_blocks(size, [&](std::int64_t i) {
+            const double deviation = static_cast<double>(chunk[i]) - center;
+            return deviation * deviation;
         });
+        return squares / static_cast<double>(std::max<std::int64_t>(size - correction, 0));
+    });
     autograd::record_var(out, t, dims, keepdim, correction);
     return out;
 }
@@ -467,12 +467,11 @@ Tensor norm(const Tensor& t, const Dims& dims, bool keepdim) {
         autograd::record_norm(out, t, dims, keepdim);
         return out;
     }
-    Tensor out =
-        reduce_floating(t, dims, keepdim, "norm", [](auto chunk, std::int64_t size) {
-            return std::sqrt(sum_in_blocks(size, [&](std::int64_t i) {
-                return static_cast<double>(chunk[i]) * static_cast<double>(chunk[i]);
-            }));
-        });
+    Tensor out = reduce_floating(t, dims, keepdim, "norm", [](auto chunk, std::int64_t size) {
+        return std::sqrt(sum_in_blocks(size, [&](std::int64_t i) {
+            return static_cast<double>(chunk[i]) * static_cast<double>(chunk[i]);
+        }));
+    });
     autograd::record_norm(out, t, dims, keepdim);
     return out;
 }

@@ -357,7 +357,8 @@ std::string BpeTokenizer::decode(const std::vector<std::int64_t>& ids) const {
     std::string text;
     for (const std::int64_t id : ids) {
         const auto found = bytes_of_id_.find(id);
-        KAEL_CHECK_INDEX(found != bytes_of_id_.end(), "token id " << id << " is not in the vocabulary");
+        KAEL_CHECK_INDEX(found != bytes_of_id_.end(),
+                         "token id " << id << " is not in the vocabulary");
         text += found->second;
     }
     return text;

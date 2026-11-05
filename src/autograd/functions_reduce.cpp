@@ -165,10 +165,11 @@ void record_log_softmax(const Tensor& out, const Tensor& x, std::int64_t dim) {
 
 void record_cross_entropy(const Tensor& out, const Tensor& logits, const Tensor& targets) {
     if (should_record(out, {&logits})) {
-        set_history(out, "CrossEntropyBackward", {logits},
-                    {[saved = SavedTensor(logits), classes = SavedTensor(targets)](const Tensor& g) {
-                        return kael::detail::cross_entropy_gradient(saved.get(), classes.get(), g);
-                    }});
+        set_history(
+            out, "CrossEntropyBackward", {logits},
+            {[saved = SavedTensor(logits), classes = SavedTensor(targets)](const Tensor& g) {
+                return kael::detail::cross_entropy_gradient(saved.get(), classes.get(), g);
+            }});
     }
 }
 

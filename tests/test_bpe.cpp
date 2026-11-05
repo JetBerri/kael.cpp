@@ -2,11 +2,11 @@
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
 
 #include <gtest/gtest.h>
-#include <nlohmann/json.hpp>
 
 #include "kael/error.h"
 #include "kael/text/bpe.h"

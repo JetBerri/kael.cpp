@@ -183,22 +183,20 @@ TEST(ReduceStrided, SingleDimOfNonContiguousViewsMatchesACopy) {
         for (std::int64_t dim = 0; dim < view.dim(); ++dim) {
             for (const bool keepdim : {false, true}) {
                 const kael::Dims dims{dim};
-                expect_view_matches_copy(view,
-                                         [&](const kael::Tensor& t) { return kael::sum(t, dims, keepdim); });
-                expect_view_matches_copy(view,
-                                         [&](const kael::Tensor& t) { return kael::mean(t, dims, keepdim); });
-                expect_view_matches_copy(view,
-                                         [&](const kael::Tensor& t) { return kael::max(t, dims, keepdim); });
-                expect_view_matches_copy(view, [&](const kael::Tensor& t) {
-                    return kael::argmin(t, dim, keepdim);
-                });
-                expect_view_matches_copy(view,
-                                         [&](const kael::Tensor& t) { return kael::var(t, dims, keepdim, 1); });
-                expect_view_matches_copy(view,
-                                         [&](const kael::Tensor& t) { return kael::norm(t, dims, keepdim); });
-                expect_view_matches_copy(view, [&](const kael::Tensor& t) {
-                    return kael::any(t > 0.0, dims, keepdim);
-                });
+                expect_view_matches_copy(
+                    view, [&](const kael::Tensor& t) { return kael::sum(t, dims, keepdim); });
+                expect_view_matches_copy(
+                    view, [&](const kael::Tensor& t) { return kael::mean(t, dims, keepdim); });
+                expect_view_matches_copy(
+                    view, [&](const kael::Tensor& t) { return kael::max(t, dims, keepdim); });
+                expect_view_matches_copy(
+                    view, [&](const kael::Tensor& t) { return kael::argmin(t, dim, keepdim); });
+                expect_view_matches_copy(
+                    view, [&](const kael::Tensor& t) { return kael::var(t, dims, keepdim, 1); });
+                expect_view_matches_copy(
+                    view, [&](const kael::Tensor& t) { return kael::norm(t, dims, keepdim); });
+                expect_view_matches_copy(
+                    view, [&](const kael::Tensor& t) { return kael::any(t > 0.0, dims, keepdim); });
                 expect_view_matches_copy(view, [&](const kael::Tensor& t) {
                     return kael::all(t > -10.0, dims, keepdim);
                 });

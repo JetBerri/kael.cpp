@@ -59,13 +59,15 @@ void run(const Options& options) {
 
     const std::vector<std::int64_t> ids = tokenizer.encode(options.prompt);
     const auto length = static_cast<std::int64_t>(ids.size());
-    const kael::Tensor prompt = kael::from_vector<std::int64_t>(ids, {1, length}).to(options.device);
+    const kael::Tensor prompt =
+        kael::from_vector<std::int64_t>(ids, {1, length}).to(options.device);
 
     kael::manual_seed(options.seed);
     const auto started = std::chrono::steady_clock::now();
-    const kael::Tensor output = kael::nn::generate(
-        model, prompt,
-        {.max_new_tokens = options.tokens, .temperature = options.temperature, .top_k = options.top_k});
+    const kael::Tensor output = kael::nn::generate(model, prompt,
+                                                   {.max_new_tokens = options.tokens,
+                                                    .temperature = options.temperature,
+                                                    .top_k = options.top_k});
     const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - started;
 
     const kael::Tensor sequence = output.select(0, 0).cpu();

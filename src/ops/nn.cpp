@@ -195,8 +195,8 @@ Tensor cross_entropy_losses(const Tensor& logits, const Tensor& targets) {
             const T* in = x.data_ptr<T>();
             const auto* target = classes.data_ptr<std::int64_t>();
             T* results = losses.data_ptr<T>();
-            const std::int64_t grain =
-                std::max<std::int64_t>(1, kElementGrain / (kExponentialCost * std::max<std::int64_t>(1, row_size)));
+            const std::int64_t grain = std::max<std::int64_t>(
+                1, kElementGrain / (kExponentialCost * std::max<std::int64_t>(1, row_size)));
             parallel_for(0, rows, grain, [&](std::int64_t first, std::int64_t last) {
                 for (std::int64_t row = first; row < last; ++row) {
                     results[row] = cross_entropy_row(in + row * row_size, target[row], row_size);
@@ -223,8 +223,8 @@ Tensor cross_entropy_gradient(const Tensor& logits, const Tensor& targets, const
         const auto* target = classes.data_ptr<std::int64_t>();
         const T* weight = weights.data_ptr<T>();
         T* results = out.data_ptr<T>();
-        const std::int64_t grain =
-            std::max<std::int64_t>(1, kElementGrain / (kExponentialCost * std::max<std::int64_t>(1, row_size)));
+        const std::int64_t grain = std::max<std::int64_t>(
+            1, kElementGrain / (kExponentialCost * std::max<std::int64_t>(1, row_size)));
         parallel_for(0, rows, grain, [&](std::int64_t first, std::int64_t last) {
             for (std::int64_t row = first; row < last; ++row) {
                 T* result = results + row * row_size;

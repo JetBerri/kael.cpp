@@ -242,8 +242,8 @@ TEST(NnEmbedding, Gradcheck) {
     kael::manual_seed(13);
     kael::nn::Embedding embedding(4, 2, DType::F64);
     const Tensor indices = kael::from_vector<std::int64_t>({0, 3, 3}, {3});
-    const auto result = gradcheck([&](const Inputs&) { return embedding(indices); },
-                                  {embedding.weight()});
+    const auto result =
+        gradcheck([&](const Inputs&) { return embedding(indices); }, {embedding.weight()});
     EXPECT_TRUE(result.passed) << result.report;
 }
 
@@ -408,12 +408,12 @@ TEST(CrossEntropyFusedGraph, ThePublicOpRejectsInvalidClasses) {
     EXPECT_THROW((void)kael::cross_entropy_losses(
                      logits, kael::from_vector<std::int64_t>({0, 1000000}, {2})),
                  kael::IndexError);
-    EXPECT_THROW((void)kael::cross_entropy_losses(
-                     logits, kael::from_vector<std::int64_t>({-1, 0}, {2})),
-                 kael::IndexError);
+    EXPECT_THROW(
+        (void)kael::cross_entropy_losses(logits, kael::from_vector<std::int64_t>({-1, 0}, {2})),
+        kael::IndexError);
     EXPECT_THROW((void)kael::cross_entropy_losses(logits, kael::zeros({2})), kael::TypeError);
-    EXPECT_THROW((void)kael::cross_entropy_losses(
-                     kael::zeros({3}), kael::from_vector<std::int64_t>({0}, {1})),
+    EXPECT_THROW((void)kael::cross_entropy_losses(kael::zeros({3}),
+                                                  kael::from_vector<std::int64_t>({0}, {1})),
                  kael::ValueError);
 }
 
