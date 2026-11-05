@@ -45,6 +45,10 @@ archs = ["native"]
 test-requires = ["pytest", "hypothesis", "fastapi", "httpx"]
 test-command = "pytest {project}/python/tests -q"
 
+# Aligned operator new needs macOS 10.13 and std::filesystem needs 10.15.
+[tool.cibuildwheel.macos]
+environment = { MACOSX_DEPLOYMENT_TARGET = "10.15" }
+
 # NumPy no longer ships manylinux2014 wheels, so tests in that image would build it from source.
 [tool.cibuildwheel.linux]
 manylinux-x86_64-image = "manylinux_2_28"
