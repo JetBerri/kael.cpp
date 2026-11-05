@@ -91,14 +91,14 @@ void add_to_buffer(std::unordered_map<Node*, Tensor>& buffers, Node* node, const
 
 namespace detail {
 
-std::ostream*& trace_output() {
-    static std::ostream* output =
+std::atomic<std::ostream*>& trace_output() {
+    static std::atomic<std::ostream*> output =
         std::getenv("KAEL_TRACE_BACKWARD") != nullptr ? &std::cerr : nullptr;
     return output;
 }
 
-bool& anomaly_detection() {
-    static bool enabled = false;
+std::atomic<bool>& anomaly_detection() {
+    static std::atomic<bool> enabled = false;
     return enabled;
 }
 
@@ -123,11 +123,11 @@ void backward(const Tensor& root, const std::optional<Tensor>& gradient, bool re
             const Tensor incoming = std::move(buffered->second);
             buffers.erase(buffered);
             node->store_retained_gradient(incoming);
-            if (std::ostream* output = detail::trace_output()) {
+            if (std::ostream* output = detail::trace_output().load()) {
                 trace_node(*output, *node, incoming);
             }
             gradients = node->apply(incoming);
-            if (detail::anomaly_detection()) {
+            if (detail::anomaly_detection().load()) {
                 check_anomaly(*node, gradients);
             }
         }

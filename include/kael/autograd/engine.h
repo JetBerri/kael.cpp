@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <iosfwd>
 #include <optional>
 
@@ -12,8 +13,8 @@ void backward(const Tensor& root, const std::optional<Tensor>& gradient = std::n
 
 namespace detail {
 
-[[nodiscard]] std::ostream*& trace_output();
-[[nodiscard]] bool& anomaly_detection();
+[[nodiscard]] std::atomic<std::ostream*>& trace_output();
+[[nodiscard]] std::atomic<bool>& anomaly_detection();
 
 } // namespace detail
 

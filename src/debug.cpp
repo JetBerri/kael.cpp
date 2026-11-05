@@ -72,11 +72,11 @@ std::string autograd_graph_dot(const Tensor& t) {
 }
 
 void set_backward_trace(std::ostream* output) {
-    autograd::detail::trace_output() = output;
+    autograd::detail::trace_output().store(output);
 }
 
 void set_anomaly_detection(bool enabled) {
-    autograd::detail::anomaly_detection() = enabled;
+    autograd::detail::anomaly_detection().store(enabled);
 }
 
 } // namespace kael
