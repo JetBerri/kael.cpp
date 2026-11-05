@@ -85,24 +85,20 @@ class ThreadPool {
 public:
     explicit ThreadPool(std::int64_t worker_count) {
         workers_.reserve(static_cast<std::size_t>(worker_count));
-        for (std::int64_t i = 0; i < worker_count; ++i) {
-            workers_.emplace_back([this] { worker_loop(); });
+        try {
+            for (std::int64_t i = 0; i < worker_count; ++i) {
+                workers_.emplace_back([this] { worker_loop(); });
+            }
+        } catch (...) {
+            stop_workers();
+            throw;
         }
     }
 
     ThreadPool(const ThreadPool&) = delete;
     ThreadPool& operator=(const ThreadPool&) = delete;
 
-    ~ThreadPool() {
-        {
-            const std::lock_guard lock(mutex_);
-            stopping_ = true;
-        }
-        wake_workers_.notify_all();
-        for (std::thread& worker : workers_) {
-            worker.join();
-        }
-    }
+    ~ThreadPool() { stop_workers(); }
 
     void run(Job& job) {
         {
@@ -119,6 +115,17 @@ public:
     }
 
 private:
+    void stop_workers() noexcept {
+        {
+            const std::lock_guard lock(mutex_);
+            stopping_ = true;
+        }
+        wake_workers_.notify_all();
+        for (std::thread& worker : workers_) {
+            worker.join();
+        }
+    }
+
     void worker_loop() {
         std::uint64_t seen_generation = 0;
         std::unique_lock lock(mutex_);
