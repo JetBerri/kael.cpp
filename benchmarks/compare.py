@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import re
 import statistics
 import struct
@@ -135,13 +136,29 @@ def format_time(microseconds):
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--bench", default="build-release/benchmarks/kael_bench")
-    parser.add_argument("--mnist", default="build-release/examples/mnist_mlp")
-    parser.add_argument("--data", default="data/mnist")
-    parser.add_argument("--threads", type=int, default=torch.get_num_threads())
+    parser = argparse.ArgumentParser(
+        description="Compare kael with NumPy and PyTorch on the same operations."
+    )
+    parser.add_argument(
+        "--bench",
+        default="build-release/benchmarks/kael_bench",
+        help="kael Google Benchmark binary",
+    )
+    parser.add_argument(
+        "--mnist",
+        default="build-release/examples/mnist_mlp",
+        help="kael MNIST example binary, timed per epoch",
+    )
+    parser.add_argument("--data", default="data/mnist", help="MNIST data directory")
+    parser.add_argument(
+        "--threads",
+        type=int,
+        default=torch.get_num_threads(),
+        help="thread count for kael and PyTorch; NumPy follows its BLAS environment",
+    )
     arguments = parser.parse_args()
 
+    os.environ["KAEL_NUM_THREADS"] = str(arguments.threads)
     torch.set_num_threads(arguments.threads)
     kael = measure_kael(arguments.bench)
     numpy_times = measure_numpy()
