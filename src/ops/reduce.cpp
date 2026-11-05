@@ -1,8 +1,11 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <functional>
 #include <type_traits>
+#include <utility>
+#include <vector>
 
 #include "kael/autograd/grad_mode.h"
 #include "kael/device_kernels.h"

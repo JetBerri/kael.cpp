@@ -1,6 +1,8 @@
 #include "kael/nn/transformer.h"
 
+#include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <limits>
 #include <map>
 #include <string>
