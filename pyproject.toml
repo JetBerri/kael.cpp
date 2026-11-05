@@ -31,6 +31,9 @@ cmake.build-type = "Release"
 KAEL_BUILD_PYTHON = "ON"
 KAEL_BUILD_TESTS = "OFF"
 
+[tool.ruff]
+src = ["python"]
+
 [tool.pytest.ini_options]
 testpaths = ["python/tests"]
 
