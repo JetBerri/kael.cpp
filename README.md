@@ -8,6 +8,10 @@ A deep learning framework from scratch in C++.
 
 kael is a deep learning framework written from zero in modern C++. The library depends on nlohmann_json and the system threads library. Tests use GoogleTest, and optional builds add Google Benchmark, BLAS, CUDA with optional cuBLAS, and nanobind. The goal is didactic: understand how a framework like PyTorch works by building one.
 
+## Learn how it is built
+
+The [`docs/`](docs/README.md) directory is a book that rebuilds kael from zero, one layer per chapter: shapes and strides, the memory model, views, the iteration engine, operations, autograd, training, CPU performance, the CUDA backend, the Python bindings, the transformer, loading GPT-2 and serving it. Each chapter explains the concepts with worked examples, walks through the real code and ends with steps to reimplement that layer yourself. Start with the [overview](docs/00-overview.md).
+
 ## Usage
 
 ```cpp
@@ -55,6 +59,7 @@ pytest python/tests
 include/kael/   public headers
 src/            implementation
 tests/          GoogleTest suites and generated fixtures
+docs/           the book: one chapter per layer, plus design decision records
 python/         Python bindings and pytest suite, package kael-tensor
 server/         HTTP generation server and Docker image
 examples/       example programs and a quickstart notebook
