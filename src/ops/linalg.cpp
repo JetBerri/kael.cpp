@@ -10,6 +10,7 @@
 #include "kael/parallel.h"
 
 #include "autograd/record.h"
+#include "internal/element_functions.h"
 
 namespace kael {
 
@@ -26,7 +27,8 @@ void multiply_exact(const T* a, const T* b, T* out, const matmul_versions::Sizes
             const T a_ik = a[i * inner + k];
             const T* b_row = b + k * columns;
             for (std::int64_t j = 0; j < columns; ++j) {
-                out_row[j] = static_cast<T>(out_row[j] + a_ik * b_row[j]);
+                out_row[j] = functions::wrapping_add(out_row[j],
+                                                     functions::wrapping_multiply(a_ik, b_row[j]));
             }
         }
     }

@@ -11,6 +11,7 @@
 #include "kael/parallel.h"
 
 #include "autograd/record.h"
+#include "internal/element_functions.h"
 #include "internal/nan_aware.h"
 
 namespace kael {
@@ -348,14 +349,17 @@ Tensor device_norm(const Tensor& t, const Dims& dims, bool keepdim) {
 
 Tensor sum(const Tensor& t, const Dims& dims, bool keepdim) {
     Tensor out = on_device(t) ? device_sum(t, dims, keepdim)
-                              : accumulate(t, dims, keepdim, 0, std::plus<>{});
+                              : accumulate(t, dims, keepdim, 0, [](auto a, auto b) {
+                                    return functions::wrapping_add(a, b);
+                                });
     autograd::record_sum(out, t, dims, keepdim);
     return out;
 }
 
 Tensor prod(const Tensor& t, const Dims& dims, bool keepdim) {
     Tensor out = on_host(t, [&](const Tensor& host) {
-        return accumulate(host, dims, keepdim, 1, std::multiplies<>{});
+        return accumulate(host, dims, keepdim, 1,
+                          [](auto a, auto b) { return functions::wrapping_multiply(a, b); });
     });
     autograd::record_prod(out, t, dims, keepdim);
     return out;

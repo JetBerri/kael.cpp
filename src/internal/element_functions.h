@@ -42,6 +42,36 @@ template <typename T> KAEL_HD T nan_aware_min(T a, T b) {
     return b < a ? b : a;
 }
 
+// Signed overflow is undefined behavior; integer tensors wrap around like PyTorch's.
+template <typename T> constexpr bool kWraps = std::is_integral_v<T> && std::is_signed_v<T>;
+
+template <typename T> KAEL_HD T wrapping_add(T a, T b) {
+    if constexpr (kWraps<T>) {
+        using Wrapping = std::make_unsigned_t<T>;
+        return static_cast<T>(static_cast<Wrapping>(a) + static_cast<Wrapping>(b));
+    } else {
+        return a + b;
+    }
+}
+
+template <typename T> KAEL_HD T wrapping_subtract(T a, T b) {
+    if constexpr (kWraps<T>) {
+        using Wrapping = std::make_unsigned_t<T>;
+        return static_cast<T>(static_cast<Wrapping>(a) - static_cast<Wrapping>(b));
+    } else {
+        return a - b;
+    }
+}
+
+template <typename T> KAEL_HD T wrapping_multiply(T a, T b) {
+    if constexpr (kWraps<T>) {
+        using Wrapping = std::make_unsigned_t<T>;
+        return static_cast<T>(static_cast<Wrapping>(a) * static_cast<Wrapping>(b));
+    } else {
+        return a * b;
+    }
+}
+
 template <typename T> KAEL_HD T power_of_negative_exponent(T base, T exponent) {
     if (base == T{1}) {
         return base;
@@ -82,13 +112,31 @@ template <typename T> KAEL_HD T clamp_value(T x, T low, T high) {
 }
 
 struct Plus : Tagged<ElementOp::Plus> {
-    template <typename T> KAEL_HD auto operator()(T a, T b) const { return a + b; }
+    template <typename T> KAEL_HD auto operator()(T a, T b) const {
+        if constexpr (kWraps<T>) {
+            return wrapping_add(a, b);
+        } else {
+            return a + b;
+        }
+    }
 };
 struct Minus : Tagged<ElementOp::Minus> {
-    template <typename T> KAEL_HD auto operator()(T a, T b) const { return a - b; }
+    template <typename T> KAEL_HD auto operator()(T a, T b) const {
+        if constexpr (kWraps<T>) {
+            return wrapping_subtract(a, b);
+        } else {
+            return a - b;
+        }
+    }
 };
 struct Times : Tagged<ElementOp::Times> {
-    template <typename T> KAEL_HD auto operator()(T a, T b) const { return a * b; }
+    template <typename T> KAEL_HD auto operator()(T a, T b) const {
+        if constexpr (kWraps<T>) {
+            return wrapping_multiply(a, b);
+        } else {
+            return a * b;
+        }
+    }
 };
 struct Divides : Tagged<ElementOp::Divides> {
     template <typename T> KAEL_HD auto operator()(T a, T b) const { return a / b; }
@@ -143,7 +191,13 @@ struct IsZero : Tagged<ElementOp::IsZero> {
 };
 
 struct Negate : Tagged<ElementOp::Negate> {
-    template <typename T> KAEL_HD auto operator()(T x) const { return -x; }
+    template <typename T> KAEL_HD auto operator()(T x) const {
+        if constexpr (kWraps<T>) {
+            return wrapping_subtract(T{0}, x);
+        } else {
+            return -x;
+        }
+    }
 };
 struct Absolute : Tagged<ElementOp::Absolute> {
     template <typename T> KAEL_HD T operator()(T x) const {
@@ -152,7 +206,7 @@ struct Absolute : Tagged<ElementOp::Absolute> {
         } else if constexpr (std::is_floating_point_v<T>) {
             return std::fabs(x);
         } else {
-            return x < T{0} ? static_cast<T>(-x) : x;
+            return x < T{0} ? wrapping_subtract(T{0}, x) : x;
         }
     }
 };

@@ -188,7 +188,7 @@ Tensor& Tensor::scatter_add_(std::int64_t dim, const Tensor& indices, const Tens
             const std::int64_t index =
                 detail::checked_index(positions[walker.index_offset()], size, "scatter_add_");
             T& element = data[walker.target_offset(index)];
-            element = convert_value<T>(element + values[walker.source_offset()]);
+            element = convert_value<T>(functions::Plus{}(element, values[walker.source_offset()]));
             walker.advance();
         }
     });

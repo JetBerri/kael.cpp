@@ -9,6 +9,7 @@
 #include "kael/ops.h"
 
 #include "autograd/record.h"
+#include "internal/element_functions.h"
 
 namespace kael {
 
@@ -104,7 +105,8 @@ Tensor cumsum(const Tensor& t, std::int64_t dim) {
             T* results = totals.data_ptr<T>();
             for (std::int64_t i = 0; i < rows.numel(); ++i) {
                 const bool starts_row = i % size == 0;
-                results[i] = starts_row ? data[i] : static_cast<T>(results[i - 1] + data[i]);
+                results[i] =
+                    starts_row ? data[i] : functions::wrapping_add(results[i - 1], data[i]);
             }
         });
         return moved_back(totals, dim, t.device());

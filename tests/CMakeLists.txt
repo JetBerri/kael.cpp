@@ -12,6 +12,7 @@ add_executable(kael_tests
     test_golden_support.cpp
     test_golden.cpp
     test_ops_binary.cpp
+    test_integer_overflow.cpp
     test_ops_unary.cpp
     test_ops_inplace.cpp
     test_ops_reduce.cpp
