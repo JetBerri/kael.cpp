@@ -42,7 +42,7 @@ testpaths = ["python/tests"]
 build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
 skip = "*-musllinux* pp*"
 archs = ["native"]
-test-requires = ["pytest", "hypothesis"]
+test-requires = ["pytest", "hypothesis", "fastapi", "httpx"]
 test-command = "pytest {project}/python/tests -q"
 
 # NumPy no longer ships manylinux2014 wheels, so tests in that image would build it from source.
