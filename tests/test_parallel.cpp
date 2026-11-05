@@ -176,6 +176,10 @@ TEST(ParallelConfig, ThreadCountIsConfigurable) {
     EXPECT_THROW(kael::set_num_threads(0), kael::Error);
 }
 
+TEST(ParallelConfig, ThreadCountAboveTheLimitThrows) {
+    EXPECT_THROW(kael::set_num_threads(std::int64_t{1} << 20), kael::ValueError);
+}
+
 TEST(ParallelConfig, SingleThreadRunsWholeRangeOnce) {
     const std::int64_t previous = kael::get_num_threads();
     kael::set_num_threads(1);

@@ -168,15 +168,19 @@ std::int64_t hardware_thread_count() {
     return std::max<std::int64_t>(1, std::thread::hardware_concurrency());
 }
 
+constexpr std::int64_t kMaxThreads = 1024;
+
 std::int64_t default_thread_count() {
-    if (const char* configured = std::getenv("KAEL_NUM_THREADS")) {
-        char* end = nullptr;
-        const std::int64_t parsed = std::strtoll(configured, &end, 10);
-        if (parsed > 0 && *end == '\0') {
-            return parsed;
-        }
+    const char* configured = std::getenv("KAEL_NUM_THREADS");
+    if (configured == nullptr) {
+        return hardware_thread_count();
     }
-    return hardware_thread_count();
+    char* end = nullptr;
+    const std::int64_t parsed = std::strtoll(configured, &end, 10);
+    KAEL_CHECK_VALUE(end != configured && *end == '\0' && parsed > 0 && parsed <= kMaxThreads,
+                     "KAEL_NUM_THREADS must be an integer between 1 and "
+                         << kMaxThreads << ", got '" << configured << "'");
+    return parsed;
 }
 
 class ParallelRuntime {
@@ -235,7 +239,8 @@ private:
 } // namespace
 
 void set_num_threads(std::int64_t count) {
-    KAEL_CHECK_VALUE(count > 0, "thread count must be positive, got " << count);
+    KAEL_CHECK_VALUE(count > 0 && count <= kMaxThreads,
+                     "thread count must be between 1 and " << kMaxThreads << ", got " << count);
     KAEL_CHECK(!inside_parallel_region, "cannot change the thread count inside parallel_for");
     ParallelRuntime::instance().set_thread_count(count);
 }

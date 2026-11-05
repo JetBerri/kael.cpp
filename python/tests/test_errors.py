@@ -1,4 +1,7 @@
+import os
 import pathlib
+import subprocess
+import sys
 
 import pytest
 
@@ -70,3 +73,18 @@ def test_only_kael_errors_are_translated():
         from kael import data
 
         data.load_mnist("/nonexistent/directory")
+
+
+@pytest.mark.parametrize("configured", ["abc", "0", "-2", "4x", "100000"])
+def test_an_invalid_thread_count_in_the_environment_is_rejected(configured):
+    script = "import kael; kael.get_num_threads()"
+    environment = {**os.environ, "KAEL_NUM_THREADS": configured}
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "KAEL_NUM_THREADS must be an integer" in result.stderr
