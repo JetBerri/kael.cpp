@@ -86,8 +86,9 @@ check_gpu() {
 
 # Without a device the tests skip themselves, and a skipped run must not look like a passed one.
 run_device_tests() {
+    local directory="${1:-$build}"
     local output
-    output="$(CUDA_LAUNCH_BLOCKING=1 "$build/tests/kael_tests" \
+    output="$(CUDA_LAUNCH_BLOCKING=1 "$directory/tests/kael_tests" \
         --gtest_filter='Cuda*:*CudaMatmul*' 2>&1)"
     local status=$?
     echo "$output"
@@ -135,9 +136,14 @@ run_python_device_tests() {
     fi
 }
 
+# Some images, such as Google Colab, ship python3 without ensurepip, so venv cannot bootstrap pip.
+make_environment() {
+    python3 -m venv "$1" 2>/dev/null || python3 -m virtualenv --quiet "$1"
+}
+
 build_python() {
     local environment="$build/python-venv"
-    python3 -m venv "$environment" &&
+    make_environment "$environment" &&
         "$environment/bin/pip" install --quiet --upgrade pip &&
         "$environment/bin/pip" install --quiet \
             --config-settings=cmake.define.KAEL_ENABLE_CUDA=ON \
@@ -168,6 +174,13 @@ else
     skip compute-sanitizer "not installed"
 fi
 step benchmarks "$build/benchmarks/kael_bench" --benchmark_filter='BM_Device'
+
+cublas_build="$build-cublas"
+if step configure-cublas cmake -S . -B "$cublas_build" -DCMAKE_BUILD_TYPE=Release \
+    -DKAEL_ENABLE_CUDA=ON -DKAEL_USE_CUBLAS=ON -DCMAKE_CUDA_ARCHITECTURES="$architecture" &&
+    step build-cublas cmake --build "$cublas_build" --parallel --target kael_tests; then
+    step device-tests-cublas run_device_tests "$cublas_build"
+fi
 
 if [[ -d data/mnist ]]; then
     step mnist-cpu expect_mnist_accuracy "$build/examples/mnist_mlp" data/mnist --device cpu
