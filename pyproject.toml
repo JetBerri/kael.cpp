@@ -11,7 +11,16 @@ requires-python = ">=3.9"
 dependencies = ["numpy"]
 
 [project.optional-dependencies]
-test = ["pytest", "hypothesis", "torch"]
+test = [
+    "pytest",
+    "hypothesis",
+    "torch",
+    "transformers",
+    "safetensors",
+    "tiktoken",
+    "fastapi",
+    "httpx",
+]
 
 [tool.scikit-build]
 wheel.packages = ["python/kael"]
