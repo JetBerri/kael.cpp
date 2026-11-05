@@ -41,11 +41,11 @@ testpaths = ["python/tests"]
 [tool.cibuildwheel]
 build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
 skip = "*-musllinux* pp*"
+archs = ["native"]
 test-requires = ["pytest", "hypothesis"]
 test-command = "pytest {project}/python/tests -q"
 
-[tool.cibuildwheel.macos]
-archs = ["arm64", "x86_64"]
-
+# NumPy no longer ships manylinux2014 wheels, so tests in that image would build it from source.
 [tool.cibuildwheel.linux]
-archs = ["x86_64", "aarch64"]
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"
