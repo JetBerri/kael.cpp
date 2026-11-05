@@ -203,7 +203,7 @@ TEST(Schedulers, CosineWorkedExample) {
 TEST(Schedulers, LinearWarmup) {
     SGD optimizer(one_parameter(), {.learning_rate = 0.1});
     kael::optim::LinearWarmup scheduler(optimizer, 4);
-    const double expected[] = {0.0, 0.025, 0.05, 0.075, 0.1, 0.1};
+    const double expected[] = {0.025, 0.05, 0.075, 0.1, 0.1, 0.1};
     for (const double rate : expected) {
         EXPECT_NEAR(scheduler.get_lr(), rate, 1e-12);
         scheduler.step();
@@ -213,7 +213,7 @@ TEST(Schedulers, LinearWarmup) {
 TEST(Schedulers, WarmupThenCosine) {
     SGD optimizer(one_parameter(), {.learning_rate = 0.1});
     kael::optim::WarmupCosineLR scheduler(optimizer, 2, 6);
-    const double expected[] = {0.0,  0.05,
+    const double expected[] = {0.05, 0.1,
                                0.1,  0.1 * (1 + std::cos(M_PI / 4)) / 2,
                                0.05, 0.1 * (1 + std::cos(3 * M_PI / 4)) / 2,
                                0.0,  0.0};

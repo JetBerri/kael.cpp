@@ -184,7 +184,7 @@ LinearWarmup::LinearWarmup(Optimizer& optimizer, std::int64_t warmup_steps)
 
 double LinearWarmup::lr_at(std::int64_t step) const {
     return base_lr() *
-           std::min(1.0, static_cast<double>(step) / static_cast<double>(warmup_steps_));
+           std::min(1.0, static_cast<double>(step + 1) / static_cast<double>(warmup_steps_));
 }
 
 WarmupCosineLR::WarmupCosineLR(Optimizer& optimizer, std::int64_t warmup_steps,
@@ -199,7 +199,7 @@ WarmupCosineLR::WarmupCosineLR(Optimizer& optimizer, std::int64_t warmup_steps,
 
 double WarmupCosineLR::lr_at(std::int64_t step) const {
     if (step < warmup_steps_) {
-        return base_lr() * static_cast<double>(step) / static_cast<double>(warmup_steps_);
+        return base_lr() * static_cast<double>(step + 1) / static_cast<double>(warmup_steps_);
     }
     const double progress = static_cast<double>(std::min(step, total_steps_) - warmup_steps_) /
                             static_cast<double>(total_steps_ - warmup_steps_);
