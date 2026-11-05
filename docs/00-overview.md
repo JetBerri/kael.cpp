@@ -13,7 +13,7 @@ kael is didactic. Each design choice favors code that a reader can follow over t
 - **Real end goal.** Version 1.0 loads the original 124M-parameter GPT-2 weights from a safetensors file. The test `test_real_gpt2_logits_match_huggingface` in `python/tests/test_gpt.py` checks that its logits match the Hugging Face `transformers` reference within `1e-3`.
 - **Few dependencies.** The library needs a C++20 compiler, the system threads library and nlohmann_json. GoogleTest is fetched by default for the tests (`KAEL_BUILD_TESTS=ON`). Google Benchmark, a BLAS library, the CUDA toolkit and nanobind are optional and only enter through CMake options.
 
-kael is not a production framework. It has four element types (`float32`, `float64`, `int64`, `bool`), no negative strides, and a CUDA backend that is tested with host emulation and compile-only CI builds, not yet on a real GPU.
+kael is not a production framework. It has four element types (`float32`, `float64`, `int64`, `bool`), no negative strides, and a CUDA backend validated end to end on an NVIDIA GPU ([chapter 09](09-cuda-backend.md#validation-on-a-gpu)).
 
 ## Architecture
 
@@ -144,7 +144,7 @@ The other CI jobs:
 
 | Job | What it does |
 |-----|--------------|
-| `cuda-compile-only` | Configures with `-DKAEL_ENABLE_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=86` in the `nvidia/cuda:12.6.2-devel-ubuntu22.04` container and builds. No tests run, because the runner has no GPU. |
+| `cuda-compile-only` | Configures with `-DKAEL_ENABLE_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=86` in the `nvidia/cuda:12.6.2-devel-ubuntu22.04` container and builds. GitHub-hosted runners have no GPU, so execution on the device is validated with `scripts/cuda/validate.sh` ([chapter 09](09-cuda-backend.md#validation-on-a-gpu)). |
 | `python` | `pip install ".[test]"` and `pytest python/tests -q` on Linux and macOS with Python 3.12. |
 | `fuzz` | Builds `fuzz_safetensors` and `fuzz_idx` with sanitizers and runs each for 60 seconds on its corpus. |
 | `coverage` | Runs `kael_tests` with Clang source-based coverage and prints an `llvm-cov report` for `src` and `include/kael`. It calls `llvm-profdata-<version>` and `llvm-cov-<version>`, with the major version taken from `clang -dumpversion`, so the tools match the Clang that built the tests. |

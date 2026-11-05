@@ -2,7 +2,7 @@
 
 This chapter adds a second device. A tensor can live in GPU memory, move between host and device, and run elementwise kernels, reductions, matmul, gather and scatter there, with autograd and `nn` modules working unchanged. The backend is a small C-style interface of about a dozen functions. Three translation units implement it: the real CUDA backend, a host emulation that runs the same kernel code on the CPU, and a stub for builds without CUDA. It maps to milestone v0.3 and to the git tag `chapter-10-cuda`.
 
-The CUDA backend has not yet run on a real GPU. It is validated in two ways: the full device test suite runs against the host emulation (`KAEL_FAKE_CUDA`), and CI compiles the real backend with `nvcc` without executing it. `scripts/test_cuda.sh` and `scripts/send_to_gpu.sh` exist for the first run on real hardware.
+The backend is validated end to end on a real GPU. `scripts/cuda/validate.sh` builds kael with CUDA, runs the C++ and Python suites on the device with and without cuBLAS, checks device memory accesses with `compute-sanitizer`, and trains and runs the example models on the GPU. The results of the reference run are in [Validation on a GPU](#validation-on-a-gpu). On every push, CI also runs the device test suite against the host emulation (`KAEL_FAKE_CUDA`) and compiles the real backend with `nvcc`.
 
 | File | Role |
 |------|------|
@@ -400,7 +400,7 @@ The emulation exists because the kernels and all the dispatch around them can be
 
 The CI job for the emulation also enables AddressSanitizer, so an out-of-bounds access in a task body is reported as a host memory error. Sanitizer builds compile out the caching allocator, so `Cuda.DeviceBlocksAreCached` skips itself in that job.
 
-What the emulation cannot catch: races between GPU threads, launch configuration limits, differences between device and host math functions, behavior specific to the CUDA runtime, and performance. Those need a real GPU and `compute-sanitizer`.
+What the emulation cannot catch: races between GPU threads, launch configuration limits, differences between device and host math functions, behavior specific to the CUDA runtime, and performance. `scripts/cuda/validate.sh` covers them on the GPU, with the device tests under `CUDA_LAUNCH_BLOCKING=1` and `compute-sanitizer`.
 
 `backend_fake.cpp` defines its own `matmul` (always the tile kernel) because the cuBLAS branch in `backend.cu` does not apply.
 
@@ -462,7 +462,7 @@ pip install --config-settings=cmake.define.KAEL_ENABLE_CUDA=ON \
     --config-settings=cmake.define.CMAKE_CUDA_ARCHITECTURES=native .
 ```
 
-## Validation status and GPU scripts
+## Continuous integration
 
 The CI workflow `.github/workflows/ci.yml` covers the device code in three ways:
 
@@ -472,14 +472,16 @@ The CI workflow `.github/workflows/ci.yml` covers the device code in three ways:
 | `cuda-compile-only` | Configures and builds with `KAEL_ENABLE_CUDA=ON` and `CMAKE_CUDA_ARCHITECTURES=86` in the `nvidia/cuda:12.6.2-devel-ubuntu22.04` container; nothing runs |
 | `coverage`, `clang-tidy` | Build with `KAEL_FAKE_CUDA=ON` |
 
-No job executes the real backend on a GPU. Treat the CUDA build as untested on hardware until `scripts/test_cuda.sh` passes on one.
+GitHub-hosted runners have no GPU, so execution on hardware is validated with `scripts/cuda/validate.sh`, described in the next section.
 
-### scripts/test_cuda.sh
+## Validation on a GPU
+
+### scripts/cuda/validate.sh
 
 Run it on a machine with an NVIDIA GPU, `nvcc` and CMake 3.24 or newer:
 
 ```bash
-bash scripts/test_cuda.sh [architecture] [build-directory] [report-directory]
+bash scripts/cuda/validate.sh [architecture] [build-directory] [report-directory]
 ```
 
 The defaults are `native`, `build-cuda` and `cuda-report`, and `-h` or `--help` prints this usage. The script runs named steps, logs each one to `<report>/<step>.log`, and writes a PASS, FAIL or SKIP line per step to `<report>/summary.txt`:

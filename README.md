@@ -32,7 +32,7 @@ int main() {
 
 - **v0.1**: train a model on MNIST on CPU, end to end.
 - **v0.2**: performance. SIMD, cache-friendly kernels, multithreading.
-- **v0.3**: CUDA backend. Tested with host emulation and compile-only builds, not yet on a real GPU.
+- **v0.3**: CUDA backend with optional cuBLAS, validated end to end on an NVIDIA GPU.
 - **v0.4**: Python bindings.
 - **v1.0**: run GPT-2.
 
