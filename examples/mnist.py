@@ -29,11 +29,13 @@ def train_epoch(model, optimizer, loader, device, epoch):
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--data", default="data/mnist")
-    parser.add_argument("--device", default="cpu")
-    parser.add_argument("--epochs", type=int, default=5)
-    parser.add_argument("--hidden", type=int, default=128)
+    parser = argparse.ArgumentParser(description="Train an MLP on MNIST with kael.")
+    parser.add_argument("--data", default="data/mnist", help="MNIST data directory")
+    parser.add_argument(
+        "--device", default="cpu", choices=["cpu", "cuda"], help="device to train on"
+    )
+    parser.add_argument("--epochs", type=int, default=5, help="training epochs")
+    parser.add_argument("--hidden", type=int, default=128, help="hidden layer width")
     arguments = parser.parse_args()
 
     kael.manual_seed(42)

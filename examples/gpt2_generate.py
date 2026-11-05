@@ -15,15 +15,31 @@ def tokens_per_second(model, prompt, count, use_cache):
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("prompt", nargs="?", default="The meaning of life is")
-    parser.add_argument("--weights", default="data/gpt2/model.safetensors")
-    parser.add_argument("--tokens", type=int, default=60)
-    parser.add_argument("--temperature", type=float, default=0.8)
-    parser.add_argument("--top-k", type=int, default=40)
-    parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--device", default="cpu")
-    parser.add_argument("--benchmark", action="store_true")
+    parser = argparse.ArgumentParser(description="Generate text with GPT-2 small.")
+    parser.add_argument(
+        "prompt", nargs="?", default="The meaning of life is", help="text to continue"
+    )
+    parser.add_argument(
+        "--weights",
+        default="data/gpt2/model.safetensors",
+        help="GPT-2 small safetensors checkpoint",
+    )
+    parser.add_argument("--tokens", type=int, default=60, help="tokens to generate")
+    parser.add_argument(
+        "--temperature", type=float, default=0.8, help="sampling temperature"
+    )
+    parser.add_argument(
+        "--top-k", type=int, default=40, help="sample from the K likeliest tokens"
+    )
+    parser.add_argument("--seed", type=int, default=42, help="random seed")
+    parser.add_argument(
+        "--device", default="cpu", choices=["cpu", "cuda"], help="device to run on"
+    )
+    parser.add_argument(
+        "--benchmark",
+        action="store_true",
+        help="report tokens per second with and without the KV cache",
+    )
     arguments = parser.parse_args()
 
     encoding = tiktoken.get_encoding("gpt2")

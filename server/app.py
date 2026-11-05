@@ -320,11 +320,17 @@ def load_app(data, device):
 def main():
     import uvicorn
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--data", default="data/gpt2")
-    parser.add_argument("--device", default="cpu")
-    parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=8000)
+    parser = argparse.ArgumentParser(description="Serve GPT-2 generation over HTTP.")
+    parser.add_argument(
+        "--data",
+        default="data/gpt2",
+        help="directory with vocab.json, merges.txt and model.safetensors",
+    )
+    parser.add_argument(
+        "--device", default="cpu", choices=["cpu", "cuda"], help="device to run on"
+    )
+    parser.add_argument("--host", default="127.0.0.1", help="address to listen on")
+    parser.add_argument("--port", type=int, default=8000, help="port to listen on")
     arguments = parser.parse_args()
     app = load_app(arguments.data, arguments.device)
     uvicorn.run(app, host=arguments.host, port=arguments.port)
