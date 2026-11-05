@@ -226,10 +226,6 @@ namespace kael::device {
 
 namespace {
 
-template <DType D> struct Tag {
-    using Type = cpp_type_t<D>;
-};
-
 template <typename F> void with_type(DType dtype, F f) {
     switch (dtype) {
     case DType::F32:

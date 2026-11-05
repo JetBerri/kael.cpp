@@ -63,11 +63,6 @@ std::int64_t to_python_int(const Tensor& t) {
     return static_cast<std::int64_t>(value);
 }
 
-Shape expand_target(const Tensor& t, const nb::args& args) {
-    (void)t;
-    return integers_from_args(args);
-}
-
 template <Tensor& (Tensor::*Method)(const Operand&)>
 nb::object inplace(nb::handle self, nb::handle other) {
     Tensor& t = nb::cast<Tensor&>(self);
@@ -387,8 +382,8 @@ void bind_tensor(nb::module_& m) {
              [](const Tensor& t, const nb::args& args) { return t.view(integers_from_args(args)); })
         .def("reshape", [](const Tensor& t,
                            const nb::args& args) { return t.reshape(integers_from_args(args)); })
-        .def("expand",
-             [](const Tensor& t, const nb::args& args) { return t.expand(expand_target(t, args)); })
+        .def("expand", [](const Tensor& t,
+                          const nb::args& args) { return t.expand(integers_from_args(args)); })
         .def("permute", [](const Tensor& t,
                            const nb::args& args) { return t.permute(integers_from_args(args)); })
         .def("transpose", &Tensor::transpose)

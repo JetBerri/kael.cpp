@@ -185,9 +185,7 @@ GPT::GPT(const GptConfig& config)
 }
 
 void GPT::initialize_weights() {
-    const double residual_std =
-        kInitialStd /
-        std::sqrt(2.0 * static_cast<double>(std::max<std::int64_t>(config_.layers, 1)));
+    const double residual_std = kInitialStd / std::sqrt(2.0 * static_cast<double>(config_.layers));
     Tensor token_weight = token_embedding_->weight();
     Tensor position_weight = position_embedding_->weight();
     init::normal_(token_weight, 0.0, kInitialStd);
