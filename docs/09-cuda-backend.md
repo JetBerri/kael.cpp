@@ -497,20 +497,62 @@ The defaults are `native`, `build-cuda` and `cuda-report`, and `-h` or `--help` 
 
 The exit status is 0 when every step ran and passed, 1 when a step failed, and 3 when nothing failed but some steps were skipped. Exit status 3 is not a complete pass.
 
-### scripts/cuda_colab.ipynb
+### scripts/cuda/validate_on_colab.ipynb
 
-Without a GPU machine, open `scripts/cuda_colab.ipynb` in Google Colab with a GPU runtime and run every cell. It clones the repository, downloads MNIST, Tiny Shakespeare and GPT-2 with the `scripts/download_*.sh` scripts, runs `scripts/test_cuda.sh`, prints `summary.txt` and downloads the report as `cuda-report.tgz`.
+`scripts/cuda/validate_on_colab.ipynb` runs the same validation on Google Colab. Open it with a GPU runtime and run every cell. It stops early if no GPU is visible, records the GPU, driver, CUDA compiler, CMake and C++ compiler, checks out the configured revision, downloads the datasets with `scripts/download/*.sh`, streams the validation as it runs, shows a table of steps and the key metrics, and downloads the logs as `kael-cuda-report-<commit>-<gpu>.tar.gz`.
 
-### scripts/send_to_gpu.sh
+### scripts/cuda/run_remote.sh
 
-`scripts/send_to_gpu.sh user@host [--arch native] [--without-weights] [--no-run]` packs the current commit with `git archive` (uncommitted changes are not sent), adds `data/mnist`, `data/shakespeare` and, unless `--without-weights`, `data/gpt2`, copies them to `kael.cpp-<commit>` on the host over `scp`, runs `scripts/test_cuda.sh` there, and copies the `cuda-report` directory back as `cuda-report-<commit>-<timestamp>`. `--no-run` stops after the copy. Without a host, or when the first argument starts with `-` (such as `--help`), the script prints its usage and exits with status 2.
+`scripts/cuda/run_remote.sh user@host [--arch native] [--without-weights] [--no-run]` packs the current commit with `git archive` (uncommitted changes are not sent), adds `data/mnist`, `data/shakespeare` and, unless `--without-weights`, `data/gpt2`, copies them to `kael.cpp-<commit>` on the host over `scp`, runs `scripts/cuda/validate.sh` there, and copies the `cuda-report` directory back as `cuda-report-<commit>-<timestamp>`. `--no-run` stops after the copy. Without a host, or when the first argument starts with `-` (such as `--help`), the script prints its usage and exits with status 2.
+
+
+### Reference run
+
+The reference validation ran on Google Colab with `scripts/cuda/validate_on_colab.ipynb` at commit `91e0ea9`. The library code has not changed since that commit.
+
+| Environment | Value |
+|-------------|-------|
+| GPU | NVIDIA Tesla T4, compute capability 7.5, 15 GB |
+| Driver | 580.82.07 |
+| CUDA compiler | `nvcc` 13.0.88 |
+| Host compiler | GCC 13.3.0 |
+| CMake | 3.31.10 |
+| System | Ubuntu 24.04, Linux 6.6 x86_64 |
+
+All 23 steps passed:
+
+| Step | Result |
+|------|--------|
+| `ctest` on the CUDA build | 838 tests, 0 failures |
+| `device-tests` | 42 device tests passed with the tile matmul kernel |
+| `device-tests-cublas` | 42 device tests passed with `KAEL_USE_CUBLAS=ON` |
+| `compute-sanitizer` | 0 errors |
+| `mnist-cpu` | 97.18% test accuracy, 15.07 s per epoch |
+| `mnist-cuda` | 97.18% test accuracy, 1.65 s per epoch |
+| `mnist-cuda-1024` | 97.97% test accuracy with 1024 hidden units, 4.37 s per epoch |
+| `char-gpt-cuda` | validation loss from 4.18 to 2.34 in 300 steps |
+| `gpt2-cpp-cuda` | GPT-2 small generates text at 13.98 tokens per second |
+| `python-device-tests` | 10 tests passed |
+| `python-tests` | 346 tests passed |
+| `python-mnist-cuda` | 97.18% test accuracy, 1.62 s per epoch |
+| `gpt2-cuda` | GPT-2 small generates the same text from Python |
+
+`kael_bench --benchmark_filter=BM_Device` on the same GPU:
+
+| Benchmark | Throughput |
+|-----------|------------|
+| `BM_DeviceAdd/16777216` | 5.52 G elements/s |
+| `BM_DeviceSum/16777216` | 20.25 G elements/s |
+| `BM_DeviceMatmul/512` | 367 GFLOP/s |
+| `BM_DeviceMatmul/1024` | 408 GFLOP/s |
+| `BM_DeviceMatmul/2048` | 432 GFLOP/s |
 
 ## Edge cases and pitfalls
 
 - **Host access to device memory.** Every host accessor checks the device. Only `device_data()` returns a device address, and its comment in `include/kael/tensor.h` warns that only device code can dereference it.
 - **Mixed devices.** `check_same_device` throws "expected all tensors to be on the same device, but found cpu and cuda" (`Cuda.MixedDevicesAreRejected`). Implicit transfers would hide slow host round trips.
 - **Non-contiguous transfers.** `to(Device)` makes the source contiguous first (`Cuda.NonContiguousTensorsTransfer`).
-- **Empty tensors.** `to` skips the copy when `nbytes()` is 0. `for_each` returns before launching when `count` is 0, since a launch with zero blocks is an error (`Cuda.EmptyTensorsWork` checks elementwise ops and reductions on empty tensors under the emulation). The cuBLAS branch of `device::matmul` also returns early on a zero dimension. No test exercises it, because cuBLAS has not run on a GPU.
+- **Empty tensors.** `to` skips the copy when `nbytes()` is 0. `for_each` returns before launching when `count` is 0, since a launch with zero blocks is an error (`Cuda.EmptyTensorsWork` checks elementwise ops and reductions on empty tensors). The cuBLAS branch of `device::matmul` returns early on a zero dimension, before it calls `cublasSgemm` or `cublasDgemm`.
 - **Too many dimensions or operands.** `device_layout()` and `index_layout()` throw when the layout exceeds `kMaxDims` or `kMaxOperands` instead of overflowing the fixed arrays.
 - **Out-of-range indices.** Checked on the host before launching gather and scatter.
 - **64-bit indexing.** Kernel index arithmetic uses `std::int64_t`. A kernel with 32-bit indices would wrap silently above 2^31 elements.
