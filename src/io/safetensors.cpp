@@ -134,6 +134,24 @@ void check_bools(const Tensor& t, const std::string& name) {
     }
 }
 
+std::string dump_header(const Json& header) {
+    try {
+        return header.dump();
+    } catch (const Json::type_error& error) {
+        throw ValueError(std::string("tensor names and metadata must be valid UTF-8: ") +
+                         error.what());
+    }
+}
+
+// Without fsync a crash after the rename can leave a renamed but empty or partial file.
+void flush_to_disk(const std::filesystem::path& path) {
+    const int descriptor = ::open(path.c_str(), O_RDONLY);
+    KAEL_CHECK(descriptor >= 0, "cannot open " << path << " to flush it to disk");
+    const int result = ::fsync(descriptor);
+    ::close(descriptor);
+    KAEL_CHECK(result == 0, "cannot flush " << path << " to disk");
+}
+
 struct TemporaryFileRemover {
     std::filesystem::path path;
 
@@ -210,13 +228,14 @@ void save_safetensors(const std::filesystem::path& path, const TensorMap& tensor
         position = end;
     }
 
-    std::string text = header.dump();
+    std::string text = dump_header(header);
     text.append((kHeaderAlignment - (text.size() % kHeaderAlignment)) % kHeaderAlignment, ' ');
     const std::uint64_t header_size = text.size();
 
     // Mapped tensors may read from the file being replaced: truncating it would invalidate them.
     std::filesystem::path temporary = path;
-    temporary += ".tmp" + std::to_string(next_temporary_suffix());
+    temporary +=
+        ".tmp" + std::to_string(::getpid()) + "." + std::to_string(next_temporary_suffix());
     TemporaryFileRemover remover{temporary};
     std::ofstream file(temporary, std::ios::binary);
     KAEL_CHECK(file.is_open(), "cannot write safetensors file " << temporary);
@@ -230,8 +249,10 @@ void save_safetensors(const std::filesystem::path& path, const TensorMap& tensor
     }
     file.close();
     KAEL_CHECK(file.good(), "failed writing safetensors file " << temporary);
+    flush_to_disk(temporary);
     std::filesystem::rename(temporary, path);
     remover.path.clear();
+    flush_to_disk(path.parent_path().empty() ? std::filesystem::path(".") : path.parent_path());
 }
 
 SafetensorsFile read_safetensors(const std::filesystem::path& path, LoadMode mode) {

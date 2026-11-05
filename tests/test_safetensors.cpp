@@ -262,6 +262,12 @@ TEST_F(Safetensors, AFailedSaveLeavesTheExistingFileIntact) {
     EXPECT_EQ(kael::io::load_safetensors(path_).at("a").at<float>({0}), 1.0f);
 }
 
+TEST_F(Safetensors, SavingANameThatIsNotUtf8IsAValueError) {
+    EXPECT_THROW(kael::io::save_safetensors(path_, {{"bad\xff", kael::full({2}, 1.0)}}),
+                 kael::ValueError);
+    EXPECT_FALSE(std::filesystem::exists(path_));
+}
+
 TEST_F(Safetensors, SavingLeavesNoTemporaryFilesBehind) {
     kael::io::save_safetensors(path_, {{"a", kael::full({2}, 1.0)}});
     int siblings = 0;
