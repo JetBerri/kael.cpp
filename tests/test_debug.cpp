@@ -79,6 +79,17 @@ TEST(BackwardTrace, PrintsEveryNodeWithShapeAndNorm) {
     EXPECT_NE(text.find("norm="), std::string::npos) << text;
 }
 
+TEST(BackwardTrace, ReportsTheL2NormOfEachGradient) {
+    Tensor x = kael::full({2}, 3.0);
+    x.requires_grad_();
+    std::ostringstream trace;
+    kael::set_backward_trace(&trace);
+    kael::sum(x * 2.0).backward();
+    kael::set_backward_trace(nullptr);
+    const std::string text = trace.str();
+    EXPECT_NE(text.find("AccumulateGrad shape=[2] norm=2.82843"), std::string::npos) << text;
+}
+
 TEST(BackwardTrace, IsOffByDefault) {
     Tensor x = kael::ones({1});
     x.requires_grad_();

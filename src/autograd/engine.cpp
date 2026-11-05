@@ -1,5 +1,6 @@
 #include "kael/autograd/engine.h"
 
+#include <cmath>
 #include <cstdlib>
 #include <iostream>
 #include <unordered_map>
@@ -65,8 +66,8 @@ void check_gradient(const Node& node, std::size_t index, const Tensor& gradient)
 }
 
 void trace_node(std::ostream& output, const Node& node, const Tensor& gradient) {
-    output << "backward " << node.name() << " shape=" << to_string(gradient.shape())
-           << " norm=" << kael::sum(gradient.to(DType::F64) * gradient.to(DType::F64)).item()
+    output << "backward " << node.name() << " shape=" << to_string(gradient.shape()) << " norm="
+           << std::sqrt(kael::sum(gradient.to(DType::F64) * gradient.to(DType::F64)).item())
            << '\n';
 }
 
