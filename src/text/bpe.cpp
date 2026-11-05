@@ -69,17 +69,17 @@ DecodedPoint decode_utf8(std::string_view text, std::size_t position) {
     std::size_t size = 0;
     char32_t value = 0;
     char32_t smallest = 0;
-    if ((lead & 0xE0) == 0xC0) {
+    if ((lead & 0xE0U) == 0xC0) {
         size = 2;
-        value = lead & 0x1Fu;
+        value = lead & 0x1FU;
         smallest = 0x80;
-    } else if ((lead & 0xF0) == 0xE0) {
+    } else if ((lead & 0xF0U) == 0xE0) {
         size = 3;
-        value = lead & 0x0Fu;
+        value = lead & 0x0FU;
         smallest = 0x800;
-    } else if ((lead & 0xF8) == 0xF0) {
+    } else if ((lead & 0xF8U) == 0xF0) {
         size = 4;
-        value = lead & 0x07u;
+        value = lead & 0x07U;
         smallest = 0x10000;
     } else {
         return {kInvalidCodePoint, 1};
@@ -89,10 +89,10 @@ DecodedPoint decode_utf8(std::string_view text, std::size_t position) {
     }
     for (std::size_t i = 1; i < size; ++i) {
         const unsigned char next = byte_at(position + i);
-        if ((next & 0xC0) != 0x80) {
+        if ((next & 0xC0U) != 0x80) {
             return {kInvalidCodePoint, 1};
         }
-        value = (value << 6) | (next & 0x3Fu);
+        value = (value << 6U) | (next & 0x3FU);
     }
     const bool surrogate = value >= 0xD800 && value <= 0xDFFF;
     if (value < smallest || value > 0x10FFFF || surrogate) {
@@ -106,12 +106,12 @@ std::string encode_utf8(char32_t code_point) {
     if (code_point < 0x80) {
         out.push_back(static_cast<char>(code_point));
     } else if (code_point < 0x800) {
-        out.push_back(static_cast<char>(0xC0 | (code_point >> 6)));
-        out.push_back(static_cast<char>(0x80 | (code_point & 0x3F)));
+        out.push_back(static_cast<char>(0xC0U | (code_point >> 6U)));
+        out.push_back(static_cast<char>(0x80U | (code_point & 0x3FU)));
     } else {
-        out.push_back(static_cast<char>(0xE0 | (code_point >> 12)));
-        out.push_back(static_cast<char>(0x80 | ((code_point >> 6) & 0x3F)));
-        out.push_back(static_cast<char>(0x80 | (code_point & 0x3F)));
+        out.push_back(static_cast<char>(0xE0U | (code_point >> 12U)));
+        out.push_back(static_cast<char>(0x80U | ((code_point >> 6U) & 0x3FU)));
+        out.push_back(static_cast<char>(0x80U | (code_point & 0x3FU)));
     }
     return out;
 }

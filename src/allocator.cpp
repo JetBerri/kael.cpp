@@ -20,8 +20,8 @@ namespace {
 
 constexpr std::int64_t kBucketStep = 512;
 constexpr std::int64_t kLargestSteppedSize = 65536;
-constexpr std::int64_t kMaxCachedBytes = std::int64_t{1} << 30;
-constexpr std::int64_t kLargestBucket = std::int64_t{1} << 62;
+constexpr auto kMaxCachedBytes = static_cast<std::int64_t>(std::uint64_t{1} << 30U);
+constexpr auto kLargestBucket = static_cast<std::int64_t>(std::uint64_t{1} << 62U);
 
 #if defined(KAEL_NO_CACHING_ALLOCATOR)
 constexpr bool kCachingCompiledIn = false;

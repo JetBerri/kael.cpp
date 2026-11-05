@@ -64,10 +64,10 @@ public:
     void start() noexcept { next_.store(begin_, std::memory_order_relaxed); }
 
 private:
-    void keep_first_error(std::exception_ptr error) {
+    void keep_first_error(const std::exception_ptr& error) {
         const std::lock_guard lock(error_mutex_);
         if (!error_) {
-            error_ = std::move(error);
+            error_ = error;
         }
     }
 

@@ -15,7 +15,7 @@ namespace kael {
 
 namespace {
 
-constexpr std::int64_t kWorkPerParallelTask = std::int64_t{1} << 21;
+constexpr auto kWorkPerParallelTask = static_cast<std::int64_t>(std::uint64_t{1} << 21U);
 
 template <typename T>
 void multiply_exact(const T* a, const T* b, T* out, const matmul_versions::Sizes& sizes) {

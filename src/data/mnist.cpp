@@ -22,8 +22,8 @@ std::uint32_t read_big_endian(std::ifstream& file, const std::filesystem::path& 
     std::array<unsigned char, 4> bytes{};
     file.read(reinterpret_cast<char*>(bytes.data()), bytes.size());
     KAEL_CHECK(file.good(), "IDX file " << path << " is truncated in its header");
-    return (std::uint32_t{bytes[0]} << 24) | (std::uint32_t{bytes[1]} << 16) |
-           (std::uint32_t{bytes[2]} << 8) | std::uint32_t{bytes[3]};
+    return (std::uint32_t{bytes[0]} << 24U) | (std::uint32_t{bytes[1]} << 16U) |
+           (std::uint32_t{bytes[2]} << 8U) | std::uint32_t{bytes[3]};
 }
 
 std::vector<std::int64_t> read_header(std::ifstream& file, const std::filesystem::path& path,
