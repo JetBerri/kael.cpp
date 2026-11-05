@@ -32,6 +32,31 @@ Tensor differentiable(const kael::Shape& shape) {
 
 } // namespace
 
+TEST(Cumsum, OnAScalarReturnsACopy) {
+    const Tensor x = kael::full({}, 3.0, DType::F64);
+    const Tensor total = kael::cumsum(x, 0);
+    EXPECT_EQ(total.dim(), 0);
+    EXPECT_DOUBLE_EQ(total.item(), 3.0);
+}
+
+TEST(Cumsum, OnAScalarPropagatesTheGradient) {
+    const Tensor x = kael::full({}, 3.0, DType::F64).requires_grad_();
+    kael::cumsum(x, 0).backward();
+    EXPECT_DOUBLE_EQ(x.grad()->item(), 1.0);
+}
+
+TEST(Cumsum, OnABoolScalarPromotesToInt64) {
+    const Tensor x = kael::full({}, 1, DType::Bool);
+    const Tensor total = kael::cumsum(x, -1);
+    EXPECT_EQ(total.dtype(), DType::I64);
+    EXPECT_EQ(total.item<std::int64_t>(), 1);
+}
+
+TEST(Cumsum, OnAScalarRejectsAnInvalidDimension) {
+    const Tensor x = kael::full({}, 3.0, DType::F64);
+    EXPECT_THROW((void)kael::cumsum(x, 1), kael::Error);
+}
+
 TEST(Cumsum, AlongEachDimension) {
     const Tensor x = doubles({1, 2, 3, 4, 5, 6}, {2, 3});
     EXPECT_TRUE(kael::equal(kael::cumsum(x, 1), doubles({1, 3, 6, 4, 9, 15}, {2, 3})));

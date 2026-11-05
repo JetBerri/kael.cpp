@@ -90,10 +90,11 @@ Tensor triangular_mask(const Tensor& t, std::int64_t diagonal, bool lower) {
 } // namespace
 
 Tensor cumsum(const Tensor& t, std::int64_t dim) {
-    if (t.dim() > 0) {
-        (void)dim_position(dim, t.dim());
-    }
+    (void)dim_position(dim, std::max<std::int64_t>(t.dim(), 1));
     const DType dtype = is_floating_point(t.dtype()) ? t.dtype() : DType::I64;
+    if (t.dim() == 0) {
+        return t.to(dtype).clone();
+    }
     Tensor out = autograd::without_grad([&] {
         const Tensor rows = moved_to_last_on_host(t, dim).to(dtype);
         const std::int64_t size = rows.size(-1);
