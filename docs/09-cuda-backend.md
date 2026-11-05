@@ -490,11 +490,16 @@ The defaults are `native`, `build-cuda` and `cuda-report`, and `-h` or `--help` 
 4. `device-tests`: `kael_tests --gtest_filter='Cuda*:*CudaMatmul*'` with `CUDA_LAUNCH_BLOCKING=1`. The step fails if the output contains "no CUDA device", because a skipped device test must not count as a pass.
 5. `compute-sanitizer`: two device tests under NVIDIA's memory checker, if it is installed.
 6. `benchmarks`: `kael_bench --benchmark_filter='BM_Device'`.
-7. `mnist-cpu`, `mnist-cuda`, `mnist-cuda-1024`: `examples/mnist_mlp` must reach at least 97 percent test accuracy, if `data/mnist` exists.
-8. `char-gpt-cuda`, `gpt2-cpp-cuda`: the transformer examples on the device, if their data exists.
-9. `python-build` and the Python steps: a virtual environment with the package built for CUDA, `kael.cuda_is_available()`, `python/tests/test_cuda.py` with no skips, the full pytest suite, and the Python examples on the device.
+7. `configure-cublas`, `build-cublas`, `device-tests-cublas`: a second build in `<build>-cublas` with `KAEL_USE_CUBLAS=ON` and the same device tests, so the cuBLAS matmul path runs too.
+8. `mnist-cpu`, `mnist-cuda`, `mnist-cuda-1024`: `examples/mnist_mlp` must reach at least 97 percent test accuracy, if `data/mnist` exists.
+9. `char-gpt-cuda`, `gpt2-cpp-cuda`: the transformer examples on the device, if their data exists.
+10. `python-build` and the Python steps: a virtual environment (with `virtualenv` as a fallback when `python3 -m venv` cannot bootstrap pip) with the package built for CUDA, `kael.cuda_is_available()`, `python/tests/test_cuda.py` with no skips, the full pytest suite, and the Python examples on the device.
 
 The exit status is 0 when every step ran and passed, 1 when a step failed, and 3 when nothing failed but some steps were skipped. Exit status 3 is not a complete pass.
+
+### scripts/cuda_colab.ipynb
+
+Without a GPU machine, open `scripts/cuda_colab.ipynb` in Google Colab with a GPU runtime and run every cell. It clones the repository, downloads MNIST, Tiny Shakespeare and GPT-2 with the `scripts/download_*.sh` scripts, runs `scripts/test_cuda.sh`, prints `summary.txt` and downloads the report as `cuda-report.tgz`.
 
 ### scripts/send_to_gpu.sh
 
