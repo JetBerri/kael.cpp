@@ -101,18 +101,21 @@ class Module:
             yield from child._named_modules(prefix + name + ".")
 
     def load_state_dict(self, state):
-        parameters = dict(self._walk_parameters(""))
-        missing = [name for name in parameters if name not in state]
+        targets = dict(self._walk_parameters(""))
+        for prefix, module in self._named_modules(""):
+            for name, buffer in module._buffers.items():
+                targets[prefix + name] = buffer
+        missing = [name for name in targets if name not in state]
         if missing:
             raise KeyError(f"state dict is missing {missing}")
         with kael.no_grad():
-            for name, parameter in parameters.items():
-                if state[name].shape != parameter.shape:
+            for name, target in targets.items():
+                if state[name].shape != target.shape:
                     raise ValueError(
-                        f"parameter {name} has shape {parameter.shape} "
+                        f"{name} has shape {target.shape} "
                         f"but the state dict has {state[name].shape}"
                     )
-                parameter.copy_(state[name])
+                target.copy_(state[name])
 
 
 class Linear(Module):

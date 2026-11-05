@@ -112,6 +112,18 @@ def test_state_dict_round_trip():
         assert kael.equal(a.detach(), b.detach()), name
 
 
+def test_load_state_dict_restores_buffers():
+    class Counter(nn.Module):
+        def __init__(self, start):
+            super().__init__()
+            self.register_buffer("count", kael.full([2], start))
+
+    source = Counter(7.0)
+    target = Counter(0.0)
+    target.load_state_dict(source.state_dict())
+    assert target.count.tolist() == [7.0, 7.0]
+
+
 def test_state_dict_validates():
     model = Small()
     state = model.state_dict()
