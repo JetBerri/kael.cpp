@@ -1,11 +1,17 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -uo pipefail
 
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
     echo "usage: $0 [ARCHITECTURE] [BUILD_DIR] [REPORT_DIR]"
-    echo "defaults: native build-cuda cuda-report"
+    echo
+    echo "Build kael with CUDA and validate it end to end on the local GPU."
+    echo "ARCHITECTURE defaults to native, BUILD_DIR to build-cuda and REPORT_DIR to cuda-report,"
+    echo "both relative to the repository root. Exit status: 0 all steps passed, 1 a step failed,"
+    echo "3 no step failed but some did not run."
     exit 0
 fi
+
+cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 
 architecture="${1:-native}"
 build="${2:-build-cuda}"

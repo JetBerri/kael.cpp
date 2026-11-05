@@ -1,8 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 usage() {
     echo "usage: $0 user@host [--arch native] [--without-weights] [--no-run]" >&2
+    echo >&2
+    echo "Copy the committed tree and the datasets to a GPU host over scp, run" >&2
+    echo "scripts/cuda/validate.sh there and copy the report back." >&2
     exit 2
 }
 

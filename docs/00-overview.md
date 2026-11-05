@@ -124,7 +124,7 @@ cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```
 
-`scripts/run_tests.sh` runs the last two commands against an existing `build/` directory. All C++ tests compile into a single executable, `build/tests/kael_tests`, and `gtest_discover_tests` registers each test with CTest. Run one group of suites directly with a GoogleTest filter:
+`scripts/run_tests.sh [BUILD_DIR]` configures a Debug build in `build/` if none exists, then runs the last two commands with one test process per CPU. All C++ tests compile into a single executable, `build/tests/kael_tests`, and `gtest_discover_tests` registers each test with CTest. Run one group of suites directly with a GoogleTest filter:
 
 ```bash
 build/tests/kael_tests --gtest_filter='BroadcastShapes.*'
