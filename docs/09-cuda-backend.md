@@ -16,7 +16,7 @@ The CUDA backend has not yet run on a real GPU. It is validated in two ways: the
 | `src/cuda/backend_none.cpp` | Stub that reports CUDA as unavailable and throws on use |
 | `src/internal/element_functions.h` | Elementwise functors usable from host and device code (`KAEL_HD`) |
 | `src/allocator.cpp` | The device instance of the caching allocator |
-| `scripts/test_cuda.sh`, `scripts/send_to_gpu.sh` | GPU validation run and remote launcher |
+| `scripts/cuda/validate.sh`, `scripts/cuda/run_remote.sh` | GPU validation run and remote launcher |
 
 ## Prerequisites
 
@@ -345,7 +345,7 @@ template <typename Task> void for_each(std::int64_t count, const Task& task) {
 
 `run_task` is a **grid-stride loop**: each thread starts at its global index and advances by the total number of threads in the grid. The grid is capped at 65535 blocks, so 256 x 65535 = 16 776 960 threads cover any `count`, with large counts handled by more loop iterations per thread. The index arithmetic is in `std::int64_t` because `count` can exceed 2^31. The task is passed by value, so its layout struct travels with the launch.
 
-Every CUDA runtime call goes through `KAEL_CUDA_CHECK`, which throws `kael::Error` with the call text, file, line and `cudaGetErrorString`. `cudaGetLastError` after a launch catches configuration errors. Errors that occur while the kernel runs surface at the next synchronizing call. `scripts/test_cuda.sh` runs the device tests with `CUDA_LAUNCH_BLOCKING=1`, which makes every launch synchronous so an error points at the kernel that caused it.
+Every CUDA runtime call goes through `KAEL_CUDA_CHECK`, which throws `kael::Error` with the call text, file, line and `cudaGetErrorString`. `cudaGetLastError` after a launch catches configuration errors. Errors that occur while the kernel runs surface at the next synchronizing call. `scripts/cuda/validate.sh` runs the device tests with `CUDA_LAUNCH_BLOCKING=1`, which makes every launch synchronous so an error points at the kernel that caused it.
 
 Memory goes through `cudaMalloc` and `cudaFree`. Copies use `cudaMemcpy`, which is synchronous with respect to the host. All launches use the default stream, so kernels run in issue order and a copy to the host waits for the kernels before it. `cuda_synchronize()` calls `cudaDeviceSynchronize`. Benchmarks need it to time kernel execution instead of launch latency (`run_on_device` in `benchmarks/bench_cuda.cpp`).
 
@@ -553,7 +553,7 @@ Without a GPU machine, open `scripts/cuda_colab.ipynb` in Google Colab with a GP
 8. Add `IndexLayout`, `Gather`, `ScatterAdd` with `atomic_add`, and host-side index checks. Checkpoint: `Cuda.IndexingMatchesCpu` and `Cuda.OutOfRangeIndicesStillThrow`.
 9. Add `record_to_device` and `Module::to` with `move_to_`. Checkpoint: `Cuda.TrainingMatchesCpuStepByStep` and `Cuda.GptMatchesCpuIncludingTheCacheAndGeneration`.
 10. Write `backend.cu` with the grid-stride `run_task`, `KAEL_CUDA_CHECK` and the CUDA runtime calls, then the optional cuBLAS path. Checkpoint: `cmake -DKAEL_ENABLE_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=86` builds in the `nvidia/cuda` container.
-11. On a GPU machine, run `scripts/test_cuda.sh`. Checkpoint: exit status 0.
+11. On a GPU machine, run `scripts/cuda/validate.sh`. Checkpoint: exit status 0.
 
 ## Further reading
 

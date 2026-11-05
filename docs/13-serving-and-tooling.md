@@ -266,7 +266,7 @@ The histogram is cumulative, as Prometheus requires: `finish_generation` increme
 ### Running the server
 
 ```bash
-scripts/download_gpt2.sh
+scripts/download/gpt2.sh
 pip install . -r server/requirements.txt
 python server/app.py --data data/gpt2 --device cpu --host 127.0.0.1 --port 8000
 ```

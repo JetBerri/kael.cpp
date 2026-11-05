@@ -14,7 +14,7 @@ This chapter builds the operator library on top of the iterator: elementwise ari
 | `src/ops/nn.cpp` | `logsumexp`, `softmax`, `log_softmax`, `cross_entropy_losses`, `standardize` |
 | `src/ops/sequence.cpp` | `cumsum`, `sort`, `topk`, `tril`, `triu` |
 | `src/internal/arithmetic.h`, `index_checks.h`, `nan_aware.h`, `operands.h` | shared helpers for dtype rules, index validation, NaN handling and operand resolution |
-| `scripts/gen_golden.py`, `tests/golden/`, `tests/support/`, `tests/test_golden.cpp` | the golden test pipeline |
+| `scripts/generate/golden.py`, `tests/golden/`, `tests/support/`, `tests/test_golden.cpp` | the golden test pipeline |
 
 ## Prerequisites
 
@@ -457,7 +457,7 @@ Hand-written expected values catch the cases the author thought of. The golden p
 
 ```mermaid
 flowchart LR
-    G["scripts/gen_golden.py<br/>PyTorch + NumPy"] -->|"np.save base inputs<br/>and contiguous output"| D["tests/golden/OP/CASE_*.npy"]
+    G["scripts/generate/golden.py<br/>PyTorch + NumPy"] -->|"np.save base inputs<br/>and contiguous output"| D["tests/golden/OP/CASE_*.npy"]
     G -->|"one line per case"| M["tests/golden/manifest.txt"]
     M --> T["tests/test_golden.cpp<br/>Golden.AllCasesMatchPyTorch"]
     D --> R["tests/support/npy.cpp<br/>read_npy"]
@@ -467,7 +467,7 @@ flowchart LR
 
 ### Generating cases
 
-`scripts/gen_golden.py` describes each input with `spec(shape, dtype, kind, view, values)`. `kind` selects the distribution in `make_base`: `normal` uses `torch.randn`, `positive` uses `rand * 3 + 0.01` (for `log`, `sqrt` and `pow` bases), I64 uses `randint(-5, 6)`, Bool uses `rand > 0.5`, and explicit `values` override all of them. `view` is a string applied after creation: `transpose:0:1`, `permute:1:2:0`, `slice:dim:start:end:step` or `expand:3:4`.
+`scripts/generate/golden.py` describes each input with `spec(shape, dtype, kind, view, values)`. `kind` selects the distribution in `make_base`: `normal` uses `torch.randn`, `positive` uses `rand * 3 + 0.01` (for `log`, `sqrt` and `pow` bases), I64 uses `randint(-5, 6)`, Bool uses `rand > 0.5`, and explicit `values` override all of them. `view` is a string applied after creation: `transpose:0:1`, `permute:1:2:0`, `slice:dim:start:end:step` or `expand:3:4`.
 
 Cases are grouped into reusable pattern lists. For binary ops, `BROADCAST_PATTERNS` covers same shape, rank broadcasting, size-1 broadcasting, a transposed input, a stepped slice, an expanded input, a permuted broadcast, scalar and tensor, scalar and scalar, an empty input and float64. `PROMOTION_PATTERNS` covers the 0-d promotion rules and mixed dtypes. `SPECIAL_PATTERN` pairs every value in `SPECIAL_VALUES` (NaN, `±inf`, `±0`, `±1`, `1e-10`, `±1000`) with every other, 100 pairs in total. Reductions use `REDUCTION_PATTERNS` (every dim, negative dims, two dims, keepdim, views, 0-d, empty, NaN), and the softmax family uses `NN_PATTERNS` plus the infinity cases.
 
@@ -509,7 +509,7 @@ op=clamp case=matrix inputs=x view_x=none args=min:-0.5,max:0.5
 Regenerate the data with the project virtual environment, which has PyTorch installed through the `test` extra in `pyproject.toml`:
 
 ```bash
-venv/bin/python scripts/gen_golden.py
+venv/bin/python scripts/generate/golden.py
 ```
 
 The script deletes `tests/golden/` first and rewrites everything, including the fixtures in `tests/golden/npy/`, `mlp/`, `nn/` and `optim/` that other test files read. Commit the regenerated directory together with the code change that needed it. CI does not run the generator; it reads the committed files.
@@ -562,7 +562,7 @@ void run_case(const GoldenCase& golden) {
 
 Each case runs under `SCOPED_TRACE(op + "/" + name)` and inside `try`/`catch`, so one throwing case reports its name and the loop continues. A failure reads like `add/transposed` followed by the first mismatching element. `KAEL_GOLDEN_DIR` is set by `tests/CMakeLists.txt` to the source tree path, so the test runs from any working directory.
 
-To add a golden op: add an `add_cases(...)` call in `scripts/gen_golden.py`, regenerate, and add one entry to `golden_ops()`. The `ASSERT_NE` on the registry lookup fails loudly if the second step is forgotten.
+To add a golden op: add an `add_cases(...)` call in `scripts/generate/golden.py`, regenerate, and add one entry to `golden_ops()`. The `ASSERT_NE` on the registry lookup fails loudly if the second step is forgotten.
 
 The same idea appears at the Python level: `python/tests/test_ops.py` compares the bindings against PyTorch directly with pytest (`test_binary_operators_match_torch_with_broadcast`, `test_reductions_match_torch`, `test_matmul_matches_torch`, `test_softmax_family_matches_torch` and others).
 
@@ -614,7 +614,7 @@ build/tests/kael_tests --gtest_filter='Arithmetic.*:Reduce*.*:Matmul.*:Softmax.*
 3. Write the unary ops on `unary_kernel` and `floating_unary_kernel`. Checkpoint: `Unary.*`, `Clamp.*`.
 4. Write `binary_inplace` with its checks, then `add_` to `pow_`, `clamp_`, `fill_`, `zero_`, `masked_fill_` and the compound operators. Checkpoint: `InPlace.*`, `Fill.*`, `CompoundOperators.*`.
 5. Write `tests/support/npy.cpp`, `allclose.h` and `values.h`. Checkpoint: `Allclose.*` and `Npy.*`.
-6. Write `tests/test_golden.cpp` with the binary and unary ops registered, and `scripts/gen_golden.py` with the matching pattern lists. Run `venv/bin/python scripts/gen_golden.py`. Checkpoint: `Golden.AllCasesMatchPyTorch` passes for those ops.
+6. Write `tests/test_golden.cpp` with the binary and unary ops registered, and `scripts/generate/golden.py` with the matching pattern lists. Run `venv/bin/python scripts/generate/golden.py`. Checkpoint: `Golden.AllCasesMatchPyTorch` passes for those ops.
 7. Write `plan_reduction` with only the contiguous path, `reduce_chunks`, and `sum` with a plain `double` loop. Checkpoint: `Reduce.SumAllAndAlongDims`, `Reduce.KeepdimLeavesSizeOne`, `Reduce.RepeatedOrInvalidDimsThrow`.
 8. Add `fold_lanes` and `reduce_in_blocks`, then `prod`, `mean`, `var`, `std`, `norm`, `max`, `min`, `argmax`, `argmin`, `all`, `any`. Checkpoint: all `Reduce.*`, then the reduction golden cases.
 9. Add the strided plan for a single reduced dimension. Checkpoint: `ReduceStrided.*`.

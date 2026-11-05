@@ -135,7 +135,7 @@ The inputs split into two groups, each promoted with the table. If both groups e
 | `ones({3}) + ones({3}, DType::F64)` | float64 |
 | `ones({3}, DType::I64) * true` | int64 |
 
-The reason for this rule is the common case `x * 0.5` on a float32 tensor. Without it, the literal (or a 0-d float64 tensor holding a loss value) would upcast a large activation tensor to float64 and double its memory. PyTorch uses the same rule, and the golden cases `zero_dim_wider`, `zero_dim_higher_category` and `zero_dim_lower_category` in `scripts/gen_golden.py` check kael against it.
+The reason for this rule is the common case `x * 0.5` on a float32 tensor. Without it, the literal (or a 0-d float64 tensor holding a loss value) would upcast a large activation tensor to float64 and double its memory. PyTorch uses the same rule, and the golden cases `zero_dim_wider`, `zero_dim_higher_category` and `zero_dim_lower_category` in `scripts/generate/golden.py` check kael against it.
 
 ### Op-specific overrides
 
@@ -151,7 +151,7 @@ The reason for this rule is the common case `x * 0.5` on a float32 tensor. Witho
 | `exp`, `log`, `sin`, ... | integer and Bool inputs become F32 | `floating_unary_kernel` |
 | in-place ops | result category must not exceed the category of `self` | `check_result_fits` in `src/ops/inplace.cpp` |
 
-`add_dtype` differs from PyTorch, where Bool + Bool stays Bool. For that reason the `add` golden cases skip the `bools` pattern (`BOOL_PATTERNS[1:]` in `scripts/gen_golden.py`). Reductions, matmul and `cat` have their own dtype rules, covered in chapter [05](05-operations.md).
+`add_dtype` differs from PyTorch, where Bool + Bool stays Bool. For that reason the `add` golden cases skip the `bools` pattern (`BOOL_PATTERNS[1:]` in `scripts/generate/golden.py`). Reductions, matmul and `cat` have their own dtype rules, covered in chapter [05](05-operations.md).
 
 ## Dtype dispatch
 

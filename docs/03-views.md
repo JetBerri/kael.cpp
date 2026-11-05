@@ -10,7 +10,7 @@ This chapter builds the view layer: the operations that produce a new tensor by 
 | `src/copy.cpp`, `src/internal/copy.h` | `detail::convert_strided`, the strided copy with dtype conversion |
 | `src/ops/inplace.cpp` | `copy_` and the in-place write rules that protect aliased memory |
 | `include/kael/storage.h` | the version counter shared by every view of one buffer |
-| `scripts/gen_view_cases.py` | generates `tests/generated/view_cases.inc` from NumPy |
+| `scripts/generate/view_cases.py` | generates `tests/generated/view_cases.inc` from NumPy |
 
 ## Prerequisites
 
@@ -434,7 +434,7 @@ v.add_(1);
 | `ViewChain` | chains of views, plus `GeneratedNumPyCases` |
 | `ZeroDimensional` | dim 0 and -1 accepted on scalars |
 
-`ViewChain.GeneratedNumPyCases` is the differential test. `scripts/gen_view_cases.py` (seed 7, 60 cases) builds random shapes with `numpy.arange`, applies random chains of transpose, permute, slice, select, unsqueeze, squeeze, expand and reshape in NumPy, and writes the final shape and values to `tests/generated/view_cases.inc`. The test replays each chain in kael on an iota tensor and compares the shape, the values read through the view, and the values of `clone()` of the view. Because the input values are their own indices, any wrong stride or offset shows up as a wrong number.
+`ViewChain.GeneratedNumPyCases` is the differential test. `scripts/generate/view_cases.py` (seed 7, 60 cases) builds random shapes with `numpy.arange`, applies random chains of transpose, permute, slice, select, unsqueeze, squeeze, expand and reshape in NumPy, and writes the final shape and values to `tests/generated/view_cases.inc`. The test replays each chain in kael on an iota tensor and compares the shape, the values read through the view, and the values of `clone()` of the view. Because the input values are their own indices, any wrong stride or offset shows up as a wrong number.
 
 `tests/test_ops_inplace.cpp` covers the write side: `InPlace.ExpandedTensorThrows`, `InPlace.PartiallyOverlappingOperandIsReadBeforeWriting`, `InPlace.ViewsSeeTheChange`, `Copy.BetweenDifferentStrides`, `Copy.ConvertsAndBroadcasts` and `Copy.OverlappingWithItself`. `tests/test_kernels.cpp` has `StridedCopy.ConvertsThroughIterator`. The golden tests in chapter [05](05-operations.md) apply `transpose`, `permute`, `slice` and `expand` views to inputs before every operation, so every op is also checked on non-contiguous layouts.
 
@@ -452,7 +452,7 @@ From Python, `test_views_share_memory` in `python/tests/test_tensor.py` and `tes
 8. Write `expand` on top of `broadcast_strides`, and `has_internal_overlap`. Checkpoint: `Expand.*`; `from_vector({1.f, 2.f, 3.f}).expand({2, 3}).strides()` is `[0, 1]`.
 9. Write `slice` with clamped bounds and checked arithmetic, then `select` and `narrow`. Checkpoint: `Slice.*`, `Select.*`, `Narrow.IsAStrictSlice`.
 10. Write `flatten`, `unflatten`, `split`, `chunk`. Checkpoint: `Flatten.*`, `Unflatten.*`, `Split.*`, `Chunk.*`.
-11. Run `python3 scripts/gen_view_cases.py` (needs NumPy) and include the generated file in a `ViewChain` test. Checkpoint: `ViewChain.GeneratedNumPyCases` passes.
+11. Run `python3 scripts/generate/view_cases.py` (needs NumPy) and include the generated file in a `ViewChain` test. Checkpoint: `ViewChain.GeneratedNumPyCases` passes.
 12. Add `Storage::version` and `bump_version`, then `copy_` with `check_writable` and `without_partial_aliasing`. Checkpoint: `Copy.*` and `InPlace.ExpandedTensorThrows`.
 
 Run a subset with the built test binary:

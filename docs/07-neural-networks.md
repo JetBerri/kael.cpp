@@ -545,7 +545,7 @@ num_batches = drop_last ? size / batch_size : ceil(size / batch_size)
 
 ### MNIST and the IDX format
 
-MNIST ships as four IDX files. `scripts/download_mnist.sh` fetches them into `data/mnist` (or the directory given as its argument), checks their MD5 sums and decompresses them. An IDX file is a big-endian header followed by raw bytes.
+MNIST ships as four IDX files. `scripts/download/mnist.sh` fetches them into `data/mnist` (or the directory given as its argument), checks their MD5 sums and decompresses them. An IDX file is a big-endian header followed by raw bytes.
 
 ```text
 offset  bytes  content
@@ -622,7 +622,7 @@ for (const auto& [images, labels] : kael::data::DataLoader(dataset, {.batch_size
 Arguments: a positional data directory (default `data/mnist`), `--device cpu|cuda` and `--hidden N` (default 128). `--help` prints the usage line. An unknown option, a missing value or a device name other than `cpu`, `cuda` or `cuda:0` ends the program with an error instead of being ignored; the device goes through `kael::parse_device` (chapter [02](02-memory-model.md)). The seed is fixed at `42`.
 
 ```bash
-scripts/download_mnist.sh
+scripts/download/mnist.sh
 cmake -S . -B build -DKAEL_BUILD_EXAMPLES=ON
 cmake --build build --target mnist_mlp
 build/examples/mnist_mlp data/mnist
@@ -638,7 +638,7 @@ epoch 4 test accuracy 97.35% in 7.39241 s
 epoch 5 test accuracy 97.42% in 8.22106 s
 ```
 
-The first logged loss is `2.40`, close to `log(10) = 2.30` as expected from a fresh classifier. No unit test runs the example, because CI does not download MNIST. `scripts/test_cuda.sh` runs it on CPU and on CUDA (hidden 128 and 1024) and fails if the final accuracy is below `minimum_mnist_accuracy="97"`. Timings depend on the machine and build type.
+The first logged loss is `2.40`, close to `log(10) = 2.30` as expected from a fresh classifier. No unit test runs the example, because CI does not download MNIST. `scripts/cuda/validate.sh` runs it on CPU and on CUDA (hidden 128 and 1024) and fails if the final accuracy is below `minimum_mnist_accuracy="97"`. Timings depend on the machine and build type.
 
 `examples/mnist.py` is the same program through the Python bindings, described in [10. Python bindings](10-python-bindings.md). Its options are `--data`, `--device` (`cpu` or `cuda`, enforced by `argparse`), `--epochs` (default 5) and `--hidden` (default 128), and `--help` describes them.
 
@@ -667,7 +667,7 @@ The first logged loss is `2.40`, close to `log(10) = 2.30` as expected from a fr
 | `tests/test_data.cpp` | `Idx`, `TensorDataset`, `Dataset`, `DataLoader` | IDX parsing of synthetic files written by the test (including big-endian sizes and every malformed case), dataset indexing, default `get_batch` stacking, batch counts, order, `drop_last`, shuffle coverage and reproducibility |
 | `tests/test_training.cpp` | `Training` | A `20 -> 64 -> 4` MLP overfits 32 random examples (initial loss near `log 4`, final loss below `0.02` after 200 Adam steps); `Linear(1, 1)` with SGD recovers `y = 3x + 2` within `0.05`; a `2 -> 8 -> 2` tanh MLP solves XOR; the same seed gives bit-identical losses and a different seed does not |
 
-Golden data comes from `scripts/gen_golden.py`. `write_nn_fixtures` (seed `20261`) saves inputs and outputs of `torch.nn.functional.linear`, `layer_norm` over `(3, 4)`, `embedding`, and the four losses under every reduction into `tests/golden/nn/`. `write_optim_fixtures` runs each optimizer for five steps on the loss `sum(w * c) + 0.5 * sum(w^2)` and saves the parameter after steps 1 and 5, and records the learning rate sequence of `StepLR(step_size=3, gamma=0.5)` and `CosineAnnealingLR(T_max=10, eta_min=0.001)`, into `tests/golden/optim/`.
+Golden data comes from `scripts/generate/golden.py`. `write_nn_fixtures` (seed `20261`) saves inputs and outputs of `torch.nn.functional.linear`, `layer_norm` over `(3, 4)`, `embedding`, and the four losses under every reduction into `tests/golden/nn/`. `write_optim_fixtures` runs each optimizer for five steps on the loss `sum(w * c) + 0.5 * sum(w^2)` and saves the parameter after steps 1 and 5, and records the learning rate sequence of `StepLR(step_size=3, gamma=0.5)` and `CosineAnnealingLR(T_max=10, eta_min=0.001)`, into `tests/golden/optim/`.
 
 ## Build it yourself
 
@@ -683,7 +683,7 @@ Golden data comes from `scripts/gen_golden.py`. `write_nn_fixtures` (seed `20261
 10. Write the schedulers and `clip_grad_norm_`. Checkpoint: `Schedulers.*`, `ClipGradNorm.*`.
 11. Write `Dataset`, `TensorDataset` and `DataLoader`. Checkpoint: `TensorDataset.*`, `Dataset.*`, `DataLoader.*`.
 12. Write the IDX reader and `load_mnist`. Checkpoint: `Idx.*`.
-13. Run `scripts/download_mnist.sh`, configure with `-DKAEL_BUILD_EXAMPLES=ON`, build `mnist_mlp` and run it. Checkpoint: the last line reports at least 97% test accuracy.
+13. Run `scripts/download/mnist.sh`, configure with `-DKAEL_BUILD_EXAMPLES=ON`, build `mnist_mlp` and run it. Checkpoint: the last line reports at least 97% test accuracy.
 
 ## Further reading
 

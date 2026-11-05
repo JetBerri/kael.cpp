@@ -935,7 +935,7 @@ Inputs must be `F64`, require grad and be leaves. `F32` has about 7 significant 
 | `tests/test_autograd_gradcheck.cpp` | `Gradcheck`, `AutogradFormulas` | The checker detects wrong gradients and restores inputs; every formula passes gradcheck on seeded random `F64` inputs (`manual_seed(1234)`), plus hand examples for `mean`, ties in `max`, zeros in `prod`, repeated indices |
 | `tests/test_autograd_mlp.cpp` | `AutogradGolden` | A two-layer tanh perceptron with log-softmax and gather matches PyTorch's loss to `1e-12` and gradients of `w1`, `b1`, `w2`, `b2` |
 
-The golden fixture comes from `write_mlp_fixture` in `scripts/gen_golden.py`. It seeds PyTorch with `20260`, builds a 6x4 input, a 5-unit tanh hidden layer and 3 classes in `float64`, runs `loss.backward()` and saves inputs, targets, loss, parameters and gradients as `.npy` files under `tests/golden/mlp/`. The C++ test loads them with `kael::test::read_npy` and replays the same computation.
+The golden fixture comes from `write_mlp_fixture` in `scripts/generate/golden.py`. It seeds PyTorch with `20260`, builds a 6x4 input, a 5-unit tanh hidden layer and 3 classes in `float64`, runs `loss.backward()` and saves inputs, targets, loss, parameters and gradients as `.npy` files under `tests/golden/mlp/`. The C++ test loads them with `kael::test::read_npy` and replays the same computation.
 
 The `AutogradFormulas` fixture uses helpers that keep inputs in the differentiable region: `positive_input` for `log`, `sqrt` and `pow`; `away_from_zero` for `abs`, `relu` and `prod`, so a finite difference never straddles a kink.
 
@@ -953,7 +953,7 @@ The `AutogradFormulas` fixture uses helpers that keep inputs in the differentiab
 10. Add the version check in `SavedTensor::get` and `check_grad_rules` in the in-place ops. Checkpoint: `AutogradVersion.*` and `AutogradFields.InplaceOnLeafRequiringGradThrows`.
 11. Add `retain_grad`, `detach`, `detach_` and the null check in `accumulate`. Checkpoint: `AutogradEngine.RetainGrad*` and `AutogradDetach.*`.
 12. Replace the recursive node destructor with the iterative one. Checkpoint: `DeepChainDestructionWithoutBackward` passes; with the recursive version it crashes.
-13. Generate the MLP fixture with `scripts/gen_golden.py` and replay it. Checkpoint: `AutogradGolden.TwoLayerPerceptronMatchesPyTorch`.
+13. Generate the MLP fixture with `scripts/generate/golden.py` and replay it. Checkpoint: `AutogradGolden.TwoLayerPerceptronMatchesPyTorch`.
 
 ## Further reading
 

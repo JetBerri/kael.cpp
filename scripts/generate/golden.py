@@ -1,3 +1,5 @@
+"""Generate the PyTorch reference fixtures in tests/golden/ for the C++ golden tests."""
+
 import shutil
 import zlib
 from pathlib import Path
@@ -5,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-GOLDEN_DIR = Path(__file__).resolve().parents[1] / "tests" / "golden"
+GOLDEN_DIR = Path(__file__).resolve().parents[2] / "tests/golden"
 DTYPES = {
     "f32": torch.float32,
     "f64": torch.float64,

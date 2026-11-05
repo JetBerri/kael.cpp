@@ -721,7 +721,7 @@ KAEL_NUM_THREADS=4 build-release/benchmarks/kael_bench --benchmark_filter='BM_Co
 `benchmarks/compare.py` runs `kael_bench --benchmark_filter=BM_Compare --benchmark_format=json`, times the same operations with NumPy and PyTorch through `timeit` (best of 7 repeats of 5 calls), and times one MNIST epoch with `examples/mnist_mlp` and with an equivalent PyTorch model. It prints a Markdown table. It needs `numpy` and `torch` installed and the MNIST files in `data/mnist`.
 
 ```bash
-scripts/download_mnist.sh
+scripts/download/mnist.sh
 python benchmarks/compare.py --threads 8
 ```
 

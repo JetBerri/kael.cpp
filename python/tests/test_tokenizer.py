@@ -15,7 +15,7 @@ MERGES = DATA / "merges.txt"
 def tokenizers():
     tiktoken = pytest.importorskip("tiktoken")
     if not VOCABULARY.exists() or not MERGES.exists():
-        pytest.skip("run scripts/download_gpt2.sh")
+        pytest.skip("run scripts/download/gpt2.sh")
     return kael.BpeTokenizer(str(VOCABULARY), str(MERGES)), tiktoken.get_encoding(
         "gpt2"
     )

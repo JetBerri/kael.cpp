@@ -62,7 +62,7 @@ fi
 
 status=0
 ssh -o ServerAliveInterval=30 "$host" \
-    "cd $remote_directory && bash scripts/test_cuda.sh $(printf '%q' "$architecture")" || status=$?
+    "cd $remote_directory && bash scripts/cuda/validate.sh $(printf '%q' "$architecture")" || status=$?
 local_report="cuda-report-$commit-$(date +%Y%m%d-%H%M%S)"
 if scp -r "$host:$remote_directory/cuda-report" "./$local_report"; then
     echo "report copied to $local_report"

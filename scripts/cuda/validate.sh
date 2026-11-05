@@ -187,19 +187,19 @@ if [[ -d data/mnist ]]; then
     step mnist-cuda expect_mnist_accuracy "$build/examples/mnist_mlp" data/mnist --device cuda
     step mnist-cuda-1024 expect_mnist_accuracy "$build/examples/mnist_mlp" data/mnist --device cuda --hidden 1024
 else
-    skip mnist "data/mnist is missing: run scripts/download_mnist.sh"
+    skip mnist "data/mnist is missing: run scripts/download/mnist.sh"
 fi
 
 if [[ -d data/shakespeare ]]; then
     step char-gpt-cuda "$build/examples/char_gpt" --steps 300 --device cuda
 else
-    skip char-gpt-cuda "data/shakespeare is missing: run scripts/download_shakespeare.sh"
+    skip char-gpt-cuda "data/shakespeare is missing: run scripts/download/shakespeare.sh"
 fi
 
 if [[ -f data/gpt2/vocab.json && -f data/gpt2/merges.txt && -f data/gpt2/model.safetensors ]]; then
     step gpt2-cpp-cuda "$build/examples/gpt2_generate" --tokens 40 --device cuda
 else
-    skip gpt2-cpp-cuda "GPT-2 files are missing: run scripts/download_gpt2.sh"
+    skip gpt2-cpp-cuda "GPT-2 files are missing: run scripts/download/gpt2.sh"
 fi
 
 if step python-build build_python; then
@@ -209,7 +209,7 @@ if step python-build build_python; then
     if [[ -d data/mnist ]]; then
         step python-mnist-cuda expect_mnist_accuracy python_tool examples/mnist.py --device cuda
     else
-        skip python-mnist-cuda "data/mnist is missing: run scripts/download_mnist.sh"
+        skip python-mnist-cuda "data/mnist is missing: run scripts/download/mnist.sh"
     fi
     if [[ -f data/gpt2/model.safetensors ]]; then
         step gpt2-cuda python_tool examples/gpt2_generate.py --device cuda

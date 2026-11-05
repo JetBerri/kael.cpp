@@ -69,7 +69,7 @@ Options parse_options(int argc, char** argv) {
 
 std::string read_text(const std::filesystem::path& path) {
     std::ifstream file(path, std::ios::binary);
-    KAEL_CHECK(file.is_open(), "cannot open " << path << "; run scripts/download_shakespeare.sh");
+    KAEL_CHECK(file.is_open(), "cannot open " << path << "; run scripts/download/shakespeare.sh");
     return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
 }
 

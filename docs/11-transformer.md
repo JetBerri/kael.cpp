@@ -10,7 +10,7 @@ This chapter builds a GPT-2 style decoder-only transformer on top of the modules
 | `src/internal/element_functions.h` | `GeluExact` and `GeluTanh` element functions |
 | `src/random.cpp` | `multinomial`, the sampler behind `generate` |
 | `examples/char_gpt.cpp` | Character-level GPT trained on Tiny Shakespeare |
-| `scripts/download_shakespeare.sh` | Downloads `input.txt` and checks its SHA-256 |
+| `scripts/download/shakespeare.sh` | Downloads `input.txt` and checks its SHA-256 |
 | `tests/test_transformer.cpp` | GoogleTest suites `Attention`, `Block`, `Gpt`, `Generate`, `GptGenerate`, `Gpt2Weights` |
 | `python/tests/test_gpt.py` | pytest comparison against PyTorch and Hugging Face `transformers` |
 
@@ -537,7 +537,7 @@ softmax                [ 0.881 0.119 0.000 0.000 ]
 
 ### Data
 
-`scripts/download_shakespeare.sh` downloads `input.txt` into `data/shakespeare` (or the directory given as its first argument) and verifies its SHA-256. The `Vocabulary` class collects the distinct bytes of the file in byte order and numbers them from 0. Tiny Shakespeare has 65 distinct characters, so `V = 65`. The encoded text is split 90 percent for training and 10 percent for validation.
+`scripts/download/shakespeare.sh` downloads `input.txt` into `data/shakespeare` (or the directory given as its first argument) and verifies its SHA-256. The `Vocabulary` class collects the distinct bytes of the file in byte order and numbers them from 0. Tiny Shakespeare has 65 distinct characters, so `V = 65`. The encoded text is split 90 percent for training and 10 percent for validation.
 
 `sample_batch` picks 32 random start offsets and copies 64 tokens from each as inputs and the same 64 tokens shifted by one as targets:
 
@@ -647,7 +647,7 @@ The arguments are `--steps N`, `--device cpu|cuda` and an optional data director
 9. Build and run the example:
 
    ```bash
-   scripts/download_shakespeare.sh
+   scripts/download/shakespeare.sh
    cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DKAEL_BUILD_EXAMPLES=ON
    cmake --build build --target char_gpt
    build/examples/char_gpt --steps 5000

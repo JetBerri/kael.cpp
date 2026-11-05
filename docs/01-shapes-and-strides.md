@@ -8,7 +8,7 @@ This chapter builds the metadata arithmetic that turns a flat block of memory in
 | `src/shape.cpp` | Implementation: validation, element count, contiguous strides, offsets, broadcasting, dimension wrapping, shape inference |
 | `src/internal/checked_math.h` | `detail::checked_mul` and `detail::checked_add`, overflow-checked arithmetic on `std::int64_t` |
 | `include/kael/error.h` | `kael::Error`, its subclasses and the `KAEL_CHECK_*` macros used to report bad input |
-| `scripts/gen_broadcast_cases.py` | Generates random broadcasting cases with NumPy |
+| `scripts/generate/broadcast_cases.py` | Generates random broadcasting cases with NumPy |
 | `tests/generated/broadcast_cases.inc` | The generated cases, included by the test |
 | `tests/test_shape.cpp` | GoogleTest suites for every function |
 
@@ -557,7 +557,7 @@ With contiguous strides, the linear position and the memory offset are the same 
 
 The semantic broadcast tests (`BroadcastStrides.SemanticBroadcastRows` and `SemanticBroadcastColumns`) put real values in a buffer, broadcast a `[3]` row to `[2, 3]` and a `[2, 1]` column to `[2, 4]`, then read every element of the target through `index_from_linear` and `offset_from_index`. Each value must equal the one the broadcast is supposed to repeat. They check that stride 0 does what the diagrams in this chapter claim, not only that the stride vectors have the expected numbers.
 
-The generated cases compare kael with NumPy. `scripts/gen_broadcast_cases.py` seeds Python's `random` with 42, draws 300 pairs of shapes with 0 to 4 dimensions and sizes from `{0, 1, 2, 3}` (weighted toward 1 and 3 so that compatible pairs are common), and asks `np.broadcast_shapes` for each answer. It writes one initializer per pair to `tests/generated/broadcast_cases.inc`:
+The generated cases compare kael with NumPy. `scripts/generate/broadcast_cases.py` seeds Python's `random` with 42, draws 300 pairs of shapes with 0 to 4 dimensions and sizes from `{0, 1, 2, 3}` (weighted toward 1 and 3 so that compatible pairs are common), and asks `np.broadcast_shapes` for each answer. It writes one initializer per pair to `tests/generated/broadcast_cases.inc`:
 
 ```text
     {{1, 0}, {}, true, {1, 0}},
@@ -567,7 +567,7 @@ The generated cases compare kael with NumPy. `scripts/gen_broadcast_cases.py` se
 `BroadcastShapes.GeneratedCases` includes the file into an array and expects either the same result or a `ValueError` for every case. Regenerate the file with:
 
 ```bash
-python3 scripts/gen_broadcast_cases.py
+python3 scripts/generate/broadcast_cases.py
 ```
 
 The output is deterministic, so a regenerated file only changes if the script changes. The generated file is committed, which means the C++ tests do not need Python or NumPy to run.
@@ -583,7 +583,7 @@ Start from an empty CMake project with a library target, GoogleTest through `Fet
 5. Add `offset_from_index` with `std::span` parameters, the size checks and the per-dimension range check. Checkpoint: `OffsetFromIndex.*` pass, including the non-contiguous case with strides `[1, 3]`.
 6. Add `index_from_linear` with the range check before the division loop. Checkpoint: `IndexFromLinear.RoundTripWithOffsetFromIndex` passes for all 24 positions.
 7. Add `broadcast_shapes`, counting positions from the right. Checkpoint: `BroadcastShapes.ValidCases`, `Symmetry` and `IncompatibleThrows` pass.
-8. Add `scripts/gen_broadcast_cases.py`, run it, and add `BroadcastShapes.GeneratedCases`. Checkpoint: all 300 cases agree with NumPy.
+8. Add `scripts/generate/broadcast_cases.py`, run it, and add `BroadcastShapes.GeneratedCases`. Checkpoint: all 300 cases agree with NumPy.
 9. Add `broadcast_strides` with the zero-filled result. Checkpoint: `BroadcastStrides.SemanticBroadcastRows` and `SemanticBroadcastColumns` pass.
 10. Add `wrap_dim`, `dim_position` and `infer_shape`. They are only needed from chapter 02 and 03 on, but they belong in this file. Checkpoint: `WrapDim.*` pass, and `infer_shape({-1, 4}, 12)` returns `[3, 4]` while `infer_shape({0, -1}, 0)` throws.
 11. Build with `-DKAEL_ENABLE_SANITIZERS=ON` and run the suite again. Checkpoint: no AddressSanitizer or UndefinedBehaviorSanitizer reports. UBSan reports signed overflow, so this run confirms that no overflow check was skipped.
