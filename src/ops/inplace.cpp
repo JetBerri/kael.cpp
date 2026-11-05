@@ -207,6 +207,7 @@ Tensor& Tensor::index_add_(std::int64_t dim, const Tensor& indices, const Tensor
                                                 << dim);
     Shape along_dim(shape().size(), 1);
     along_dim[position] = indices.numel();
+    check_grad_rules(*this, &source, "index_add_");
     const autograd::NoGradGuard guard;
     return scatter_add_(dim, indices.reshape(along_dim).expand(source.shape()), source);
 }

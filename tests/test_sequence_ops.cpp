@@ -278,3 +278,34 @@ TEST(FastIndexing, BackwardAcceptsSteppedIndices) {
     EXPECT_EQ(x.grad()->at<double>({1, 1}), 1.0);
     EXPECT_EQ(x.grad()->at<double>({0, 0}), 0.0);
 }
+
+TEST(IndexAdd, RejectsALeafThatRequiresGrad) {
+    Tensor x = kael::zeros({3}, DType::F64).requires_grad_();
+    const Tensor indices = kael::arange(0, 2, 1, DType::I64);
+    const Tensor source = kael::ones({2}, DType::F64);
+    EXPECT_THROW(x.index_add_(0, indices, source), kael::Error);
+}
+
+TEST(IndexAdd, RejectsASourceThatRequiresGrad) {
+    Tensor x = kael::zeros({3}, DType::F64);
+    const Tensor indices = kael::arange(0, 2, 1, DType::I64);
+    Tensor source = kael::ones({2}, DType::F64).requires_grad_();
+    EXPECT_THROW(x.index_add_(0, indices, source), kael::Error);
+}
+
+TEST(IndexAdd, RejectsATensorWithGradientHistory) {
+    const Tensor leaf = kael::zeros({3}, DType::F64).requires_grad_();
+    Tensor x = leaf * 2;
+    const Tensor indices = kael::arange(0, 2, 1, DType::I64);
+    const Tensor source = kael::ones({2}, DType::F64);
+    EXPECT_THROW(x.index_add_(0, indices, source), kael::Error);
+}
+
+TEST(IndexAdd, AcceptsALeafThatRequiresGradWithoutGradMode) {
+    Tensor x = kael::zeros({3}, DType::F64).requires_grad_();
+    const Tensor indices = kael::arange(0, 2, 1, DType::I64);
+    const Tensor source = kael::ones({2}, DType::F64);
+    const kael::autograd::NoGradGuard guard;
+    x.index_add_(0, indices, source);
+    EXPECT_TRUE(kael::equal(x, doubles({1, 1, 0}, {3})));
+}
