@@ -471,7 +471,7 @@ venv/bin/pip install --config-settings=cmake.define.KAEL_ENABLE_CUDA=ON .
 
 ### Release wheels
 
-`.github/workflows/wheels.yml` runs on manual dispatch. It builds wheels with `pypa/cibuildwheel` on `ubuntu-latest`, `ubuntu-24.04-arm`, `macos-latest` and `macos-13`, builds an sdist, and optionally publishes to TestPyPI or PyPI with trusted publishing. The `[tool.cibuildwheel]` table in `pyproject.toml` builds CPython 3.9 to 3.13, skips musllinux and PyPy, targets `arm64` and `x86_64` on macOS and `x86_64` and `aarch64` on Linux, and runs `pytest {project}/python/tests -q` against every wheel with only `pytest` and `hypothesis` installed.
+`.github/workflows/wheels.yml` runs on manual dispatch. It builds wheels with `pypa/cibuildwheel` on `ubuntu-latest`, `ubuntu-24.04-arm`, `macos-latest` and `macos-13`, builds an sdist, and optionally publishes to TestPyPI or PyPI with trusted publishing. The `[tool.cibuildwheel]` table in `pyproject.toml` builds CPython 3.9 to 3.13, skips musllinux and PyPy, builds only the native architecture of each runner (`archs = ["native"]`), uses `manylinux_2_28` images on Linux because NumPy no longer publishes `manylinux2014` wheels for the test environment, and runs `pytest {project}/python/tests -q` against every wheel with `pytest`, `hypothesis`, `fastapi` and `httpx` installed. Native builds mean `ubuntu-latest` produces the x86_64 Linux wheels, `ubuntu-24.04-arm` the aarch64 ones, `macos-latest` the arm64 macOS wheels and `macos-13` the x86_64 ones, and every wheel is tested on the machine that built it. Listing both architectures per platform would make each Linux runner need QEMU for the foreign one and each macOS runner produce untested cross-compiled duplicates.
 
 ## Running the tests
 
@@ -481,7 +481,7 @@ venv/bin/pytest python/tests -q
 
 `pyproject.toml` sets `testpaths = ["python/tests"]`, so a bare `pytest` from the repository root finds the suite. `python/tests/conftest.py` seeds both kael and NumPy with 1234 before every test.
 
-Tests that need optional packages skip themselves with `pytest.importorskip`: `torch` for `test_autograd.py`, `test_ops.py`, `test_nn.py`, `test_gpt.py` and the DLPack tests; `transformers` and `safetensors.torch` for `test_gpt.py`; `tiktoken` for tokenizer comparisons; `fastapi` and `httpx` for `test_server.py`. `test_cuda.py` skips without a device. This is how the cibuildwheel test run passes with only `pytest` and `hypothesis`.
+Tests that need optional packages skip themselves with `pytest.importorskip`: `torch` for `test_autograd.py`, `test_ops.py`, `test_nn.py`, `test_gpt.py` and the DLPack tests; `transformers` and `safetensors.torch` for `test_gpt.py`; `tiktoken` for tokenizer comparisons; `fastapi` and `httpx` for `test_server.py`. `test_cuda.py` skips without a device. The cibuildwheel run installs `fastapi` and `httpx`, so the server tests run against every wheel. It leaves PyTorch out: PyTorch publishes no Intel macOS wheels after 2.2, and the default Linux wheel pulls in the CUDA libraries for every Python version. The PyTorch comparisons run in the `python` CI job instead, which installs `.[test]` and builds from source.
 
 ## Edge cases and pitfalls
 
