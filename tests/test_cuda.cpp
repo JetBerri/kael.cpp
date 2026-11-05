@@ -467,6 +467,18 @@ TEST_F(Cuda, ModuleToMovesExistingGradients) {
     EXPECT_EQ(layer.weight().grad()->device(), Device::CUDA);
 }
 
+TEST_F(Cuda, IntegerClampAndMaskedFillKeepEveryBit) {
+    const std::int64_t large = (std::int64_t{1} << 53) + 1;
+    const Tensor values =
+        kael::from_vector(std::vector<std::int64_t>{0, large + 10}).to(Device::CUDA);
+    const Tensor clamped = kael::clamp(values, large, large);
+    EXPECT_EQ(clamped.cpu().data_ptr<std::int64_t>()[0], large);
+    EXPECT_EQ(clamped.cpu().data_ptr<std::int64_t>()[1], large);
+    const Tensor mask = kael::from_vector({true, false}).to(Device::CUDA);
+    const Tensor filled = kael::masked_fill(values, mask, large);
+    EXPECT_EQ(filled.cpu().data_ptr<std::int64_t>()[0], large);
+}
+
 TEST_F(Cuda, IntegerSumWrapsAndFloatConversionSaturates) {
     constexpr std::int64_t kMax = std::numeric_limits<std::int64_t>::max();
     const Tensor longs = kael::from_vector(std::vector<std::int64_t>{kMax, 1}).to(Device::CUDA);

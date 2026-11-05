@@ -1,7 +1,9 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
+#include <type_traits>
 
 #include "kael/dtype.h"
 
@@ -51,9 +53,18 @@ enum class ElementOp {
 
 enum class ReduceOp { Sum, Max, Min };
 
+// Integer arguments travel apart from real ones: a double cannot hold every int64 exactly.
 struct ElementParameters {
-    double first = 0.0;
-    double second = 0.0;
+    std::array<double, 2> reals{};
+    std::array<std::int64_t, 2> integers{};
+
+    template <typename T> [[nodiscard]] T get(std::size_t index) const {
+        if constexpr (std::is_integral_v<T>) {
+            return static_cast<T>(integers[index]);
+        } else {
+            return static_cast<T>(reals[index]);
+        }
+    }
 };
 
 struct ElementLayout {

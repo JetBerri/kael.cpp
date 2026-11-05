@@ -412,8 +412,7 @@ void elementwise(ElementOp op, DType out, DType in, const ElementLayout& layout,
     case ElementOp::Clamp:
         return with_type(in, [&](auto sample) {
             using T = decltype(sample);
-            const functions::Clamp<T> clamp{static_cast<T>(parameters.first),
-                                            static_cast<T>(parameters.second)};
+            const functions::Clamp<T> clamp{parameters.get<T>(0), parameters.get<T>(1)};
             for_each(layout.count, tasks::Element<T, T, 1, functions::Clamp<T>>{layout, clamp});
         });
     case ElementOp::Where:
@@ -421,7 +420,7 @@ void elementwise(ElementOp op, DType out, DType in, const ElementLayout& layout,
     case ElementOp::MaskedFill:
         return with_type(in, [&](auto sample) {
             using T = decltype(sample);
-            const functions::MaskedFill<T> fill_mask{static_cast<T>(parameters.first)};
+            const functions::MaskedFill<T> fill_mask{parameters.get<T>(0)};
             for_each(layout.count,
                      tasks::Element<T, T, 2, functions::MaskedFill<T>>{layout, fill_mask});
         });

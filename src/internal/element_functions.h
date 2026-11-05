@@ -292,7 +292,11 @@ template <typename T> struct Clamp {
     T low;
     T high;
     [[nodiscard]] KAEL_HD ElementParameters parameters() const {
-        return {static_cast<double>(low), static_cast<double>(high)};
+        if constexpr (std::is_integral_v<T>) {
+            return {.integers = {low, high}};
+        } else {
+            return {.reals = {low, high}};
+        }
     }
     KAEL_HD T operator()(T x) const { return clamp_value(x, low, high); }
 };
@@ -307,7 +311,11 @@ template <typename T> struct MaskedFill {
     static constexpr ElementOp kOp = ElementOp::MaskedFill;
     T replacement;
     [[nodiscard]] KAEL_HD ElementParameters parameters() const {
-        return {static_cast<double>(replacement), 0.0};
+        if constexpr (std::is_integral_v<T>) {
+            return {.integers = {replacement, 0}};
+        } else {
+            return {.reals = {replacement, 0.0}};
+        }
     }
     KAEL_HD T operator()(T current, T selected) const {
         return selected != T{0} ? replacement : current;
