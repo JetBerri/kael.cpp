@@ -57,6 +57,12 @@ TEST(NnInit, FansOfALinearWeight) {
     EXPECT_EQ(fans.out, 128);
 }
 
+TEST(NnInit, FansOfAnEmptyWeightAreZero) {
+    const auto fans = kael::nn::init::fans_of(kael::zeros({0, 3, 2}));
+    EXPECT_EQ(fans.in, 6);
+    EXPECT_EQ(fans.out, 0);
+}
+
 TEST(NnInit, FansNeedTwoDimensions) {
     EXPECT_THROW((void)kael::nn::init::fans_of(kael::zeros({3})), kael::Error);
 }

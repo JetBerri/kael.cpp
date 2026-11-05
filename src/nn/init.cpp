@@ -20,7 +20,10 @@ double leaky_relu_gain(double a) {
 Fans fans_of(const Tensor& weight) {
     KAEL_CHECK_VALUE(weight.dim() >= 2, "fans need a tensor with at least 2 dimensions, got shape "
                                             << to_string(weight.shape()));
-    const std::int64_t receptive_field = weight.numel() / (weight.size(0) * weight.size(1));
+    std::int64_t receptive_field = 1;
+    for (std::int64_t dim = 2; dim < weight.dim(); ++dim) {
+        receptive_field *= weight.size(dim);
+    }
     return {weight.size(1) * receptive_field, weight.size(0) * receptive_field};
 }
 
