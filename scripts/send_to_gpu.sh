@@ -6,7 +6,7 @@ usage() {
     exit 2
 }
 
-[[ $# -ge 1 ]] || usage
+[[ $# -ge 1 && "$1" != -* ]] || usage
 host="$1"
 shift
 

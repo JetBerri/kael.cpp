@@ -1,6 +1,12 @@
 #!/bin/bash
 set -uo pipefail
 
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    echo "usage: $0 [ARCHITECTURE] [BUILD_DIR] [REPORT_DIR]"
+    echo "defaults: native build-cuda cuda-report"
+    exit 0
+fi
+
 architecture="${1:-native}"
 build="${2:-build-cuda}"
 report="${3:-cuda-report}"
