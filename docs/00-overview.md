@@ -189,7 +189,7 @@ All options are declared at the top of `CMakeLists.txt`.
 
 When neither CUDA option is on, `src/cuda/backend_none.cpp` provides the device functions, and every device operation throws `kael was built without CUDA; configure with KAEL_ENABLE_CUDA=ON`.
 
-The project version comes from `project(kael VERSION 1.0.1 LANGUAGES CXX)`. CMake passes it to the library as the `KAEL_VERSION` definition, and `kael::version()` in `include/kael/version.h` returns it.
+The project version comes from `project(kael VERSION 1.0.0 LANGUAGES CXX)`. CMake passes it to the library as the `KAEL_VERSION` definition, and `kael::version()` in `include/kael/version.h` returns it.
 
 ## Phases, chapters and tags
 
