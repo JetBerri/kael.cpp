@@ -5,9 +5,9 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
     echo "usage: $0 [ARCHITECTURE] [BUILD_DIR] [REPORT_DIR]"
     echo
     echo "Build kael with CUDA and validate it end to end on the local GPU."
-    echo "ARCHITECTURE defaults to native, BUILD_DIR to build-cuda and REPORT_DIR to cuda-report,"
-    echo "both relative to the repository root. Exit status: 0 all steps passed, 1 a step failed,"
-    echo "3 no step failed but some did not run."
+    echo "ARCHITECTURE defaults to native, BUILD_DIR to build-cuda and REPORT_DIR to cuda-report."
+    echo "BUILD_DIR and REPORT_DIR are relative to the repository root."
+    echo "Exit status: 0 all steps passed, 1 a step failed, 3 no step failed but some did not run."
     exit 0
 fi
 
