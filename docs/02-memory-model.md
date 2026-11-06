@@ -722,7 +722,7 @@ A macro is used instead of a function because only a macro can capture the condi
 
 `include/kael/kael.h` includes the core headers, the operations, autograd, the parallel runtime, the allocator and the debugging helpers. The `nn`, `optim`, `data`, `io` and `text` headers are not included and must be included individually.
 
-`kael::version()` returns the `KAEL_VERSION` compile definition, which `CMakeLists.txt` sets from the project version (`1.0.0`). The test `Version.MatchesTheProjectVersion` compares it with the same CMake value passed to the tests, so a version bump that forgets one side fails the build's tests.
+`kael::version()` returns the `KAEL_VERSION` compile definition, which `CMakeLists.txt` sets from the project version (`1.0.1`). The test `Version.MatchesTheProjectVersion` compares it with the same CMake value passed to the tests, so a version bump that forgets one side fails the build's tests.
 
 ## Edge cases and pitfalls
 
