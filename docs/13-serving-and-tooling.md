@@ -1,6 +1,6 @@
 # 13. Serving and tooling
 
-This last chapter covers what surrounds the library: an HTTP server that exposes GPT-2 generation, its Docker image, the debugging helpers in `debug.h`, fuzzing with libFuzzer, the sanitizer builds, clang-tidy and clang-format, and the CI jobs that run all of it. It maps to the `chapter-13-polish` tag, with one caveat: the tags `chapter-12-transformer`, `chapter-13-polish` and `v1.0.0` all point at the same commit, and the server, the Dockerfile and the generation callback it relies on landed in later commits that carry no tag. This chapter describes the current head of the repository.
+This last chapter covers what surrounds the library: an HTTP server that exposes GPT-2 generation, its Docker image, the debugging helpers in `debug.h`, fuzzing with libFuzzer, the sanitizer builds, clang-tidy and clang-format, and the CI jobs that run all of it. It maps to the `chapter-13-polish` tag, the same commit as `v1.0.0`.
 
 | File | Role |
 |------|------|

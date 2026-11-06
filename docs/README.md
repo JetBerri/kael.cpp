@@ -47,10 +47,10 @@ Each chapter has the same structure:
 | [09. CUDA backend](09-cuda-backend.md) | Device memory, device kernels and a host emulation backend for testing | `chapter-10-cuda` |
 | [10. Python bindings](10-python-bindings.md) | A Python package on top of the C++ library, with NumPy interop | `chapter-11-python` |
 | [11. Transformer](11-transformer.md) | Attention, a GPT model, a KV cache and sampling | `chapter-12-transformer` |
-| [12. Loading GPT-2](12-model-loading.md) | The safetensors format, the GPT-2 weight mapping and the BPE tokenizer | `main` |
-| [13. Serving and tooling](13-serving-and-tooling.md) | An HTTP server, debugging tools, fuzzing, sanitizers and CI | `main` |
+| [12. Loading GPT-2](12-model-loading.md) | The safetensors format, the GPT-2 weight mapping and the BPE tokenizer | `chapter-13-polish` |
+| [13. Serving and tooling](13-serving-and-tooling.md) | An HTTP server, debugging tools, fuzzing, sanitizers and CI | `chapter-13-polish` |
 
-Tags are numbered by project phase, so `chapter-02-shapes` holds the code for chapter 01 and `chapter-03-core` the code for chapter 02. Chapter 00 has no tag. Two shape functions arrive after chapter 01: `infer_shape` at `chapter-04-views` and `dim_position` at `chapter-06-ops`. Chapters 12 and 13 describe work that landed after the transformer tag (the tokenizer, memory-mapped loading, the server), so read them against `main`.
+Tags are numbered by project phase, so `chapter-02-shapes` holds the code for chapter 01 and `chapter-03-core` the code for chapter 02. Chapter 00 has no tag. Two shape functions arrive after chapter 01: `infer_shape` at `chapter-04-views` and `dim_position` at `chapter-06-ops`. Chapter 12 starts at `chapter-12-transformer` and is complete at `chapter-13-polish`, which also marks `v1.0.0`.
 
 ## Design decisions
 

@@ -645,7 +645,7 @@ Floating samples are drawn as `double` and converted, so the same seed gives the
 
 The generator engine is fully specified by the C++ standard, but `std::normal_distribution` and `std::uniform_real_distribution` are not. libstdc++ and libc++ can produce different numbers from the same engine state. A seed reproduces results on one platform, not across platforms. The tests therefore check properties (same seed gives the same values, the mean and standard deviation of `randn` are close to 0 and 1, `randint` stays in bounds) and never compare against hard-coded numbers.
 
-After `v1.0.0`, a mutex was added around the generator, with `pthread_atfork` handlers that hold it across `fork()` so a child process never inherits a locked mutex. `RandomThreads.ConcurrentSamplingDoesNotRace` samples from several threads under ThreadSanitizer.
+In phase 13, a mutex was added around the generator, with `pthread_atfork` handlers that hold it across `fork()` so a child process never inherits a locked mutex. `RandomThreads.ConcurrentSamplingDoesNotRace` samples from several threads under ThreadSanitizer.
 
 `multinomial` arrived in phase 12 for text generation (chapter 11).
 

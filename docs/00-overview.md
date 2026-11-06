@@ -208,13 +208,13 @@ kael was built in thirteen phases. Phase 1 set up the repository (license, `.git
 | 10. CUDA | [09](09-cuda-backend.md) | `chapter-10-cuda` | `v0.3.0` | `1fd592c chore(release): bump version to 0.3.0` |
 | 11. Python | [10](10-python-bindings.md) | `chapter-11-python` | `v0.4.0` | `6472c9d ci(github): build Python wheels` |
 | 12. Transformer | [11](11-transformer.md), [12](12-model-loading.md) | `chapter-12-transformer` | | `cb0f4be test(nn): skip the full GPT-2 construction under sanitizers` |
-| 13. Polish | [13](13-serving-and-tooling.md) | `chapter-13-polish` | `v1.0.0` | `cb0f4be test(nn): skip the full GPT-2 construction under sanitizers` |
+| 13. Polish | [12](12-model-loading.md), [13](13-serving-and-tooling.md) | `chapter-13-polish` | `v1.0.0` | the commit tagged `v1.0.0` |
 
 Three details of the tags matter when you use them:
 
 - Tag numbers follow phases, not chapters. `chapter-02-shapes` holds the code of chapter 01, `chapter-03-core` the code of chapter 02, `chapter-04-views` the code of chapter 03, and so on up to `chapter-12-transformer`.
-- `chapter-12-transformer`, `chapter-13-polish` and `v1.0.0` point at the same commit, `cb0f4be`. Phases 12 and 13 were tagged together, so there is no tag between the transformer work (sequence operations, safetensors, GPT with KV cache) and the polish work (debugging helpers, fuzzers, coverage, clang-tidy).
-- Work continued after `v1.0.0` on the current branch without new tags. The memory-mapped safetensors loader, atomic safetensors saves, the GPT-2 BPE tokenizer, `examples/gpt2_generate.cpp`, the HTTP server and its Docker image, the lock around the global random generator, the fused cross entropy and several performance and correctness fixes exist only at the branch head. Chapters 12 and 13 describe that code, so read them against the branch head, not against a tag.
+- `chapter-12-transformer` ends the transformer phase: sequence operations, safetensors, the GPT model with its KV cache, and the first debugging helpers, fuzzers and clang-tidy setup.
+- Phase 13 runs from there to `v1.0.0`: the memory-mapped safetensors loader, atomic saves, the GPT-2 BPE tokenizer, `examples/gpt2_generate.cpp`, the HTTP server and its Docker image, the lock around the global random generator, the fused cross entropy, the correctness fixes, the book and the GPU validation. `chapter-13-polish` and `v1.0.0` mark its last commit, so chapters 12 and 13 are complete there.
 
 ## How to read this book
 
