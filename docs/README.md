@@ -36,7 +36,7 @@ Each chapter has the same structure:
 | Chapter | What you build | Tag |
 |---------|----------------|-----|
 | [00. Overview](00-overview.md) | The architecture, the repository map and the build | |
-| [01. Shapes and strides](01-shapes-and-strides.md) | The index arithmetic that turns a flat buffer into an n-dimensional array, and broadcasting | |
+| [01. Shapes and strides](01-shapes-and-strides.md) | The index arithmetic that turns a flat buffer into an n-dimensional array, and broadcasting | `chapter-02-shapes` |
 | [02. Memory model](02-memory-model.md) | Data types, storage, `TensorImpl`, the `Tensor` handle, factories and random numbers | `chapter-03-core` |
 | [03. Views](03-views.md) | Reshape, transpose, slicing and expand without copying data | `chapter-04-views` |
 | [04. TensorIterator](04-tensor-iterator.md) | The loop engine behind every elementwise op: broadcasting, type promotion and dimension coalescing | `chapter-05-iteration` |
@@ -50,7 +50,7 @@ Each chapter has the same structure:
 | [12. Loading GPT-2](12-model-loading.md) | The safetensors format, the GPT-2 weight mapping and the BPE tokenizer | `main` |
 | [13. Serving and tooling](13-serving-and-tooling.md) | An HTTP server, debugging tools, fuzzing, sanitizers and CI | `main` |
 
-Tags are numbered by project phase, so `chapter-03-core` holds the code for chapter 02. Chapters 00 and 01 have no tag of their own. Most shape functions exist at `chapter-03-core`; `infer_shape` arrives at `chapter-04-views` and `dim_position` at `chapter-06-ops`. Chapters 12 and 13 describe work that landed after `v1.0.0` (the tokenizer, memory-mapped loading, the server), so read them against `main`.
+Tags are numbered by project phase, so `chapter-02-shapes` holds the code for chapter 01 and `chapter-03-core` the code for chapter 02. Chapter 00 has no tag. Two shape functions arrive after chapter 01: `infer_shape` at `chapter-04-views` and `dim_position` at `chapter-06-ops`. Chapters 12 and 13 describe work that landed after the transformer tag (the tokenizer, memory-mapped loading, the server), so read them against `main`.
 
 ## Design decisions
 

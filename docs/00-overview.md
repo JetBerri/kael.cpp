@@ -193,11 +193,11 @@ The project version comes from `project(kael VERSION 1.0.0 LANGUAGES CXX)`. CMak
 
 ## Phases, chapters and tags
 
-kael was built in thirteen phases. Phase 1 set up the repository (license, `.gitignore`, `.clang-format`, `.editorconfig`). Every later phase has a chapter, and from phase 3 on, a git tag marks the last commit of the phase. Milestone tags `v0.1.0` to `v1.0.0` point at the same commits as the phase that completed each milestone.
+kael was built in thirteen phases. Phase 1 set up the repository (license, `.gitignore`, `.clang-format`, `.editorconfig`). Every later phase has a chapter, and from phase 2 on, a git tag marks the last commit of the phase. Milestone tags `v0.1.0` to `v1.0.0` point at the same commits as the phase that completed each milestone.
 
 | Phase | Chapter | Phase tag | Milestone tag | Last commit of the phase |
 |-------|---------|-----------|---------------|--------------------------|
-| 2. Shapes and strides | [01](01-shapes-and-strides.md) | none | | `c44095f docs(chapters): add chapter 01 shapes and strides` |
+| 2. Shapes and strides | [01](01-shapes-and-strides.md) | `chapter-02-shapes` | | `87abce8 docs(readme): add README` |
 | 3. Core tensor | [02](02-memory-model.md) | `chapter-03-core` | | `d90fbfb docs(chapters): add chapter 02 memory model` |
 | 4. Views | [03](03-views.md) | `chapter-04-views` | | `d41fcb4 test(view): add NumPy-generated view chains` |
 | 5. Iteration | [04](04-tensor-iterator.md) | `chapter-05-iteration` | | `5075617 test(bench): add elementwise benchmarks` |
@@ -212,7 +212,7 @@ kael was built in thirteen phases. Phase 1 set up the repository (license, `.git
 
 Three details of the tags matter when you use them:
 
-- Tag numbers follow phases, not chapters. `chapter-03-core` holds the code of chapter 02, `chapter-04-views` the code of chapter 03, and so on up to `chapter-12-transformer`.
+- Tag numbers follow phases, not chapters. `chapter-02-shapes` holds the code of chapter 01, `chapter-03-core` the code of chapter 02, `chapter-04-views` the code of chapter 03, and so on up to `chapter-12-transformer`.
 - `chapter-12-transformer`, `chapter-13-polish` and `v1.0.0` point at the same commit, `cb0f4be`. Phases 12 and 13 were tagged together, so there is no tag between the transformer work (sequence operations, safetensors, GPT with KV cache) and the polish work (debugging helpers, fuzzers, coverage, clang-tidy).
 - Work continued after `v1.0.0` on the current branch without new tags. The memory-mapped safetensors loader, atomic safetensors saves, the GPT-2 BPE tokenizer, `examples/gpt2_generate.cpp`, the HTTP server and its Docker image, the lock around the global random generator, the fused cross entropy and several performance and correctness fixes exist only at the branch head. Chapters 12 and 13 describe that code, so read them against the branch head, not against a tag.
 
@@ -229,7 +229,7 @@ cmake --build ../kael-core/build --parallel
 ctest --test-dir ../kael-core/build --output-on-failure
 ```
 
-A plain `git checkout chapter-03-core` works too, followed by `git checkout -` to return. The early tags are useful because they are small: at `chapter-03-core` the library is shapes, storage, tensors, factories, random numbers and printing, with no views, operations or autograd. Later phases changed some of that code. For example, the caching allocator under `Storage` arrived in phase 9, and the typed error classes arrived in phase 10. Each chapter notes such changes where they matter.
+A plain `git checkout chapter-03-core` also builds, but the early tags carry older drafts of some chapters, so a separate worktree keeps this book in view. The early tags are useful because they are small: at `chapter-03-core` the library is shapes, storage, tensors, factories, random numbers and printing, with no views, operations or autograd. Later phases changed some of that code. For example, the caching allocator under `Storage` arrived in phase 9, and the typed error classes arrived in phase 10. Each chapter notes such changes where they matter.
 
 To see what a phase added, diff two consecutive tags:
 
