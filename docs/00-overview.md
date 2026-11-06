@@ -114,7 +114,7 @@ Public headers live in `include/kael/` and are included as `"kael/tensor.h"`. Pr
 
 ## Build and test
 
-Requirements: CMake 3.24 or newer and a C++20 compiler. Configuring downloads nlohmann_json and GoogleTest with `FetchContent`, so the first configure needs network access.
+Requirements: CMake 3.24 or newer and a C++20 compiler. Configuring downloads nlohmann_json and GoogleTest with `FetchContent`, so the first configure needs network access. Every archive is pinned with `URL_HASH SHA256=...`, so a download whose content changed fails the configure instead of entering the build.
 
 Build the library and the tests, then run them:
 
