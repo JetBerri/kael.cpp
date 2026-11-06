@@ -25,6 +25,7 @@ This chapter builds reverse-mode automatic differentiation. After it, any tensor
 - [02. Memory model](02-memory-model.md): `TensorImpl`, `Storage`, the `Tensor` handle.
 - [03. Views](03-views.md): views share storage, and the storage version counter.
 - [05. Operations](05-operations.md): every operation whose derivative this chapter defines.
+- [ADR 0005: define-by-run autograd graph](adr/0005-dynamic-autograd-graph.md) explains why the graph is built while operations run.
 
 ## The idea
 

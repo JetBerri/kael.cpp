@@ -58,6 +58,9 @@ Architecture decision records explain the choices that shape the whole library:
 
 - [ADR 0001. Runtime data type](adr/0001-runtime-dtype.md)
 - [ADR 0002. Tensor as a handle](adr/0002-tensor-as-handle.md)
+- [ADR 0003. Type promotion](adr/0003-type-promotion.md)
+- [ADR 0004. A PyTorch-shaped API with typed errors](adr/0004-pytorch-shaped-api.md)
+- [ADR 0005. Define-by-run autograd graph](adr/0005-dynamic-autograd-graph.md)
 
 ## Conventions
 

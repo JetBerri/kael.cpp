@@ -21,7 +21,7 @@ This chapter turns the shape arithmetic of chapter 01 into real tensors. It maps
 ## Prerequisites
 
 - [01. Shapes and strides](01-shapes-and-strides.md): `Shape`, `Strides`, `numel`, `contiguous_strides`, `offset_from_index`, `wrap_dim` and the checked arithmetic helpers.
-- The two design records: [ADR 0001](adr/0001-runtime-dtype.md) (runtime dtype) and [ADR 0002](adr/0002-tensor-as-handle.md) (tensor as a handle).
+- The design records [ADR 0001](adr/0001-runtime-dtype.md) (runtime dtype), [ADR 0002](adr/0002-tensor-as-handle.md) (tensor as a handle) and [ADR 0004](adr/0004-pytorch-shaped-api.md) (a PyTorch-shaped API with typed errors).
 
 ## Three layers
 

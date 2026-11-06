@@ -18,6 +18,7 @@ This chapter builds the engine behind every elementwise operation: a loop that w
 - [02. Memory model](02-memory-model.md): `DType`, `Scalar`, `Tensor::device_data`, factories.
 - [03. Views](03-views.md): strides, stride 0 from `expand`, contiguity, `convert_strided`.
 - [ADR 0001: runtime dtype](adr/0001-runtime-dtype.md) explains why the dtype is a runtime value and not a template parameter of `Tensor`.
+- [ADR 0003: type promotion](adr/0003-type-promotion.md) explains why the promotion rules follow PyTorch.
 
 ## The problem
 

@@ -65,7 +65,7 @@ The layers in one sentence each:
 
 CPU performance and CUDA are drawn beside the main stack because they replace the internals of lower layers instead of adding a layer on top. The caching allocator sits under `Storage`, and the device backend sits under the iterator and the factories. Code above them does not change.
 
-Two design decisions shape every layer and have their own records: [ADR 0001](adr/0001-runtime-dtype.md) makes the element type a run-time value, and [ADR 0002](adr/0002-tensor-as-handle.md) makes `Tensor` a shared handle.
+Five design decisions shape every layer and have their own records: [ADR 0001](adr/0001-runtime-dtype.md) makes the element type a run-time value, [ADR 0002](adr/0002-tensor-as-handle.md) makes `Tensor` a shared handle, [ADR 0003](adr/0003-type-promotion.md) fixes the type promotion rules, [ADR 0004](adr/0004-pytorch-shaped-api.md) shapes the API after PyTorch with typed exceptions, and [ADR 0005](adr/0005-dynamic-autograd-graph.md) builds the autograd graph while operations run.
 
 ## Directory map
 
