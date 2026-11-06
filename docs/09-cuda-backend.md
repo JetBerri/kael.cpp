@@ -510,7 +510,7 @@ The exit status is 0 when every step ran and passed, 1 when a step failed, and 3
 
 ### Reference run
 
-The reference validation ran on Google Colab with `scripts/cuda/validate_on_colab.ipynb` at commit `06f7dad`, from a clean clone with the datasets fetched by `scripts/download/*.sh`. The `v1.0.0` commit differs from it only by this section.
+The reference validation ran on Google Colab with `scripts/cuda/validate_on_colab.ipynb` at commit `06f7dad`, from a clean clone with the datasets fetched by `scripts/download/*.sh`. The commits between it and `v1.0.0` change documentation only.
 
 | Environment | Value |
 |-------------|-------|
