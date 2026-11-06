@@ -493,7 +493,7 @@ The defaults are `native`, `build-cuda` and `cuda-report`, and `-h` or `--help` 
 5. `compute-sanitizer`: two device tests under NVIDIA's memory checker (the default `memcheck` tool), if it is installed.
 6. `benchmarks`: `kael_bench --benchmark_filter='BM_Device'`.
 7. `configure-cublas`, `build-cublas`, `device-tests-cublas`: a second build in `<build>-cublas` with `KAEL_USE_CUBLAS=ON` and the same device tests, so the cuBLAS matmul path runs too.
-8. `mnist-cpu`, `mnist-cuda`, `mnist-cuda-1024`: `examples/mnist_mlp` must reach at least 97 percent test accuracy, if `data/mnist` exists.
+8. `mnist-cpu`, `mnist-cuda`, `mnist-cuda-1024`: the `mnist_mlp` example (`examples/mnist_mlp.cpp`) must reach at least 97 percent test accuracy, if `data/mnist` exists.
 9. `char-gpt-cuda`, `gpt2-cpp-cuda`: the transformer examples on the device, if their data exists.
 10. `python-build` and the Python steps: a virtual environment (with `virtualenv` as a fallback when `python3 -m venv` cannot bootstrap pip) with the package built for CUDA, `kael.cuda_is_available()`, `python/tests/test_cuda.py` with no skips, the full pytest suite, and the Python examples on the device.
 
