@@ -400,7 +400,7 @@ The emulation exists because the kernels and all the dispatch around them can be
 
 The CI job for the emulation also enables AddressSanitizer, so an out-of-bounds access in a task body is reported as a host memory error. Sanitizer builds compile out the caching allocator, so `Cuda.DeviceBlocksAreCached` skips itself in that job.
 
-What the emulation cannot catch: races between GPU threads, launch configuration limits, differences between device and host math functions, behavior specific to the CUDA runtime, and performance. `scripts/cuda/validate.sh` covers them on the GPU, with the device tests under `CUDA_LAUNCH_BLOCKING=1` and `compute-sanitizer`.
+What the emulation cannot catch: launch configuration limits, differences between device and host math functions, behavior specific to the CUDA runtime, and performance. `scripts/cuda/validate.sh` covers them on the GPU, with the device tests under `CUDA_LAUNCH_BLOCKING=1` and the `compute-sanitizer` memory checker, which reports out-of-bounds and misaligned device accesses. Races between GPU threads are excluded by construction: every task writes only its own output elements, and the only shared writes, the scatter and index additions, go through `atomic_add`. The kernels use no shared memory, so `compute-sanitizer --tool racecheck`, which checks shared-memory hazards, has nothing to inspect.
 
 `backend_fake.cpp` defines its own `matmul` (always the tile kernel) because the cuBLAS branch in `backend.cu` does not apply.
 
@@ -490,7 +490,7 @@ The defaults are `native`, `build-cuda` and `cuda-report`, and `-h` or `--help` 
 2. `configure`, `build`: Release build with `KAEL_ENABLE_CUDA=ON`, examples and benchmarks.
 3. `ctest`: the whole C++ suite.
 4. `device-tests`: `kael_tests --gtest_filter='Cuda*:*CudaMatmul*'` with `CUDA_LAUNCH_BLOCKING=1`. The step fails if the output contains "no CUDA device", because a skipped device test must not count as a pass.
-5. `compute-sanitizer`: two device tests under NVIDIA's memory checker, if it is installed.
+5. `compute-sanitizer`: two device tests under NVIDIA's memory checker (the default `memcheck` tool), if it is installed.
 6. `benchmarks`: `kael_bench --benchmark_filter='BM_Device'`.
 7. `configure-cublas`, `build-cublas`, `device-tests-cublas`: a second build in `<build>-cublas` with `KAEL_USE_CUBLAS=ON` and the same device tests, so the cuBLAS matmul path runs too.
 8. `mnist-cpu`, `mnist-cuda`, `mnist-cuda-1024`: `examples/mnist_mlp` must reach at least 97 percent test accuracy, if `data/mnist` exists.
