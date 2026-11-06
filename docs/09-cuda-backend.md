@@ -510,7 +510,7 @@ The exit status is 0 when every step ran and passed, 1 when a step failed, and 3
 
 ### Reference run
 
-The reference validation ran on Google Colab with `scripts/cuda/validate_on_colab.ipynb` at commit `91e0ea9`. The library code has not changed since that commit.
+The reference validation ran on Google Colab with `scripts/cuda/validate_on_colab.ipynb` at commit `06f7dad`, from a clean clone with the datasets fetched by `scripts/download/*.sh`. The `v1.0.0` commit differs from it only by this section.
 
 | Environment | Value |
 |-------------|-------|
@@ -529,25 +529,25 @@ All 23 steps passed:
 | `device-tests` | 42 device tests passed with the tile matmul kernel |
 | `device-tests-cublas` | 42 device tests passed with `KAEL_USE_CUBLAS=ON` |
 | `compute-sanitizer` | 0 errors |
-| `mnist-cpu` | 97.18% test accuracy, 15.07 s per epoch |
-| `mnist-cuda` | 97.18% test accuracy, 1.65 s per epoch |
-| `mnist-cuda-1024` | 97.97% test accuracy with 1024 hidden units, 4.37 s per epoch |
+| `mnist-cpu` | 97.18% test accuracy, 14.81 s per epoch |
+| `mnist-cuda` | 97.18% test accuracy, 1.52 s per epoch |
+| `mnist-cuda-1024` | 97.97% test accuracy with 1024 hidden units, 4.44 s per epoch |
 | `char-gpt-cuda` | validation loss from 4.18 to 2.34 in 300 steps |
-| `gpt2-cpp-cuda` | GPT-2 small generates text at 13.98 tokens per second |
+| `gpt2-cpp-cuda` | GPT-2 small generates text at 14.00 tokens per second |
 | `python-device-tests` | 10 tests passed |
 | `python-tests` | 346 tests passed |
-| `python-mnist-cuda` | 97.18% test accuracy, 1.62 s per epoch |
+| `python-mnist-cuda` | 97.18% test accuracy, 1.84 s per epoch |
 | `gpt2-cuda` | GPT-2 small generates the same text from Python |
 
 `kael_bench --benchmark_filter=BM_Device` on the same GPU:
 
 | Benchmark | Throughput |
 |-----------|------------|
-| `BM_DeviceAdd/16777216` | 5.52 G elements/s |
-| `BM_DeviceSum/16777216` | 20.25 G elements/s |
-| `BM_DeviceMatmul/512` | 367 GFLOP/s |
-| `BM_DeviceMatmul/1024` | 408 GFLOP/s |
-| `BM_DeviceMatmul/2048` | 432 GFLOP/s |
+| `BM_DeviceAdd/16777216` | 5.49 G elements/s |
+| `BM_DeviceSum/16777216` | 19.87 G elements/s |
+| `BM_DeviceMatmul/512` | 368 GFLOP/s |
+| `BM_DeviceMatmul/1024` | 401 GFLOP/s |
+| `BM_DeviceMatmul/2048` | 427 GFLOP/s |
 
 ## Edge cases and pitfalls
 
