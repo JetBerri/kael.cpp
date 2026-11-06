@@ -176,7 +176,7 @@ def test_real_gpt2_logits_match_huggingface():
     actual = model(kael.tensor([tokens]))
     assert model.num_parameters() == 124439808
 
-    config = transformers.GPT2Config.from_pretrained(str(WEIGHTS.parent))
+    config = transformers.GPT2Config()
     reference = transformers.GPT2LMHeadModel(config).eval()
     state = safetensors_torch.load_file(str(WEIGHTS))
     state = {
