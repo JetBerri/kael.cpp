@@ -343,6 +343,19 @@ template <typename T> void v1_ijk(const T* a, const T* b, T* out, const Sizes& s
 
 All versions are instantiated for `float` and `double` and are tested against the same reference.
 
+Measured with `kael_bench --benchmark_filter='BM_MatmulVersion.*/1024/'` on an Apple M5 Pro, `f32`, 1024 x 1024, with 15 threads for v6:
+
+| Version | GFLOP/s | Speedup over v1 |
+|---------|---------|-----------------|
+| `v1_ijk` | 1.8 | 1x |
+| `v2_ikj` | 35 | 20x |
+| `v3_tiled` | 36 | 20x |
+| `v4_packed` | 37 | 21x |
+| `v5_simd` | 124 | 69x |
+| `v6_threaded` | 557 | 311x |
+
+PyTorch 2.15 on the same machine calls Apple Accelerate and reaches 1820 GFLOP/s, so v6 runs at 31% of the vendor library. v3 and v4 gain little on their own at this size on this CPU. Their value is the packed layout that the v5 micro-kernel reads.
+
 ### v1: ijk
 
 ```cpp
