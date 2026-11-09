@@ -608,14 +608,21 @@ const auto length = static_cast<std::int64_t>(ids.size());
 const kael::Tensor prompt =
     kael::from_vector<std::int64_t>(ids, {1, length}).to(options.device);
 
+const auto print_token = [&tokenizer](const kael::Tensor& token) {
+    std::cout << tokenizer.decode({token.item<std::int64_t>()}) << std::flush;
+    return true;
+};
+
 kael::manual_seed(options.seed);
+std::cout << tokenizer.decode(ids) << std::flush;
 const kael::Tensor output = kael::nn::generate(model, prompt,
                                                {.max_new_tokens = options.tokens,
                                                 .temperature = options.temperature,
-                                                .top_k = options.top_k});
+                                                .top_k = options.top_k,
+                                                .on_token = print_token});
 ```
 
-It then decodes `output.select(0, 0)` and prints the text to standard output and the generation rate in tokens per second to standard error.
+It prints the prompt, then each token as `generate` samples it through the `on_token` callback, and finally the generation rate in tokens per second to standard error. Printing token by token gives the same text as decoding the whole sequence at the end: the byte-level BPE decodes every token to its raw bytes, and a character that spans two tokens is complete once both are printed.
 
 | Argument | Default |
 |----------|---------|

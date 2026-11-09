@@ -72,18 +72,26 @@ void run(const Options& options) {
     const kael::Tensor prompt =
         kael::from_vector<std::int64_t>(ids, {1, length}).to(options.device);
 
+    // Byte-level BPE decodes each token to raw bytes, so printing tokens one by one
+    // yields the same text as decoding the whole sequence, even across UTF-8 characters.
+    const auto print_token = [&tokenizer](const kael::Tensor& token) {
+        std::cout << tokenizer.decode({token.item<std::int64_t>()}) << std::flush;
+        return true;
+    };
+
     kael::manual_seed(options.seed);
+    std::cout << tokenizer.decode(ids) << std::flush;
     const auto started = std::chrono::steady_clock::now();
     const kael::Tensor output = kael::nn::generate(model, prompt,
                                                    {.max_new_tokens = options.tokens,
                                                     .temperature = options.temperature,
-                                                    .top_k = options.top_k});
+                                                    .top_k = options.top_k,
+                                                    .on_token = print_token});
     const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - started;
 
-    const kael::Tensor sequence = output.select(0, 0).cpu();
-    const auto* values = sequence.data_ptr<std::int64_t>();
-    std::cout << tokenizer.decode({values, values + sequence.numel()}) << '\n';
-    std::cerr << static_cast<double>(options.tokens) / elapsed.count() << " tokens/s\n";
+    const auto generated = output.size(1) - length;
+    std::cout << '\n';
+    std::cerr << static_cast<double>(generated) / elapsed.count() << " tokens/s\n";
 }
 
 } // namespace
