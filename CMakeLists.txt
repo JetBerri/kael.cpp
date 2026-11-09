@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(kael VERSION 1.0.0 LANGUAGES CXX)
+project(kael VERSION 1.0.1 LANGUAGES CXX)
 
 option(KAEL_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 option(KAEL_ENABLE_SANITIZERS "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
