@@ -23,6 +23,14 @@
 
 kael implements every layer of a framework like PyTorch without wrapping another one: strided tensors, autograd, training, a CPU backend tuned with SIMD and threading, a CUDA backend, Python bindings, and a transformer that loads and runs GPT-2. Its behavior is tested against PyTorch. The goal is didactic, and the book at [kaelcpp.dev](https://kaelcpp.dev) rebuilds it one chapter per layer.
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/JetBerri/kael.cpp/main/docs/assets/demos/gpt2.gif" alt="GPT-2 small generating text with kael on the CPU" width="800">
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/JetBerri/kael.cpp/main/docs/assets/demos/mnist.gif" alt="An MLP training on MNIST with kael on the CPU" width="800">
+</p>
+
 ## Quick start
 
 Requirements: CMake 3.24 or newer and a C++20 compiler.
